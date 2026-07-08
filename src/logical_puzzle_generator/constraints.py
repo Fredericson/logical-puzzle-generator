@@ -1,13 +1,14 @@
-from typing import Callable
-
-def left_of(a: str, b: str) -> Callable[[dict[str,int]], bool]:
-    return lambda s: s[a] < s[b]
-
-def right_of(a: str, b: str):
-    return lambda s: s[a] > s[b]
-
-def adjacent(a: str, b: str):
-    return lambda s: abs(s[a]-s[b]) == 1
-
-def fixed_position(a: str, pos: int):
-    return lambda s: s[a] == pos
+from abc import ABC, abstractmethod
+from .assignment import Assignment
+class Constraint(ABC):
+    @abstractmethod
+    def matches(self,a:Assignment)->bool: ...
+class FixedPosition(Constraint):
+    def __init__(self,item,pos): self.item=item; self.pos=pos
+    def matches(self,a): return a.position_of(self.item)==self.pos
+class LeftOf(Constraint):
+    def __init__(self,l,r): self.l=l; self.r=r
+    def matches(self,a): return a.position_of(self.l)<a.position_of(self.r)
+class Adjacent(Constraint):
+    def __init__(self,a1,a2): self.a1=a1; self.a2=a2
+    def matches(self,a): return abs(a.position_of(self.a1)-a.position_of(self.a2))==1

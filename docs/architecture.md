@@ -1,3 +1,3 @@
-# Architecture
+# Core Engine
 
-Engine -> Generator -> PDF
+Assignment -> Constraint -> Solver -> Validator
