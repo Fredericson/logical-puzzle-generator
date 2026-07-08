@@ -1,6 +1,6 @@
 from .solver import Solver
 from .puzzle_generator import PuzzleGenerator
-from .pdf_generator import PdfGenerator
+from logical_puzzle_generator.pdf.generator import PdfGenerator
 
 def create_puzzle():
     items=['Lara','Tim','Mia','Noah']
