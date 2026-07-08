@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-
 @dataclass
-class GeneratedPuzzle:
+class Puzzle:
+    items:list[str]
     clues:list
-    difficulty:int
     solution:object
+    difficulty:int
