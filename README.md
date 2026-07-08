@@ -15,3 +15,13 @@ Generate mathematically verified logic puzzles.
 - Clue generator
 - PDF generator
 - Illustrations
+
+## Current Status
+
+- [x] Repository
+- [x] Core model
+- [x] Constraint hierarchy
+- [ ] Solver
+- [ ] Generator
+- [ ] PDF output
+- [ ] Puzzle 3
