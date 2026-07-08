@@ -1,37 +1,16 @@
-# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Virtual Environments
 .venv/
 venv/
-env/
-
-# Distribution / Packaging
+.idea/
+.vscode/
+output/
+generated/
+.pytest_cache/
+.mypy_cache/
 build/
 dist/
 *.egg-info/
-
-# Test / Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-
-# IDEs
-.idea/
-.vscode/
-
-# macOS
 .DS_Store
-
-# Windows
 Thumbs.db
-
-# Generated output
-output/
-generated/
-
-# Logs
 *.log
