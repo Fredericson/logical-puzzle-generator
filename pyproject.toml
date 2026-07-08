@@ -1,5 +1,14 @@
 [project]
-name = "logical-puzzle-generator"
-version = "0.1.0"
-description = "Generator for mathematically verified logical puzzles"
-requires-python = ">=3.11"
+name="logical-puzzle-generator"
+version="0.2.0"
+description="Mathematically verified logical puzzle generator"
+requires-python=">=3.11"
+
+[tool.pytest.ini_options]
+testpaths=["tests"]
+
+[tool.ruff]
+line-length=100
+
+[tool.black]
+line-length=100

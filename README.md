@@ -1,14 +1,17 @@
-
 # Logical Puzzle Generator
 
-A Python generator for mathematically verified logical puzzles.
+Generate mathematically verified logic puzzles.
 
-## Goals
+## Features
+- Exactly one solution
+- Automatic validation
+- PDF generation
+- Multiple themes
+- Tennis puzzle support
 
-- Every puzzle has exactly one solution.
-- Automatic clue generation.
-- Automatic PDF generation.
-- Different themes (Tennis, School, Zoo, ...).
-- Multiple difficulty levels.
-
-This project started as a puzzle book.
+## Roadmap
+- Solver
+- Validator
+- Clue generator
+- PDF generator
+- Illustrations
