@@ -17,11 +17,10 @@ Generate mathematically verified logic puzzles.
 - Illustrations
 
 ## Current Status
-
-- [x] Repository
-- [x] Core model
-- [x] Constraint hierarchy
-- [ ] Solver
-- [ ] Generator
-- [ ] PDF output
-- [ ] Puzzle 3
+- [x] Project structure
+- [x] Domain model
+- [x] Constraint model
+- [x] Solving engine
+- [ ] Puzzle generator
+- [ ] PDF generator
+- [ ] Tennis theme

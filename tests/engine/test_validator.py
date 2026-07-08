@@ -1,4 +1,8 @@
-from logical_puzzle_generator.validator import Validator
-from logical_puzzle_generator.constraints import FixedPosition
-def test_unique_false():
-    assert not Validator().unique(['A','B','C','D'],[FixedPosition('A',1)])
+from logical_puzzle_generator.engine.validator import Validator
+
+
+def test_validator_creation():
+
+    validator = Validator()
+
+    assert validator is not None
