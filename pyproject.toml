@@ -1,0 +1,5 @@
+[project]
+name = "logical-puzzle-generator"
+version = "0.1.0"
+description = "Generator for mathematically verified logical puzzles"
+requires-python = ">=3.11"
