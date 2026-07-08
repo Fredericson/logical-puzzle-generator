@@ -18,8 +18,12 @@ class Solver:
 
         self._iterator = AssignmentIterator()
 
-    def solve(self, puzzle) -> SolverResult:
+    from logical_puzzle_generator.model.puzzle import Puzzle
 
+    def solve(
+        self,
+        puzzle: Puzzle,
+    ) -> SolverResult:
         start = time.perf_counter()
 
         result = SolverResult()
@@ -47,10 +51,9 @@ class Solver:
 
                 result.solutions.append(assignment)
 
-        stats.elapsed_time_ms = (
+        result.statistics = stats
+        result.statistics.elapsed_time_ms = (
             time.perf_counter() - start
         ) * 1000
-
-        result.statistics = stats
 
         return result
