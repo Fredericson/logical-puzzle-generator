@@ -64,6 +64,25 @@ Preferred commit format:
     refactor(engine): improve solver performance
     test(generator): add generator tests
     docs: update architecture
+--------------------------------------------------------------------------
+
+# Commit Policy
+
+Large features must be split into reviewable sub-commits.
+
+Example:
+
+Commit 10.1
+Core model restoration
+
+Commit 10.2
+Solution generation
+
+Commit 10.3
+Clue generation
+
+Commit 10.4
+Pipeline integration
 
 ------------------------------------------------------------------------
 
