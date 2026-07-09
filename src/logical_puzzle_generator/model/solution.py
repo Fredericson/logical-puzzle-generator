@@ -24,6 +24,10 @@ class Solution:
     solver_iterations: int = 0
 
     @property
+    def positions(self):
+        return self.assignment.positions
+
+    @property
     def player_count(self) -> int:
         """
         Number of players contained in the solution.
