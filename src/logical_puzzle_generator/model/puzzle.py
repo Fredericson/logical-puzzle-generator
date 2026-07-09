@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from logical_puzzle_generator.constraints.base import Constraint
-from logical_puzzle_generator.model.category import Category
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.metadata import Metadata
@@ -21,9 +19,9 @@ class Puzzle:
     puzzle mathematically, and the human-readable clues shown to the user.
     """
 
-    items: list[Item] = field(default_factory=list)
+    items: list[Item]
 
-    constraints: list[Constraint] = field(default_factory=list)
+    constraints: list[Constraint]
 
     clues: list[Clue] = field(default_factory=list)
 
@@ -31,7 +29,4 @@ class Puzzle:
 
     solution: Solution | None = None
 
-    categories: list[Category] = field(default_factory=list)
-
-    config: Any | None = None
 
