@@ -23,6 +23,7 @@ class Solver:
     def solve(
         self,
         puzzle: Puzzle,
+        stop_after: int | None = None,
     ) -> SolverResult:
         start = time.perf_counter()
 
@@ -50,6 +51,9 @@ class Solver:
                 stats.valid_assignments += 1
 
                 result.solutions.append(assignment)
+
+                if stop_after is not None and result.solution_count >= stop_after:
+                    break
 
         result.statistics = stats
         result.statistics.elapsed_time_ms = (

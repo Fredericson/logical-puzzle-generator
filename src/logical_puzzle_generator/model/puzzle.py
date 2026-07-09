@@ -1,78 +1,40 @@
-# Replace the entire file with this version.
-
 from __future__ import annotations
 
-import time
+from dataclasses import dataclass, field
+from typing import Any
 
-from logical_puzzle_generator.engine.assignment_iterator import (
-    AssignmentIterator,
-)
-from logical_puzzle_generator.engine.solver_result import SolverResult
-from logical_puzzle_generator.engine.statistics import SolverStatistics
-from logical_puzzle_generator.model.puzzle import Puzzle
+from logical_puzzle_generator.constraints.base import Constraint
+from logical_puzzle_generator.model.category import Category
+from logical_puzzle_generator.model.clue import Clue
+from logical_puzzle_generator.model.item import Item
+from logical_puzzle_generator.model.metadata import Metadata
+from logical_puzzle_generator.model.solution import Solution
 
 
-class Solver:
+@dataclass(slots=True)
+class Puzzle:
     """
-    Simple brute force solver for 4x4 logical puzzles.
+    Core puzzle model used by the solver, validator, generator, and PDF
+    renderer.
 
-    The solver enumerates all possible assignments and keeps
-    those satisfying every constraint.
+    A puzzle consists of the items to place, the constraints that define the
+    puzzle mathematically, and the human-readable clues shown to the user.
     """
 
-    def __init__(self) -> None:
-        self._iterator = AssignmentIterator()
+    items: list[Item] = field(default_factory=list)
 
-    def solve(
-        self,
-        puzzle: Puzzle,
-        stop_after: int | None = None,
-    ) -> SolverResult:
-        """
-        Solve the given puzzle.
+    constraints: list[Constraint] = field(default_factory=list)
 
-        Parameters
-        ----------
-        puzzle:
-            Puzzle to solve.
+    clues: list[Clue] = field(default_factory=list)
 
-        stop_after:
-            Stop after the given number of solutions have been
-            found. Useful for uniqueness checks.
-        """
+    metadata: Metadata | None = None
 
-        start = time.perf_counter()
+    solution: Solution | None = None
 
-        result = SolverResult()
-        stats = SolverStatistics()
+    categories: list[Category] = field(default_factory=list)
 
-        for assignment in self._iterator.iterate(
-            puzzle.items
-        ):
+    config: Any | None = None
 
-            stats.assignments_checked += 1
-
-            valid = all(
-                constraint.matches(assignment)
-                for constraint in puzzle.constraints
-            )
-
-            if not valid:
-                continue
-
-            stats.valid_assignments += 1
-            result.solutions.append(assignment)
-
-            if (
-                stop_after is not None
-                and result.solution_count >= stop_after
-            ):
-                break
-
-        stats.elapsed_time_ms = (
-            time.perf_counter() - start
-        ) * 1000
-
-        result.statistics = stats
-
-        return result
+    def __post_init__(self) -> None:
+        if not self.items and self.categories:
+            self.items = list(self.categories[0].items)

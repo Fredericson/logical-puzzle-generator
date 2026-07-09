@@ -23,7 +23,16 @@ class FixedPositionConstraint(Constraint):
         self,
         assignment,
     ) -> bool:
-        return assignment.position_of(self.item) == self.position
+        actual = assignment.position_of(self.item)
+        expected = self.position
+
+        if hasattr(actual, "index") and not hasattr(expected, "index"):
+            return actual.index == expected
+
+        if hasattr(expected, "index") and not hasattr(actual, "index"):
+            return actual == expected.index
+
+        return actual == expected
 
     @property
     def description(self) -> str:
