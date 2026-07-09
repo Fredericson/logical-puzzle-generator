@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.model.item import Item
@@ -26,7 +26,7 @@ class SolutionGenerator:
 
     def generate(
         self,
-        source: PuzzleTemplate | Puzzle | Sequence[Item] | Iterable[Item],
+        source: PuzzleTemplate | Puzzle | Iterable[Item],
     ) -> Solution:
         """
         Generate a random valid solution for the supplied items or template.
@@ -61,7 +61,7 @@ class SolutionGenerator:
 
     def _items_from_source(
         self,
-        source: PuzzleTemplate | Puzzle | Sequence[Item] | Iterable[Item],
+        source: PuzzleTemplate | Puzzle | Iterable[Item],
     ) -> list[Item]:
         if isinstance(source, PuzzleTemplate):
             return list(source.players.items)
