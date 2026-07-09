@@ -2,6 +2,17 @@
 
 Generate mathematically verified logic puzzles.
 
+## Documentation
+
+The project documentation can be found in the `docs/` folder.
+
+- AI Development Specification
+- Architecture Guide
+- AI Contribution Guide
+- Project Roadmap
+- Architecture Decisions
+- AI Prompt Library
+
 ## Features
 - Exactly one solution
 - Automatic validation

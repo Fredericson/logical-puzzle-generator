@@ -12,11 +12,11 @@ This file contains recommended prompts for AI coding assistants
 
 Before every implementation task:
 
-1. Read AI_DEVELOPMENT_SPEC.md
-2. Read ARCHITECTURE.md
-3. Read CONTRIBUTING_AI.md
-4. Read ROADMAP.md
-5. Read DECISIONS.md
+1. Read docs/AI_DEVELOPMENT_SPEC.md
+2. Read docs/ARCHITECTURE.md
+3. Read docs/CONTRIBUTING_AI.md
+4. Read docs/ROADMAP.md
+5. Read docs/DECISIONS.md
 6. Read the complete repository
 
 Never redesign the architecture.
@@ -31,11 +31,11 @@ Return complete files only.
 Read the complete repository.
 
 Read:
-- AI_DEVELOPMENT_SPEC.md
-- ARCHITECTURE.md
-- CONTRIBUTING_AI.md
-- ROADMAP.md
-- DECISIONS.md
+- docs/AI_DEVELOPMENT_SPEC.md
+- docs/ARCHITECTURE.md
+- docs/CONTRIBUTING_AI.md
+- docs/ROADMAP.md
+- docs/DECISIONS.md
 
 Implement the next planned commit.
 
@@ -181,11 +181,11 @@ the feature.
 Synchronize:
 
 - README
-- AI_DEVELOPMENT_SPEC.md
-- ARCHITECTURE.md
-- CONTRIBUTING_AI.md
-- ROADMAP.md
-- DECISIONS.md
+- docs/AI_DEVELOPMENT_SPEC.md
+- docs/ARCHITECTURE.md
+- docs/CONTRIBUTING_AI.md
+- docs/ROADMAP.md
+- docs/DECISIONS.md
 ```
 
 ---

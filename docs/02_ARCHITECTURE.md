@@ -326,7 +326,7 @@ without manual intervention.
 
 Before making changes:
 
-1.  Read AI_DEVELOPMENT_SPEC.md.
+1.  Read docs/AI_DEVELOPMENT_SPEC.md.
 2.  Read this file completely.
 3.  Read the repository.
 4.  Preserve the architecture.

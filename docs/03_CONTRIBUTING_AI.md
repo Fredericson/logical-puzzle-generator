@@ -31,8 +31,8 @@ The primary goal is to deliver Version 1.0:
 
 Before writing any code:
 
-1.  Read `AI_DEVELOPMENT_SPEC.md`
-2.  Read `ARCHITECTURE.md`
+1.  Read `docs/AI_DEVELOPMENT_SPEC.md`
+2.  Read `docs/ARCHITECTURE.md`
 3.  Read the complete repository
 4.  Understand the current implementation
 

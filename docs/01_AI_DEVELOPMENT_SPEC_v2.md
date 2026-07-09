@@ -261,7 +261,7 @@ Version 3.0
 
     Read the complete repository.
 
-    Read AI_DEVELOPMENT_SPEC.md first.
+    Read docs/AI_DEVELOPMENT_SPEC.md first.
 
     Do not redesign the project.
 
