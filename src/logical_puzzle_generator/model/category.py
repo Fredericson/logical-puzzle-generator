@@ -23,6 +23,7 @@ class Category:
 
     name: str
     items: list[Item]
+    type: object | None = None
 
     def __len__(self) -> int:
         return len(self.items)
