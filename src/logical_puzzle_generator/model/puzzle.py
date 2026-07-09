@@ -35,6 +35,3 @@ class Puzzle:
 
     config: Any | None = None
 
-    def __post_init__(self) -> None:
-        if not self.items and self.categories:
-            self.items = list(self.categories[0].items)
