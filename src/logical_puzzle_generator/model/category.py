@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 from .item import Item
+
+
+class CategoryType(str, Enum):
+    PERSON = "person"
+    ATTRIBUTE = "attribute"
 
 
 @dataclass(slots=True)
@@ -23,7 +29,7 @@ class Category:
 
     name: str
     items: list[Item]
-    type: object | None = None
+    type: CategoryType | None = None
 
     def __len__(self) -> int:
         return len(self.items)
