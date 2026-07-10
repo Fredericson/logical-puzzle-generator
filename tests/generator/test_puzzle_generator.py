@@ -46,25 +46,14 @@ def test_generate_returns_complete_unique_puzzle() -> None:
     assert puzzle.metadata is not None
     assert puzzle.metadata.title == template.title
     assert puzzle.metadata.theme == template.theme
-    assert puzzle.constraints
-    assert puzzle.clues
+    assert len(puzzle.constraints) == len(template.players.items) - 1
+    assert len(puzzle.clues) == len(puzzle.constraints)
     assert len(puzzle.clues) == len({(clue.clue_type, clue.text) for clue in puzzle.clues})
     assert all(
         constraint.matches(puzzle.solution.assignment)
         for constraint in puzzle.constraints
     )
-    assert all(
-        isinstance(
-            constraint,
-            (
-                FixedPositionConstraint,
-                LeftOfConstraint,
-                RightOfConstraint,
-                AdjacentConstraint,
-            ),
-        )
-        for constraint in puzzle.constraints
-    )
+    assert all(isinstance(constraint, LeftOfConstraint) for constraint in puzzle.constraints)
 
 
 def test_generate_validates_uniqueness() -> None:
@@ -143,6 +132,15 @@ def test_generate_fails_after_max_attempts() -> None:
         ).generate(create_template())
 
     assert validator.calls == 2
+
+
+def test_generate_supports_single_item_with_fixed_position_constraint() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(1)).generate([Item("Solo")])
+
+    assert len(puzzle.constraints) == 1
+    assert isinstance(puzzle.constraints[0], FixedPositionConstraint)
+    assert puzzle.solution is not None
+
 
 
 def test_generate_rejects_duplicate_items() -> None:

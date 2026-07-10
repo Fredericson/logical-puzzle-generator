@@ -96,7 +96,8 @@ class PuzzleGenerator:
         constraints: list[Constraint] = []
         seen: set[tuple[object, ...]] = set()
 
-        for item in ordered_items:
+        if len(ordered_items) == 1:
+            item = ordered_items[0]
             self._append_unique(
                 constraints,
                 seen,
@@ -105,19 +106,7 @@ class PuzzleGenerator:
                     solution.assignment.position_of(item),
                 ),
             )
-
-        for index, left_item in enumerate(ordered_items):
-            for right_item in ordered_items[index + 1:]:
-                self._append_unique(
-                    constraints,
-                    seen,
-                    LeftOfConstraint(left_item, right_item),
-                )
-                self._append_unique(
-                    constraints,
-                    seen,
-                    RightOfConstraint(right_item, left_item),
-                )
+            return constraints
 
         for left_item, right_item in zip(
             ordered_items,
@@ -127,7 +116,7 @@ class PuzzleGenerator:
             self._append_unique(
                 constraints,
                 seen,
-                AdjacentConstraint(left_item, right_item),
+                LeftOfConstraint(left_item, right_item),
             )
 
         return constraints
