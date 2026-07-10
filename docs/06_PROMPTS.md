@@ -13,6 +13,7 @@ Preserve the Version 1.0 architecture:
 - solver and validator remain the verification boundary;
 - PuzzleGenerator remains the orchestration boundary;
 - PDF remains presentation-only.
+- Localization remains presentation-only and must not affect solver, validator, constraints, or generation semantics.
 
 Make the smallest safe change, update tests and documentation when needed, and keep public APIs stable unless explicitly requested otherwise.
 ```
@@ -63,7 +64,7 @@ Run the relevant test subset and full pytest suite when practical.
 ```text
 Prepare a release-quality maintenance change.
 
-Verify installation instructions, command examples, public API examples, tests, roadmap status, ADRs, and architecture documentation.
+Verify installation instructions, command examples, public API examples, language examples, tests, roadmap status, ADRs, and architecture documentation.
 Do not add new features.
 Limit code changes to release metadata, comments, documentation examples, or obvious inconsistencies.
 ```

@@ -21,7 +21,7 @@ For every task:
 2. Identify the smallest safe change.
 3. Preserve public APIs and documented architecture boundaries.
 4. Update tests when behavior changes.
-5. Update documentation when behavior, commands, public APIs, or architecture descriptions change.
+5. Update documentation in the same PR when behavior, commands, public APIs, localization text, or architecture descriptions change.
 6. Run the relevant checks.
 7. Create one focused commit.
 8. Open a pull request describing the change and checks run.
@@ -44,6 +44,7 @@ Reviewers and AI assistants should verify:
 - tests pass;
 - public APIs remain compatible unless a breaking change was requested;
 - documentation examples match the actual code;
+- language/localization behavior is documented when user-facing text changes;
 - architecture documentation matches package responsibilities;
 - ADRs are not contradicted;
 - no placeholder implementations, dead prompts, or stale roadmap claims were introduced.

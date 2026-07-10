@@ -22,6 +22,7 @@ Completed capabilities:
 - Generator package: `SolutionGenerator`, `ClueGenerator`, `ClueReducer`, `PuzzleGenerator`, and `PuzzleTemplate`.
 - Internal constraint derivation inside `PuzzleGenerator`.
 - PDF package: `TextRenderer` and `PdfGenerator` for puzzle and solution PDFs.
+- Localization: `Language`, `TranslationCatalog`, and `ClueTextRenderer` for English/German presentation text.
 - Tennis theme and `create_puzzle` entry point.
 - Pytest coverage for engine, generator, model, and PDF behavior.
 
@@ -34,6 +35,8 @@ src/logical_puzzle_generator/
   engine/
   generator/
   pdf/
+  localization.py
+  clue_text_renderer.py
   themes/
   create_puzzle.py
 ```
@@ -50,8 +53,8 @@ The application shall:
 - assemble a `Puzzle` containing items, constraints, clues, metadata, and solution;
 - validate that the puzzle has exactly one solution;
 - reduce clues without changing constraints, items, metadata, or solution;
-- export a printable puzzle PDF;
-- export a printable solution PDF.
+- export a printable puzzle PDF in English or German;
+- export a printable solution PDF in English or German.
 
 ## 5. Generator pipeline
 
@@ -95,7 +98,11 @@ Implemented constraints:
 - Preserve deterministic results for a fixed item order and fixed random seed.
 - Keep solver and validator independent of generator, PDF, themes, and UI.
 
-## 8. PDF requirements
+## 8. Language and PDF requirements
+
+English (`en`) is the default presentation language. German (`de`) is first-class for the CLI, `create_puzzle(..., language=...)`, and `PdfGenerator(language=...)`. User-facing PDF headings, labels, solution headings, solving-grid labels, and localized clue wording belong in the localization/presentation layer, not in constraints, solver, validator, or generator logic. Unsupported language values must be rejected clearly.
+
+## 9. PDF requirements
 
 Puzzle PDF:
 
@@ -112,7 +119,7 @@ Solution PDF:
 
 PDF generation is presentation-only and must not perform solving or generation.
 
-## 9. Coding standards
+## 10. Coding standards
 
 - Python 3.11+.
 - Type hints for public interfaces and new code.
@@ -122,7 +129,7 @@ PDF generation is presentation-only and must not perform solving or generation.
 - No global mutable generation state.
 - Readable code over clever code.
 
-## 10. Testing
+## 11. Testing
 
 Use pytest.
 
@@ -132,9 +139,10 @@ Required checks for generator/PDF changes:
 - generated puzzle has exactly one solution;
 - generated clues are valid `Clue` instances with text;
 - deterministic behavior when a seeded `random.Random` is supplied;
-- PDF output files can be written for puzzle and solution PDFs.
+- PDF output files can be written for puzzle and solution PDFs;
+- localized rendering preserves puzzle immutability, clue/constraint one-to-one mapping, and seeded generation determinism.
 
-## 11. AI development rules
+## 12. AI development rules
 
 Mandatory rules:
 
@@ -152,7 +160,7 @@ Do not:
 - add TODO-driven code;
 - invent requirements not present in the task or roadmap.
 
-## 12. Definition of done
+## 13. Definition of done
 
 A change is complete when:
 

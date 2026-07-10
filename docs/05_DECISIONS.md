@@ -116,3 +116,12 @@ Decision: `PuzzleGenerator` generates multiple valid candidate puzzles when poss
 The internal quality score rewards varied clue meanings, endpoint clues, adjacent clues, direct-left/direct-right clues, and balanced clue distributions. It penalizes duplicate clue meanings and candidates dominated by one clue meaning. Scoring is based on constraint type and `ClueType`, not rendered clue text, so it remains independent from localisation and PDF wording. Candidate count is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant rather than by a new public API.
 
 Rationale: Version 1.0 already guarantees mathematical correctness and unique solvability. Human-facing quality improves when the generator can compare several valid alternatives instead of returning the first valid puzzle. Keeping the selection stage inside `PuzzleGenerator` preserves the existing Solver, Validator, ClueReducer, PDF, and public API boundaries while maintaining deterministic output for seeded random sources.
+
+
+## ADR-014: Keep localization in the presentation layer
+
+Status: Accepted
+
+Decision: support English and German through a small internal `Language` abstraction, `TranslationCatalog`, and `ClueTextRenderer`. Constraints, solver, validator, and generator remain language-independent. English clue text stored on `Clue` remains backward compatible; localized PDF clue wording is rendered from the clue's one-to-one constraint in the presentation layer.
+
+Rationale: localization changes how a puzzle is presented, not what mathematical constraints mean or how puzzles are generated and validated. Centralizing translated labels and clue wording avoids scattered language checks while preserving existing architecture boundaries.

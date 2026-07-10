@@ -6,10 +6,10 @@ Logical Puzzle Generator creates small, printable Einstein-style ordering puzzle
 
 - Generate a complete one-to-one assignment of puzzle items to positions.
 - Derive internal mathematical constraints from the generated solution.
-- Convert supported constraints into human-readable clues.
+- Convert supported constraints into human-readable English clues and render localized clue text for PDFs.
 - Validate that a puzzle has exactly one solution using the brute-force solver.
 - Reduce unnecessary clues while preserving unique solvability and at least one clue.
-- Generate printable puzzle and solution PDFs with ReportLab.
+- Generate printable puzzle and solution PDFs with ReportLab in English (`en`, default) or German (`de`).
 - Provide a Tennis theme and a convenience entry point that writes PDFs to `output/`.
 
 Version 1.0 is intentionally limited to ordering puzzles over one active category of items. Additional category relationships, richer clue types, JSON export, batch generation, GUI/web interfaces, and larger puzzle sizes are Version 2+ work.
@@ -40,6 +40,8 @@ Use the built-in entry point to generate the Tennis puzzle PDFs:
 
 ```bash
 python -m logical_puzzle_generator.create_puzzle
+python -m logical_puzzle_generator.create_puzzle --number 3 --language en
+python -m logical_puzzle_generator.create_puzzle --number 3 --language de
 ```
 
 By default this writes:
@@ -52,7 +54,12 @@ You can also call the public API directly:
 ```python
 from logical_puzzle_generator.create_puzzle import create_puzzle
 
-puzzle = create_puzzle("output/puzzle.pdf", "output/solution.pdf")
+puzzle = create_puzzle(
+    number=3,
+    puzzle_path="output/puzzle.pdf",
+    solution_path="output/solution.pdf",
+    language="de",
+)
 print(puzzle.metadata.title)
 ```
 
@@ -71,7 +78,7 @@ To render PDFs for an existing puzzle:
 ```python
 from logical_puzzle_generator.pdf.generator import PdfGenerator
 
-pdf = PdfGenerator()
+pdf = PdfGenerator(language="en")
 pdf.create_puzzle_pdf(puzzle, "output/puzzle.pdf")
 pdf.create_solution_pdf(puzzle, "output/solution.pdf")
 ```
@@ -85,6 +92,8 @@ src/logical_puzzle_generator/
   engine/         Assignment iteration, brute-force solver, statistics, validation, optimizer stub
   generator/      SolutionGenerator, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleTemplate
   pdf/            TextRenderer and PdfGenerator presentation layer
+  localization.py Language enum and translation catalog
+  clue_text_renderer.py Localized clue wording for presentation
   themes/         Built-in puzzle templates, currently Tennis
   create_puzzle.py Convenience script for generating the Tennis PDFs
 
@@ -103,3 +112,7 @@ Start with `docs/README.md`. The main documents are:
 - `docs/04_ROADMAP.md`
 - `docs/05_DECISIONS.md`
 - `docs/06_PROMPTS.md`
+
+## Language support
+
+English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent.

@@ -17,11 +17,13 @@ logical_puzzle_generator/
   engine/         Brute-force solving and validation
   generator/      Puzzle generation orchestration
   pdf/            Presentation-only PDF rendering
+  localization.py Language enum and translation catalog
+  clue_text_renderer.py Localized clue wording
   themes/         Reusable puzzle templates
   create_puzzle.py Tennis PDF entry point
 ```
 
-Dependencies flow inward to the model and engine. The engine does not depend on generator, PDF, or themes. PDF depends on model objects only for rendering. Themes provide data only.
+Dependencies flow inward to the model and engine. The engine does not depend on generator, PDF, or themes. PDF depends on model objects only for rendering. Localization and clue text rendering are presentation services. Themes provide data only.
 
 ## 3. Model package
 
@@ -55,7 +57,7 @@ All constraints inherit from `Constraint` and implement `matches(assignment)`. I
 - `AdjacentConstraint(first, second)`
   - means the two items are next to each other, but the direction is unknown.
 
-Each constraint exposes a human-readable `description`. Constraint classes do not know about solving, PDF rendering, clue reduction, or other constraints. Every visible `Clue` owns exactly one corresponding `Constraint`; the generator and reducer preserve this one-to-one relationship so the puzzle shown to the player is the same puzzle validated by the engine.
+Each constraint exposes a legacy human-readable `description` for compatibility, but descriptions are not the localization mechanism. Constraint classes do not know about solving, PDF rendering, clue reduction, localization, or other constraints. Every visible `Clue` owns exactly one corresponding `Constraint`; the generator and reducer preserve this one-to-one relationship so the puzzle shown to the player is the same puzzle validated by the engine.
 
 ## 5. Engine package
 
@@ -89,7 +91,7 @@ Current derivation sorts the generated solution by position and creates a varied
 
 ### `ClueGenerator`
 
-Converts supplied constraint instances into deterministic `Clue` objects. It supports far-left, far-right, directly-left-of, left-of, directly-right-of, right-of, and next-to wording. It does not create constraints, solve puzzles, reduce clues, or randomize output.
+Converts supplied constraint instances into deterministic English `Clue` objects for backward compatibility. It supports far-left, far-right, directly-left-of, left-of, directly-right-of, right-of, and next-to wording. It does not create constraints, solve puzzles, reduce clues, or randomize output.
 
 ### `ClueReducer`
 
@@ -127,7 +129,13 @@ The quality score is based on constraint type and `ClueType`, not rendered Engli
 
 The number of valid candidates considered is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant. Seeded `random.Random` inputs remain deterministic because candidate generation consumes randomness in a stable sequence, every valid candidate is scored with a pure deterministic function, and ties are resolved by the stable order of the generated candidate list.
 
-## 7. PDF package
+## 7. Localization and PDF packages
+
+`Language` defines supported presentation languages: `Language.ENGLISH` (`en`) and `Language.GERMAN` (`de`). `TranslationCatalog` centralizes PDF headings, labels, CLI-facing output labels, and metadata-title translations. `ClueTextRenderer` renders clue wording from each clue's linked constraint in the selected language. This keeps German wording out of constraints, solver, validator, and generator logic. English remains the default and uses stored `Clue.text` for backward compatibility.
+
+German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Lösungsraster`, `Antwort`, and `Lösung`.
+
+## 8. PDF package
 
 `TextRenderer` renders clues, solution rows, and item names as strings. It validates that rendered text is human-readable.
 
@@ -139,18 +147,18 @@ The number of valid candidates considered is controlled by the internal `QUALITY
 
 PDF generation is presentation-only. It must not derive constraints, solve puzzles, or alter puzzle data.
 
-## 8. Theme and entry-point flow
+## 9. Theme and entry-point flow
 
 `themes.tennis.create_template()` returns the built-in Tennis `PuzzleTemplate`.
 
-`create_puzzle.create_puzzle()` generates that template and writes both default PDFs:
+`create_puzzle.create_puzzle()` generates that template and writes both default PDFs. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default:
 
 ```text
 output/puzzle_3.pdf
 output/puzzle_3_solution.pdf
 ```
 
-## 9. Data flow
+## 10. Data flow
 
 ```text
 Theme/PuzzleTemplate or Item iterable
@@ -167,10 +175,10 @@ Validator → Solver → AssignmentIterator
         ↓
 Quality selection
         ↓
-PdfGenerator / TextRenderer
+PdfGenerator / TextRenderer / ClueTextRenderer / TranslationCatalog
 ```
 
-## 10. Architecture preservation policy
+## 11. Architecture preservation policy
 
 Stable boundaries:
 
@@ -180,5 +188,6 @@ Stable boundaries:
 - Validator remains the uniqueness boundary.
 - Generator orchestration stays in `PuzzleGenerator`.
 - PDF remains presentation-only.
+- Localization remains presentation-only and must not change generation or solving semantics.
 
 Significant changes to these boundaries require an ADR update.
