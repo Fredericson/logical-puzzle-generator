@@ -135,7 +135,7 @@ Quality selection
 PDF Generator
 ```
 
-During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. For Version 1 four-player puzzles, it selects the required number of relational clues up front (one for Easy, two for Medium, three for Hard) so all difficulties have exactly three visible clues before reduction. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
 
 After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
 
@@ -218,7 +218,7 @@ Significant changes to these boundaries require an ADR update.
 
 ### `DifficultyPolicy`
 
-`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count.
+`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count. Version 1 four-player puzzles always expose exactly three visible clues: Easy has one relational clue, Medium has two, and Hard has three.
 
 Updated generation order:
 
