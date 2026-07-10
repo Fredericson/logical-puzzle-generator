@@ -108,3 +108,22 @@ def test_compatibility_create_method_writes_puzzle_pdf(tmp_path) -> None:
 
     assert path.exists()
     assert path.stat().st_size > 0
+
+
+def test_puzzle_pdf_contains_varied_human_readable_clue_text(tmp_path) -> None:
+    import random
+
+    from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
+    from logical_puzzle_generator.pdf.generator import PdfGenerator
+    from logical_puzzle_generator.themes.tennis import create_template
+
+    puzzle = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
+    output = tmp_path / "varied-puzzle.pdf"
+
+    PdfGenerator().create_puzzle_pdf(puzzle, output)
+
+    pdf_text = output.read_bytes().decode("latin-1")
+    for clue in puzzle.clues:
+        assert clue.text in pdf_text
+    assert "DirectLeftOfConstraint" not in pdf_text
+    assert "DirectRightOfConstraint" not in pdf_text

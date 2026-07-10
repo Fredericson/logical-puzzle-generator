@@ -7,6 +7,8 @@ from logical_puzzle_generator.constraints import (
     FixedPositionConstraint,
     LeftOfConstraint,
     RightOfConstraint,
+    DirectLeftOfConstraint,
+    DirectRightOfConstraint,
 )
 from logical_puzzle_generator.generator import ClueGenerator
 from logical_puzzle_generator.model.clue import Clue
@@ -15,7 +17,7 @@ from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.position import Position
 
 
-def test_generate_fixed_position_clue() -> None:
+def test_generate_far_left_fixed_position_clue() -> None:
     lara = Item("Lara")
 
     constraint = FixedPositionConstraint(lara, Position(1))
@@ -24,9 +26,44 @@ def test_generate_fixed_position_clue() -> None:
     assert clues == [
         Clue(
             clue_type=ClueType.FIXED_POSITION,
-            text="Lara stands at position 1.",
+            text="Lara stands at the far left.",
             constraint=constraint,
         )
+    ]
+
+
+def test_generate_far_right_fixed_position_clue() -> None:
+    mia = Item("Mia")
+
+    constraint = FixedPositionConstraint(mia, Position(4))
+    clues = ClueGenerator(item_count=4).generate([constraint])
+
+    assert clues == [
+        Clue(
+            clue_type=ClueType.FIXED_POSITION,
+            text="Mia stands at the far right.",
+            constraint=constraint,
+        )
+    ]
+
+
+def test_generate_direct_left_and_direct_right_clues() -> None:
+    emma = Item("Emma")
+    aurelia = Item("Aurelia")
+    constraints = [
+        DirectLeftOfConstraint(emma, aurelia),
+        DirectRightOfConstraint(aurelia, emma),
+    ]
+
+    clues = ClueGenerator().generate(constraints)
+
+    assert [clue.text for clue in clues] == [
+        "Emma stands directly left of Aurelia.",
+        "Aurelia stands directly right of Emma.",
+    ]
+    assert [clue.clue_type for clue in clues] == [
+        ClueType.DIRECT_LEFT_OF,
+        ClueType.DIRECT_RIGHT_OF,
     ]
 
 

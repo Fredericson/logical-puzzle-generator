@@ -5,6 +5,7 @@ import random
 import pytest
 
 from logical_puzzle_generator.constraints import (
+    AdjacentConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
 )
@@ -55,11 +56,10 @@ def test_generate_returns_complete_unique_puzzle() -> None:
     assert puzzle.metadata is not None
     assert puzzle.metadata.title == template.title
     assert puzzle.metadata.theme == template.theme
-    assert len(puzzle.constraints) == len(template.players.items) - 1
     assert len(puzzle.clues) <= len(puzzle.constraints)
     assert len(puzzle.clues) == len({(clue.clue_type, clue.text) for clue in puzzle.clues})
     assert all(constraint.matches(puzzle.solution.assignment) for constraint in puzzle.constraints)
-    assert all(isinstance(constraint, LeftOfConstraint) for constraint in puzzle.constraints)
+    assert len({clue.clue_type for clue in puzzle.clues}) >= 2
 
 
 def test_generate_validates_uniqueness() -> None:
@@ -308,3 +308,77 @@ def test_generated_reduced_puzzle_solves_to_target_solution_from_visible_constra
 
     assert result.has_unique_solution
     assert result.solutions[0] == puzzle.solution.assignment
+
+
+def test_generated_four_item_puzzle_has_varied_visible_clue_types() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
+
+    assert len(puzzle.items) == 4
+    assert len({clue.clue_type for clue in puzzle.clues}) >= 2
+    assert any("directly" in clue.text or "far" in clue.text for clue in puzzle.clues)
+
+
+def test_seeded_generation_produces_deterministic_clue_types_and_text() -> None:
+    template = create_template()
+
+    first = PuzzleGenerator(random_source=random.Random(101)).generate(template)
+    second = PuzzleGenerator(random_source=random.Random(101)).generate(template)
+
+    assert [(clue.clue_type, clue.text) for clue in first.clues] == [
+        (clue.clue_type, clue.text) for clue in second.clues
+    ]
+
+
+def test_every_generated_clue_constraint_matches_target_and_no_hidden_constraints() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(11)).generate(create_template())
+
+    assert len(puzzle.clues) == len(puzzle.constraints)
+    assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
+    assert all(clue.constraint.matches(puzzle.solution.assignment) for clue in puzzle.clues)
+
+
+def test_generated_visible_puzzle_remains_uniquely_solvable_to_target() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(17)).generate(create_template())
+
+    result = Solver().solve(puzzle, stop_after=2)
+
+    assert result.has_unique_solution
+    assert result.solutions[0] == puzzle.solution.assignment
+
+
+def test_multiple_seeded_four_item_puzzles_keep_visible_invariants_and_variety() -> None:
+    adjacent_seen = False
+
+    for seed in range(1, 16):
+        puzzle = PuzzleGenerator(random_source=random.Random(seed)).generate(create_template())
+        result = Solver().solve(puzzle, stop_after=2)
+
+        assert result.has_unique_solution, seed
+        assert result.solutions[0] == puzzle.solution.assignment
+        assert len(puzzle.clues) == len(puzzle.constraints)
+        assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
+        assert len({_visible_clue_meaning(clue.text) for clue in puzzle.clues}) >= 2
+
+        adjacent_seen = adjacent_seen or any(
+            isinstance(constraint, AdjacentConstraint) for constraint in puzzle.constraints
+        )
+
+    assert adjacent_seen
+
+
+def _visible_clue_meaning(text: str) -> str:
+    if "far left" in text:
+        return "far_left"
+    if "far right" in text:
+        return "far_right"
+    if "directly left" in text:
+        return "directly_left_of"
+    if "directly right" in text:
+        return "directly_right_of"
+    if "left of" in text:
+        return "left_of"
+    if "right of" in text:
+        return "right_of"
+    if "next to" in text:
+        return "next_to"
+    return text

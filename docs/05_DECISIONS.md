@@ -89,3 +89,19 @@ Status: Accepted
 Decision: `TextRenderer` and `PdfGenerator` render existing puzzles and must not solve, generate, or mutate puzzle logic.
 
 Reason: this preserves a clean dependency direction and keeps PDF behavior testable independently from generation.
+
+
+## ADR-012: Visible clues and constraints remain one-to-one
+
+Status: Accepted
+
+Decision:
+
+- Every visible clue owns exactly one `Constraint`.
+- `ClueReducer` removes a `Clue` and its corresponding `Constraint` together.
+- `Validator` validates only visible constraints.
+- Hidden constraints are forbidden.
+- Direct-left and direct-right relationships are explicit constraint types.
+- Fixed-position endpoint clues render as "far left" and "far right".
+
+Rationale: puzzles must not appear ambiguous to the player while remaining unique internally. The visible clue set and the mathematical constraint set therefore stay aligned throughout generation, reduction, validation, and PDF rendering.
