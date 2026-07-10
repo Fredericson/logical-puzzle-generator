@@ -79,3 +79,11 @@ def test_reduction_predicate_uses_exact_fixed_position_counts() -> None:
     assert policy.can_remove_to_match(zero, Difficulty.HARD)
     assert not policy.can_remove_to_match(one, Difficulty.HARD)
     assert not policy.can_remove_to_match(three, Difficulty.EASY)
+
+
+def test_required_fixed_position_count_is_owned_by_difficulty_policy() -> None:
+    policy = DifficultyPolicy()
+
+    assert policy.required_fixed_position_count(Difficulty.EASY) == 2
+    assert policy.required_fixed_position_count("medium") == 1
+    assert policy.required_fixed_position_count(Difficulty.HARD) == 0

@@ -1,6 +1,6 @@
 # Logical Puzzle Generator
 
-Logical Puzzle Generator creates small, printable Einstein-style ordering puzzles and verifies them mathematically before returning them. Version 1.0 focuses on a stable 4-item puzzle pipeline: generate a solution, derive constraints, convert them to clues, validate uniqueness, reduce redundant clues, and render child-friendly A4 puzzle and solution PDFs.
+Logical Puzzle Generator creates small, printable Einstein-style ordering puzzles and verifies them mathematically before returning them. Version 1.0 focuses on a stable 4-item puzzle pipeline: generate a solution, derive constraints, apply a deterministic constraint distribution policy for clue variety, convert them to clues, validate uniqueness, reduce redundant clues, and render child-friendly A4 puzzle and solution PDFs.
 
 ## Version 1.0 capabilities
 
@@ -95,7 +95,7 @@ src/logical_puzzle_generator/
   model/          Domain models: Item, Position, Puzzle, Solution, Clue, Metadata, Category
   constraints/    Constraint classes used by the solver and clue generator
   engine/         Assignment iteration, brute-force solver, statistics, validation, optimizer stub
-  generator/      SolutionGenerator, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleTemplate
+  generator/      SolutionGenerator, FixedPositionGenerator, ConstraintDistributionPolicy, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleTemplate
   pdf/            TextRenderer, vector lineup renderers, and PdfGenerator presentation layer
   localization.py Language enum and translation catalog
   clue_text_renderer.py Localized clue wording for presentation
@@ -125,3 +125,8 @@ English is the default for backward compatibility. German can be selected with `
 ### Selectable difficulty
 
 Generated puzzles choose a random difficulty when `--difficulty` is omitted or `create_puzzle(..., difficulty=None)` is used. A specific level may be requested with `--difficulty easy`, `--difficulty medium`, or `--difficulty hard`, or programmatically with `create_puzzle(..., difficulty="easy")` / `Difficulty.EASY`. Difficulty is the final visible fixed-position clue count only: Easy `== 2`, Medium `== 1`, Hard `== 0`. Direct-left, direct-right, adjacent, left-of, and right-of clues do not count as fixed-position clues. Generation uses the injected random source to choose both anchored children and anchored positions, builds a solution consistent with those choices, and retries until the reduced, uniquely solvable visible clue set matches the requested level; PDF localization only maps stored `1/2/3` metadata to labels.
+
+
+### Clue variety policy
+
+`ConstraintDistributionPolicy` analyzes generated constraints before clue text is created. It receives only neutral distribution context, such as the required fixed-position count, and does not understand Easy, Medium, or Hard. Its rule-based acceptance rejects obviously repetitive four-item relation mixes, while its small deterministic comparison score ranks relation variety by distinct relation types, repeats, dominance, adjacency, and direct-neighbour clues. This is a quality optimization only: `DifficultyPolicy` owns difficulty, solver and validator uniqueness checks remain the correctness authority, and no new clue or constraint types are introduced. The reducer uses the same score only as a tie-breaker after difficulty preservation and uniqueness have already been checked.

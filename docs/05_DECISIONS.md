@@ -152,3 +152,12 @@ Decision: ADR-016 is superseded for Version 1 difficulty classification. `Diffic
 Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child. A fixed-position-count rule is predictable, testable, independent of language/PDF text, and based on the puzzle the child actually sees.
 
 Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitted/`None` chooses randomly with the injected random source), delegates mandatory fixed assignment and target solution construction to `FixedPositionGenerator`, derives relational constraints separately, reduces clues and constraints together while preserving the exact fixed count, validates unique solvability, classifies the final visible constraints, and retries until a matching candidate is found or raises a clear `RuntimeError` after `max_attempts`. Numeric metadata remains `1` Easy, `2` Medium, and `3` Hard. PDF and translation components render stored metadata only and do not recalculate difficulty.
+
+
+## ADR-018: Use a deterministic constraint distribution policy for clue variety
+
+Decision: `ConstraintDistributionPolicy` analyzes generated fixed and relational constraints before clue generation, rejects clearly poor type distributions with neutral context such as `required_fixed_count`, and scores acceptable distributions for quality selection and reducer tie-breaking. It uses only the existing Version 1 constraint types, deterministic rule checks, and a small tuple score based on relation-type variety, repeats, dominance, adjacency, and direct-neighbour presence.
+
+Rationale: uniqueness and difficulty rules make puzzles correct, but balanced clue types make them more enjoyable. Keeping distribution scoring separate preserves Solver, Validator, FixedPositionGenerator, ClueGenerator, ClueReducer, DifficultyPolicy, and PdfGenerator responsibilities. The policy deliberately does not import or depend on `Difficulty` or `DifficultyPolicy`; those remain the only difficulty-classification boundary.
+
+Consequences: clue diversity can improve without changing mathematical correctness. Poor distributions are retried before expensive later stages, while final visible puzzles are still validated for unique solvability and exact requested difficulty. ADR-017 remains unchanged: difficulty is still classified only by final visible `FixedPositionConstraint` count.

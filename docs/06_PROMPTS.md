@@ -77,3 +77,8 @@ When changing PDF difficulty presentation, keep numeric difficulty metadata sema
 ### Difficulty policy prompts
 
 For difficulty work, keep `DifficultyPolicy` and `FixedPositionGenerator` in the generator layer. Fixed assignments are created before relational constraints, final difficulty is classified from visible constraints after reduction, and generation retries until the requested exact fixed-position-count rule matches. Do not add PDF scoring logic or translation-layer estimation.
+
+
+### Commit 11.7 clue variety prompt note
+
+When changing clue variety, use `ConstraintDistributionPolicy` for deterministic rule-based analysis, rejection, and simple tuple scoring of existing constraints. Pass only neutral context such as `required_fixed_count`; do not import `Difficulty`, depend on `DifficultyPolicy`, add clue types, move validation into the policy, or treat diversity as a correctness rule. Reduction may use the policy only to choose among otherwise valid removable-clue alternatives.

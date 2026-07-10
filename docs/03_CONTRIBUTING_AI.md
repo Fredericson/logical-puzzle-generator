@@ -121,3 +121,8 @@ mypy src
 ### Difficulty-policy guidance
 
 Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraints after clue reduction and count `FixedPositionConstraint` clues. Easy is exactly 2, Medium is exactly 1, Hard is 0. `FixedPositionGenerator` constructs mandatory anchors and the target solution before relational constraints. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog.
+
+
+## Constraint distribution policy
+
+Keep clue-variety work in `ConstraintDistributionPolicy` and the generator/reducer orchestration. The policy may analyze, reject, and score existing constraints with neutral context such as `required_fixed_count`, but must not import or depend on `Difficulty`/`DifficultyPolicy`, classify difficulty, solve, validate uniqueness, translate, render PDFs, create target solutions, or add new clue/constraint types. Treat diversity as a rule-based quality preference; never weaken validator checks or the exact fixed-position difficulty rules owned by `DifficultyPolicy`.

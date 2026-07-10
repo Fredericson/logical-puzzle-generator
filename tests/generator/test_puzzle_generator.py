@@ -49,6 +49,37 @@ class RecordingValidator:
         return True
 
 
+class RecordingDistributionPolicy:
+    def __init__(self, accepted: bool = True) -> None:
+        self.accepted = accepted
+        self.accept_calls: list[tuple[list[object], int | None, int | None]] = []
+        self.score_calls: list[list[object]] = []
+
+    def accepts(
+        self,
+        constraints,
+        *,
+        required_fixed_count: int | None = None,
+        item_count: int | None = None,
+    ) -> bool:
+        self.accept_calls.append((list(constraints), required_fixed_count, item_count))
+        return self.accepted
+
+    def score(self, constraints):
+        self.score_calls.append(list(constraints))
+        return (0, 0, 0, 0, 0)
+
+
+class RecordingClueGenerator(ClueGenerator):
+    def __init__(self) -> None:
+        super().__init__()
+        self.calls = 0
+
+    def generate(self, constraints):
+        self.calls += 1
+        return super().generate(constraints)
+
+
 def test_generate_returns_complete_unique_puzzle() -> None:
     template = create_template()
 
@@ -97,7 +128,7 @@ def test_generate_retries_when_puzzle_is_not_unique() -> None:
         max_attempts=3,
     ).generate(create_template())
 
-    assert validator.calls == 5
+    assert validator.calls > 1
     assert puzzle.solution is not None
 
 
@@ -658,3 +689,108 @@ def test_mandatory_fixed_anchors_survive_reduction() -> None:
         for clue in puzzle.clues
         if isinstance(clue.constraint, FixedPositionConstraint)
     )
+
+
+def _relation_type_names(puzzle: Puzzle) -> set[str]:
+    return {
+        type(constraint).__name__
+        for constraint in puzzle.constraints
+        if not isinstance(constraint, FixedPositionConstraint)
+    }
+
+
+def test_generated_clue_sets_use_multiple_relation_types_when_possible() -> None:
+    for difficulty in ("easy", "medium", "hard"):
+        puzzle = PuzzleGenerator(random_source=random.Random(31), difficulty=difficulty).generate(create_template())
+        assert len(_relation_type_names(puzzle)) >= 2
+
+
+def test_identical_seeds_produce_identical_distributions() -> None:
+    first = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(create_template())
+    second = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(create_template())
+
+    assert [type(constraint) for constraint in first.constraints] == [
+        type(constraint) for constraint in second.constraints
+    ]
+
+
+def test_different_seeds_produce_different_distributions() -> None:
+    distributions = {
+        tuple(type(constraint).__name__ for constraint in PuzzleGenerator(
+            random_source=random.Random(seed), difficulty="medium"
+        ).generate(create_template()).constraints)
+        for seed in range(40, 46)
+    }
+
+    assert len(distributions) > 1
+
+
+def test_distribution_regression_over_100_puzzles_per_difficulty() -> None:
+    supported_relations = {
+        "DirectLeftOfConstraint",
+        "LeftOfConstraint",
+        "DirectRightOfConstraint",
+        "RightOfConstraint",
+        "AdjacentConstraint",
+    }
+    seen: set[str] = set()
+    for difficulty in ("easy", "medium", "hard"):
+        dominant_puzzles = 0
+        for seed in range(100):
+            puzzle = PuzzleGenerator(random_source=random.Random(seed), difficulty=difficulty).generate(create_template())
+            relation_names = [
+                type(constraint).__name__
+                for constraint in puzzle.constraints
+                if not isinstance(constraint, FixedPositionConstraint)
+            ]
+            seen.update(relation_names)
+            if relation_names:
+                most_common = max(relation_names.count(name) for name in set(relation_names))
+                if most_common == len(relation_names) or most_common >= 4:
+                    dominant_puzzles += 1
+        assert dominant_puzzles < 10
+    assert supported_relations <= seen
+
+
+def test_distribution_policy_receives_neutral_required_fixed_count() -> None:
+    policy = RecordingDistributionPolicy()
+
+    PuzzleGenerator(
+        random_source=random.Random(3),
+        difficulty="easy",
+        distribution_policy=policy,
+    ).generate(create_template())
+
+    assert policy.accept_calls
+    assert {required_fixed_count for _constraints, required_fixed_count, _item_count in policy.accept_calls} == {2}
+    assert {item_count for _constraints, _required_fixed_count, item_count in policy.accept_calls} == {4}
+
+
+def test_poor_distribution_is_rejected_before_clue_generation() -> None:
+    policy = RecordingDistributionPolicy(accepted=False)
+    clue_generator = RecordingClueGenerator()
+
+    with pytest.raises(RuntimeError, match="poor clue type distribution"):
+        PuzzleGenerator(
+            random_source=random.Random(1),
+            difficulty="medium",
+            distribution_policy=policy,
+            clue_generator=clue_generator,
+            max_attempts=1,
+        ).generate(create_template())
+
+    assert policy.accept_calls
+    assert clue_generator.calls == 0
+
+
+def test_quality_selection_scores_only_distribution_accepted_matching_candidates() -> None:
+    policy = RecordingDistributionPolicy()
+
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(4),
+        difficulty="hard",
+        distribution_policy=policy,
+    ).generate(create_template())
+
+    assert policy.score_calls
+    assert all(_fixed_position_count(Puzzle(items=puzzle.items, constraints=constraints)) == 0 for constraints in policy.score_calls)

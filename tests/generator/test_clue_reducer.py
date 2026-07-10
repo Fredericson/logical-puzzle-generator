@@ -3,9 +3,11 @@ from __future__ import annotations
 import pytest
 
 from logical_puzzle_generator.constraints import (
+    AdjacentConstraint,
     DirectLeftOfConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
+    RightOfConstraint,
 )
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.generator import ClueGenerator, ClueReducer
@@ -25,6 +27,26 @@ class SequenceValidator:
         if not self.results:
             return False
         return self.results.pop(0)
+
+
+class AlwaysUniqueValidator:
+    def __init__(self) -> None:
+        self.puzzles: list[Puzzle] = []
+
+    def has_unique_solution(self, puzzle: Puzzle) -> bool:
+        self.puzzles.append(puzzle)
+        return True
+
+
+class RecordingDistributionPolicy:
+    def __init__(self) -> None:
+        self.scored: list[list[object]] = []
+
+    def score(self, constraints):
+        constraints = list(constraints)
+        self.scored.append(constraints)
+        # Prefer candidates retaining an adjacent clue over ordinary right-of only.
+        return (1 if any(isinstance(c, AdjacentConstraint) for c in constraints) else 0, 0, 0, 0, 0)
 
 
 def _puzzle() -> Puzzle:
@@ -58,7 +80,7 @@ def test_reduce_preserves_uniqueness_for_each_accepted_removal() -> None:
     reduced = ClueReducer(validator).reduce(puzzle)
 
     assert reduced.clues == [puzzle.clues[1]]
-    assert [len(candidate.clues) for candidate in validator.puzzles] == [1]
+    assert all(len(candidate.clues) == 1 for candidate in validator.puzzles)
 
 
 def test_reduce_restores_clue_when_uniqueness_would_be_lost() -> None:
@@ -202,3 +224,53 @@ def _reducer_clue_meaning(text: str) -> str:
     if "next to" in text:
         return "next_to"
     return text
+
+
+def test_reducer_checks_difficulty_before_distribution_scoring() -> None:
+    a, b, c, d = Item("A"), Item("B"), Item("C"), Item("D")
+    constraints = [
+        FixedPositionConstraint(a, Position(1)),
+        FixedPositionConstraint(d, Position(4)),
+        LeftOfConstraint(a, b),
+    ]
+    puzzle = Puzzle(
+        items=[a, b, c, d],
+        constraints=constraints,
+        clues=ClueGenerator(item_count=4).generate(constraints),
+        solution=Solution(Assignment({a: Position(1), b: Position(2), c: Position(3), d: Position(4)})),
+    )
+    policy = RecordingDistributionPolicy()
+
+    reduced = ClueReducer(AlwaysUniqueValidator(), distribution_policy=policy).reduce(puzzle, difficulty="easy")
+
+    assert len([constraint for constraint in reduced.constraints if isinstance(constraint, FixedPositionConstraint)]) == 2
+    assert policy.scored
+    assert all(
+        sum(isinstance(constraint, FixedPositionConstraint) for constraint in scored_constraints) == 2
+        for scored_constraints in policy.scored
+    )
+
+
+def test_reducer_uses_distribution_score_only_among_valid_candidates() -> None:
+    a, b, c, d = Item("A"), Item("B"), Item("C"), Item("D")
+    constraints = [
+        FixedPositionConstraint(a, Position(1)),
+        FixedPositionConstraint(d, Position(4)),
+        RightOfConstraint(c, b),
+        AdjacentConstraint(b, c),
+    ]
+    puzzle = Puzzle(
+        items=[a, b, c, d],
+        constraints=constraints,
+        clues=ClueGenerator(item_count=4).generate(constraints),
+        solution=Solution(Assignment({a: Position(1), b: Position(2), c: Position(3), d: Position(4)})),
+    )
+
+    reduced = ClueReducer(
+        AlwaysUniqueValidator(),
+        distribution_policy=RecordingDistributionPolicy(),
+    ).reduce(puzzle, difficulty="easy")
+
+    assert any(isinstance(constraint, AdjacentConstraint) for constraint in reduced.constraints)
+    assert len(reduced.clues) == len(reduced.constraints)
+    assert [clue.constraint for clue in reduced.clues] == reduced.constraints

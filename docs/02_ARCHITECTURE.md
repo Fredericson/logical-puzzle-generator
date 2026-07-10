@@ -91,13 +91,19 @@ Constructs the selected difficulty anchors before relational constraints exist. 
 
 `PuzzleGenerator` owns relational constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0. After `FixedPositionGenerator` returns mandatory anchors and the target solution, relational derivation sorts the solution by position and creates only non-fixed true positional constraints: direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. Relational derivation must not create additional `FixedPositionConstraint` instances. Derived constraints are de-duplicated and verified against the generated solution.
 
+### `ConstraintDistributionPolicy`
+
+Analyzes the list of generated constraints after fixed anchors and private relational derivation, before clues are rendered. It receives only neutral context such as `required_fixed_count`, counts supported constraint classes, applies deterministic rule-based acceptance, and provides a small tuple score for quality selection and reduction tie-breaking. It does not import or depend on `Difficulty`/`DifficultyPolicy`, classify Easy/Medium/Hard, solve puzzles, generate solutions, validate uniqueness, render PDFs, translate clues, or introduce new constraint types. Diversity is a human-facing quality optimization, not a correctness rule; `DifficultyPolicy` remains authoritative for difficulty and `Validator` remains authoritative for unique solvability.
+
+Normal four-item quality rules allow one- or two-relation sets, but reject three-or-more-relation sets that contain only one relation type, contain more than two of one relation type, or consist entirely of ordinary left/right relations. The deterministic score is lexicographic and explainable: more distinct relation types rank higher, repeated and dominant types rank lower, and adjacency/direct-neighbour presence are minor comparison tie-breakers.
+
 ### `ClueGenerator`
 
 Converts supplied constraint instances into deterministic English `Clue` objects for backward compatibility. It supports far-left, far-right, directly-left-of, left-of, directly-right-of, right-of, and next-to wording. It does not create constraints, solve puzzles, reduce clues, or randomize output.
 
 ### `ClueReducer`
 
-Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain and the exact requested fixed-position count is preserved. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
+Attempts a deterministic remove-and-validate pass over human-readable clues. When multiple removable clues are valid alternatives, it prefers the candidate with the higher `ConstraintDistributionPolicy` score so diversity is preserved where possible. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain and the exact requested fixed-position count is preserved. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
 
 ### `PuzzleGenerator`
 
@@ -116,6 +122,8 @@ Target Solution + mandatory fixed constraints
         ↓
 Relational constraint derivation
         ↓
+ConstraintDistributionPolicy
+        ↓
 ClueGenerator
         ↓
 ClueReducer
@@ -131,7 +139,7 @@ During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles 
 
 After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
 
-The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Its weights are intentionally simple and documented in code: clue-meaning variety receives the largest reward because avoiding repetition is the main quality goal; adjacent and direct-left/direct-right relationship clues receive medium rewards because they create interesting relational deductions; duplicate meanings and a dominant single meaning receive penalties to keep the distribution balanced. The quality heuristic is separate from difficulty classification and only compares candidates matching the requested difficulty.
+The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Distribution scoring is tuple-based rather than weighted: it compares distinct relation-type count, repeated relation penalties, dominance, adjacency presence, and direct-neighbour presence. The quality heuristic is separate from difficulty classification and only compares candidates that already pass distribution acceptance, unique-solution validation, and the requested difficulty check.
 
 The number of valid candidates considered is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant. Seeded `random.Random` inputs remain deterministic because candidate generation consumes randomness in a stable sequence, every valid candidate is scored with a pure deterministic function, and ties are resolved by the stable order of the generated candidate list.
 
@@ -181,6 +189,8 @@ Target Solution + mandatory fixed constraints
         ↓
 Relational constraint derivation
         ↓
+ConstraintDistributionPolicy
+        ↓
 ClueGenerator
         ↓
 ClueReducer
@@ -214,7 +224,7 @@ Updated generation order:
 
 ```text
 Difficulty selection -> FixedPositionGenerator -> target Solution + mandatory fixed constraints
--> private relational constraint derivation -> ClueGenerator -> Validator
+-> private relational constraint derivation -> ConstraintDistributionPolicy -> ClueGenerator -> Validator
 -> ClueReducer (clues and matching constraints together, exact fixed count preserved) -> Validator
 -> DifficultyPolicy match/classify -> quality selection among matching candidates -> PdfGenerator presentation
 ```
