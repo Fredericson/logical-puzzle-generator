@@ -28,6 +28,22 @@ from .solution_generator import SolutionGenerator
 
 QUALITY_CANDIDATE_COUNT = 8
 
+# Rewards one-time use of each clue meaning so varied clue sets beat repetitive ones.
+QUALITY_UNIQUE_MEANING_WEIGHT = 12
+# Endpoint clues anchor the ordering puzzle and are easy for humans to start from.
+QUALITY_ENDPOINT_WEIGHT = 4
+# Undirected adjacency clues add useful relational variety without revealing direction.
+QUALITY_ADJACENT_WEIGHT = 3
+# Direct left/right clues are strong but still relational, so they receive adjacency-level weight.
+QUALITY_DIRECT_RELATION_WEIGHT = 3
+# Duplicate meanings are allowed, but each repeat makes the clue set feel more mechanical.
+QUALITY_DUPLICATE_MEANING_PENALTY = 5
+# Dominant meanings are penalized separately to avoid clue sets made mostly from one pattern.
+QUALITY_DOMINANT_MEANING_PENALTY = 3
+
+QUALITY_FAR_LEFT_MEANING = "far_left"
+QUALITY_FAR_RIGHT_MEANING = "far_right"
+
 
 class PuzzleGenerator:
     """
@@ -147,19 +163,21 @@ class PuzzleGenerator:
         meanings = [self._quality_clue_meaning(clue, len(puzzle.items)) for clue in puzzle.clues]
         counts = Counter(meanings)
         unique_type_count = len(counts)
-        endpoint_count = counts["far_left"] + counts["far_right"]
-        adjacent_count = counts["next_to"]
-        direct_count = counts["directly_left_of"] + counts["directly_right_of"]
+        endpoint_count = counts[QUALITY_FAR_LEFT_MEANING] + counts[QUALITY_FAR_RIGHT_MEANING]
+        adjacent_count = counts[ClueType.ADJACENT.value]
+        direct_count = (
+            counts[ClueType.DIRECT_LEFT_OF.value] + counts[ClueType.DIRECT_RIGHT_OF.value]
+        )
         duplicate_penalty = sum(count - 1 for count in counts.values() if count > 1)
         dominant_penalty = max(counts.values(), default=0) - 1
 
         return (
-            unique_type_count * 12
-            + endpoint_count * 4
-            + adjacent_count * 3
-            + direct_count * 3
-            - duplicate_penalty * 5
-            - dominant_penalty * 3,
+            unique_type_count * QUALITY_UNIQUE_MEANING_WEIGHT
+            + endpoint_count * QUALITY_ENDPOINT_WEIGHT
+            + adjacent_count * QUALITY_ADJACENT_WEIGHT
+            + direct_count * QUALITY_DIRECT_RELATION_WEIGHT
+            - duplicate_penalty * QUALITY_DUPLICATE_MEANING_PENALTY
+            - dominant_penalty * QUALITY_DOMINANT_MEANING_PENALTY,
             unique_type_count,
             endpoint_count + adjacent_count + direct_count,
             -len(puzzle.clues),
@@ -170,9 +188,9 @@ class PuzzleGenerator:
         constraint = clue.constraint
         if isinstance(constraint, FixedPositionConstraint):
             if constraint.position.index == 1:
-                return "far_left"
+                return QUALITY_FAR_LEFT_MEANING
             if constraint.position.index == item_count:
-                return "far_right"
+                return QUALITY_FAR_RIGHT_MEANING
             return ClueType.FIXED_POSITION.value
 
         return clue.clue_type.value
