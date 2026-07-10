@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from logical_puzzle_generator.clue_text_renderer import ClueTextRenderer
+from logical_puzzle_generator.localization import Language, parse_language
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.puzzle import Puzzle
@@ -11,19 +13,22 @@ class TextRenderer:
     """
     Renders domain objects into presentation text for printable output.
 
-    The renderer intentionally uses public, human-readable model data. It does
-    not expose constraint classes or perform puzzle generation logic.
+    The renderer intentionally uses public, human-readable model data and clue
+    constraints. It does not expose constraint classes or perform generation,
+    solving, or validation logic.
     """
+
+    def __init__(self, language: Language | str = Language.ENGLISH) -> None:
+        self.language = parse_language(language)
 
     def render(self, clues: Iterable[Clue]) -> list[str]:
         return self.render_clues(clues)
 
-    def render_clues(self, clues: Iterable[Clue]) -> list[str]:
+    def render_clues(self, clues: Iterable[Clue], item_count: int | None = None) -> list[str]:
+        clue_renderer = ClueTextRenderer(self.language, item_count=item_count)
         lines: list[str] = []
         for index, clue in enumerate(clues, 1):
-            if not clue.text:
-                raise ValueError("Puzzle clues must contain human-readable text.")
-            lines.append(f"{index}. {clue.text}")
+            lines.append(f"{index}. {clue_renderer.render_clue(clue)}")
         return lines
 
     def render_solution_rows(self, puzzle: Puzzle) -> list[tuple[str, str]]:

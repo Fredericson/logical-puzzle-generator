@@ -14,8 +14,8 @@ Completed milestones:
 - Constraint hierarchy with far-left/far-right fixed-position, direct-left, left-of, direct-right, right-of, and adjacent next-to constraints.
 - Brute-force solver, assignment iterator, solver result, statistics, and validator.
 - Generator pipeline: `SolutionGenerator`, varied private constraint derivation, `ClueGenerator`, `ClueReducer`, `Validator`, and PDF generation.
-- PDF output: `TextRenderer`, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()`.
-- Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point.
+- PDF output: `TextRenderer`, localized `ClueTextRenderer`, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()`.
+- Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point with `--language en` and `--language de`.
 - Version 1.0 documentation synchronization.
 - Test coverage across engine, model, generator, and PDF packages.
 
@@ -23,7 +23,7 @@ Version 1.0 accepted limitations:
 
 - Active puzzle solving uses one item category mapped to positions.
 - The Tennis template includes extra thematic categories as template data, but multi-category logic is not solved in Version 1.0.
-- Clue generation supports implemented Version 1.0 positional constraint classes only.
+- Clue generation supports implemented Version 1.0 positional constraint classes only. PDF presentation supports English and German wording for those clue meanings.
 - `Optimizer` is a compatibility boundary and does not alter puzzles.
 
 ## Version 2
@@ -38,13 +38,13 @@ Potential next release work:
 - JSON export and import.
 - Batch generation.
 - More example themes and committed sample outputs.
+- Additional presentation languages beyond English and German.
 - Packaging polish such as console scripts and published distributions.
 
 ## Future ideas
 
 - Larger puzzle sizes such as 5×5.
 - Puzzle packs.
-- Multi-language clue rendering.
 - GUI or web application.
 - REST API or cloud generation service.
 - Illustration or layout customization.
