@@ -84,7 +84,7 @@ Stable Version 1.0 boundaries:
 - Constraints stay independent and expose `matches()` plus `description`.
 - `PuzzleGenerator` owns orchestration and private constraint derivation.
 - `ClueGenerator` only converts constraints to clues.
-- `ClueReducer` only removes human-readable clues when uniqueness remains true.
+- `ClueReducer` removes human-readable clues and their corresponding constraints together when uniqueness remains true for the remaining visible constraints.
 - PDF classes only render existing puzzle data.
 - Themes supply template data only.
 
