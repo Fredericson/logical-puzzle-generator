@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import pytest
 
+from logical_puzzle_generator.constraints import AdjacentConstraint, LeftOfConstraint
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
@@ -28,12 +29,14 @@ def sample_puzzle() -> Puzzle:
             emma: Position(2),
         }
     )
+    left_of = LeftOfConstraint(aurelia, emma)
+    adjacent = AdjacentConstraint(lara, mia)
     return Puzzle(
         items=[aurelia, emma, lara, mia],
-        constraints=[],
+        constraints=[left_of, adjacent],
         clues=[
-            Clue(ClueType.LEFT_OF, "Aurelia is somewhere left of Emma."),
-            Clue(ClueType.ADJACENT, "Lara is next to Mia."),
+            Clue(ClueType.LEFT_OF, "Aurelia is somewhere left of Emma.", left_of),
+            Clue(ClueType.ADJACENT, "Lara is next to Mia.", adjacent),
         ],
         metadata=Metadata(title="Tennis Training", theme="Tennis", difficulty=1),
         solution=Solution(assignment),

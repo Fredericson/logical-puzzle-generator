@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from logical_puzzle_generator.constraints.base import Constraint
+
 from .clue_type import ClueType
 
 
@@ -18,6 +20,8 @@ class Clue:
     clue_type: ClueType
 
     text: str
+
+    constraint: Constraint
 
     difficulty: int = 1
 

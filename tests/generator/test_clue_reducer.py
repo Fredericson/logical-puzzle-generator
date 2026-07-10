@@ -45,7 +45,7 @@ def test_reduce_removes_clue_when_uniqueness_is_preserved() -> None:
     reduced = ClueReducer(validator).reduce(puzzle)
 
     assert reduced.clues == [puzzle.clues[1]]
-    assert reduced.constraints is puzzle.constraints
+    assert reduced.constraints == [puzzle.constraints[1]]
 
 
 def test_reduce_preserves_uniqueness_for_each_accepted_removal() -> None:
@@ -84,6 +84,7 @@ def test_reduce_keeps_already_minimal_puzzle() -> None:
 def test_reduce_accepts_empty_clue_list() -> None:
     puzzle = _puzzle()
     puzzle.clues = []
+    puzzle.constraints = []
     validator = SequenceValidator([])
 
     reduced = ClueReducer(validator).reduce(puzzle)
@@ -100,9 +101,50 @@ def test_reduce_rejects_invalid_input() -> None:
 def test_reduce_rejects_invalid_clue_entries() -> None:
     puzzle = Puzzle(
         items=[Item("A")],
-        constraints=[],
+        constraints=[FixedPositionConstraint(Item("A"), Position(1))],
         clues=["not a clue"],  # type: ignore[list-item]
     )
 
     with pytest.raises(TypeError, match="Clue instances"):
         ClueReducer().reduce(puzzle)
+
+
+def test_reduce_removes_corresponding_constraint_from_candidate() -> None:
+    puzzle = _puzzle()
+    validator = SequenceValidator([True, False])
+
+    ClueReducer(validator).reduce(puzzle)
+
+    assert validator.puzzles[0].clues == [puzzle.clues[1]]
+    assert validator.puzzles[0].constraints == [puzzle.constraints[1]]
+
+
+def test_reduce_rejects_mismatched_clue_constraint_counts() -> None:
+    puzzle = _puzzle()
+    puzzle.constraints = puzzle.constraints[:1]
+
+    with pytest.raises(ValueError, match="matching clue and constraint counts"):
+        ClueReducer().reduce(puzzle)
+
+
+def test_reduce_does_not_return_single_non_unique_visible_left_of_clue() -> None:
+    emma = Item("Emma")
+    aurelia = Item("Aurelia")
+    mia = Item("Mia")
+    lara = Item("Lara")
+    constraints = [
+        LeftOfConstraint(emma, aurelia),
+        LeftOfConstraint(aurelia, mia),
+        LeftOfConstraint(mia, lara),
+    ]
+    puzzle = Puzzle(
+        items=[emma, aurelia, mia, lara],
+        constraints=constraints,
+        clues=ClueGenerator().generate(constraints),
+    )
+
+    reduced = ClueReducer().reduce(puzzle)
+
+    assert len(reduced.clues) > 1
+    assert len(reduced.clues) == len(reduced.constraints)
+    assert reduced.constraints != [constraints[0]]

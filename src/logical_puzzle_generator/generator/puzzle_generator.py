@@ -8,6 +8,7 @@ from logical_puzzle_generator.constraints.base import Constraint
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
+from logical_puzzle_generator.engine.solver import Solver
 from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.item import Item
@@ -51,6 +52,7 @@ class PuzzleGenerator:
         )
         self._clue_generator = clue_generator if clue_generator is not None else ClueGenerator()
         self._validator = validator if validator is not None else Validator()
+        self._solver = Solver()
         self._clue_reducer = (
             clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
         )
@@ -198,6 +200,20 @@ class PuzzleGenerator:
         clues_failure = self._clues_failure(puzzle.clues)
         if clues_failure is not None:
             return f"clue reduction returned invalid clues: {clues_failure}"
+
+        if len(puzzle.clues) != len(puzzle.constraints):
+            return "clue reduction returned mismatched clue and constraint counts"
+
+        for clue, constraint in zip(puzzle.clues, puzzle.constraints, strict=True):
+            if clue.constraint is not constraint:
+                return "clue reduction returned a clue without its corresponding constraint"
+
+        result = self._solver.solve(puzzle, stop_after=2)
+        if not result.has_unique_solution:
+            return "clue reduction returned a puzzle without exactly one solution"
+
+        if result.solutions[0] != solution.assignment:
+            return "clue reduction returned a puzzle with a different unique solution"
 
         return None
 

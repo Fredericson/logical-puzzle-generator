@@ -18,14 +18,14 @@ from logical_puzzle_generator.model.position import Position
 def test_generate_fixed_position_clue() -> None:
     lara = Item("Lara")
 
-    clues = ClueGenerator().generate(
-        [FixedPositionConstraint(lara, Position(1))]
-    )
+    constraint = FixedPositionConstraint(lara, Position(1))
+    clues = ClueGenerator().generate([constraint])
 
     assert clues == [
         Clue(
             clue_type=ClueType.FIXED_POSITION,
             text="Lara stands at position 1.",
+            constraint=constraint,
         )
     ]
 
@@ -34,14 +34,14 @@ def test_generate_left_of_clue() -> None:
     lara = Item("Lara")
     mia = Item("Mia")
 
-    clues = ClueGenerator().generate(
-        [LeftOfConstraint(lara, mia)]
-    )
+    constraint = LeftOfConstraint(lara, mia)
+    clues = ClueGenerator().generate([constraint])
 
     assert clues == [
         Clue(
             clue_type=ClueType.LEFT_OF,
             text="Lara stands left of Mia.",
+            constraint=constraint,
         )
     ]
 
@@ -50,14 +50,14 @@ def test_generate_right_of_clue() -> None:
     lara = Item("Lara")
     mia = Item("Mia")
 
-    clues = ClueGenerator().generate(
-        [RightOfConstraint(lara, mia)]
-    )
+    constraint = RightOfConstraint(lara, mia)
+    clues = ClueGenerator().generate([constraint])
 
     assert clues == [
         Clue(
             clue_type=ClueType.RIGHT_OF,
             text="Lara stands right of Mia.",
+            constraint=constraint,
         )
     ]
 
@@ -66,14 +66,14 @@ def test_generate_adjacent_clue() -> None:
     lara = Item("Lara")
     mia = Item("Mia")
 
-    clues = ClueGenerator().generate(
-        [AdjacentConstraint(lara, mia)]
-    )
+    constraint = AdjacentConstraint(lara, mia)
+    clues = ClueGenerator().generate([constraint])
 
     assert clues == [
         Clue(
             clue_type=ClueType.ADJACENT,
             text="Lara stands next to Mia.",
+            constraint=constraint,
         )
     ]
 
@@ -82,9 +82,10 @@ def test_generate_prevents_duplicate_clues() -> None:
     lara = Item("Lara")
     mia = Item("Mia")
 
+    constraint = LeftOfConstraint(lara, mia)
     clues = ClueGenerator().generate(
         [
-            LeftOfConstraint(lara, mia),
+            constraint,
             LeftOfConstraint(lara, mia),
         ]
     )
@@ -93,6 +94,7 @@ def test_generate_prevents_duplicate_clues() -> None:
         Clue(
             clue_type=ClueType.LEFT_OF,
             text="Lara stands left of Mia.",
+            constraint=constraint,
         )
     ]
 
