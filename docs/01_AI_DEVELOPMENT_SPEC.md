@@ -183,4 +183,8 @@ The current Tennis PDF presentation is child-facing rather than a technical solv
 
 ## 12. Commit 11.4 difficulty label requirement
 
-Puzzle difficulty remains numeric internal metadata. Child-facing puzzle and solution PDFs must never render that raw number; they render localized presentation labels instead (`Easy`, `Medium`, `Hard` in English and `Leicht`, `Mittel`, `Schwierig` in German). The mapping belongs only in the localization/presentation layer and must not change solver, validator, generator, constraints, clue reduction, metadata storage, puzzle numbering, or lineup geometry.
+Puzzle difficulty remains numeric internal metadata, calculated from final visible constraint semantics after clue reduction. Child-facing puzzle and solution PDFs must never render that raw number; they render localized presentation labels instead (`Easy`, `Medium`, `Hard` in English and `Leicht`, `Mittel`, `Schwierig` in German). The mapping belongs only in the localization/presentation layer and must not change solver, validator, generator, constraints, clue reduction, metadata storage, puzzle numbering, or lineup geometry.
+
+## 13. Commit 11.5 difficulty estimation requirement
+
+Difficulty is calculated after clue reduction from the final visible constraints only. `FixedPositionConstraint` anchors (far left, far right, or exact position) make puzzles easier; direct left/right relations are strong; adjacency is ambiguous; plain left/right relations are weak. The heuristic is deterministic and child-oriented, not an absolute proof of solving complexity. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.

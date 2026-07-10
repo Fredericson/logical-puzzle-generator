@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import random
 
 import pytest
 
 from logical_puzzle_generator.constraints import AdjacentConstraint, LeftOfConstraint
 from logical_puzzle_generator.engine.assignment import Assignment
+from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 from logical_puzzle_generator.model.item import Item
@@ -14,6 +16,7 @@ from logical_puzzle_generator.model.position import Position
 from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.model.solution import Solution
 from logical_puzzle_generator.pdf.generator import PdfGenerator
+from logical_puzzle_generator.themes.tennis import create_template
 
 
 def sample_puzzle() -> Puzzle:
@@ -111,12 +114,6 @@ def test_compatibility_create_method_writes_puzzle_pdf(tmp_path) -> None:
 
 
 def test_puzzle_pdf_contains_varied_human_readable_clue_text(tmp_path) -> None:
-    import random
-
-    from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
-    from logical_puzzle_generator.pdf.generator import PdfGenerator
-    from logical_puzzle_generator.themes.tennis import create_template
-
     puzzle = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
     output = tmp_path / "varied-puzzle.pdf"
 
@@ -270,6 +267,21 @@ def test_pdf_uses_localized_child_facing_difficulty_labels(
 
     text = pdf_text_bytes(path)
     assert expected in text
+
+
+
+def test_generated_pdf_shows_localized_calculated_difficulty(tmp_path) -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(1)).generate(create_template())
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty == 2
+
+    en_path = tmp_path / "generated-en.pdf"
+    de_path = tmp_path / "generated-de.pdf"
+    PdfGenerator(language="en").create_puzzle_pdf(puzzle, en_path)
+    PdfGenerator(language="de").create_puzzle_pdf(puzzle, de_path)
+
+    assert "Difficulty: Medium" in pdf_text_bytes(en_path)
+    assert "Schwierigkeit: Mittel" in pdf_text_bytes(de_path)
 
 
 def test_missing_difficulty_omits_difficulty_line(tmp_path) -> None:

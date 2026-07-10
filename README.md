@@ -118,4 +118,8 @@ Start with `docs/README.md`. The main documents are:
 
 ## Language support
 
-English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Difficulty remains stored as numeric metadata internally, but puzzle and solution PDFs render localized child-friendly labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwierig`) instead of raw numbers.
+English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Difficulty is estimated from the final visible constraints after clue reduction and stored as numeric metadata internally, while puzzle and solution PDFs render localized child-friendly labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwierig`) instead of raw numbers.
+
+### Difficulty estimation
+
+Generated puzzles now calculate numeric difficulty from the final visible constraints after clue reduction. Fixed-position constraints are anchors, direct-left/direct-right constraints are strong relative clues, adjacency is ambiguous, and left/right relations are weak relative clues. The heuristic is deterministic and child-oriented; PDF localization only maps `1/2/3` to `Easy/Medium/Hard` or `Leicht/Mittel/Schwierig`.

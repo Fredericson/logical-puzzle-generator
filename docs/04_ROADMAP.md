@@ -33,7 +33,7 @@ Potential next release work:
 - Multi-category puzzle relationships.
 - Additional implemented constraints such as not-adjacent, between, and not-position.
 - Richer clue generation from multiple categories.
-- Difficulty estimation and puzzle-quality scoring. Current PDFs only localize existing numeric metadata into child-friendly labels; they do not calculate difficulty.
+- Puzzle-quality scoring remains intentionally simple. Difficulty estimation is implemented with a child-oriented heuristic derived from the final visible constraints after clue reduction.
 - More sophisticated clue minimization/optimization.
 - JSON export and import.
 - Batch generation.
@@ -48,3 +48,7 @@ Potential next release work:
 - GUI or web application.
 - REST API or cloud generation service.
 - Additional illustration themes or layout customization.
+
+## Commit 11.5 status
+
+Completed: final visible constraint difficulty estimation. The generator now calculates stored numeric difficulty after clue reduction and validation. Remaining future work may add user-requested difficulty generation, but no CLI selector or retry-until-requested-difficulty behavior exists yet.

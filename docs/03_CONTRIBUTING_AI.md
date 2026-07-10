@@ -117,3 +117,7 @@ ruff check src tests
 black --check src tests
 mypy src
 ```
+
+### Difficulty-estimator guidance
+
+When adding a visible clue or constraint type, update `DifficultyEstimator` tests and documentation with its intended difficulty impact. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog. Estimate only from final visible constraints after clue reduction.

@@ -133,4 +133,14 @@ Status: Accepted
 
 Decision: replace the technical vertical solving table in generated PDFs with an A4 portrait, child-friendly horizontal lineup for the four-player Tennis puzzle. The PDF package owns `GirlFigureRenderer` for anonymous ReportLab vector figures and `PlayerLineupRenderer` for left-to-right position slots, writable boxes, and optional solved labels.
 
-Rationale: the puzzle is intended to be understood visually by children. Keeping illustrations and lineup geometry in focused PDF components preserves the presentation-only boundary: generator, solver, validator, constraints, language semantics, difficulty, and numbering remain unchanged. The solution PDF can safely share the same layout by receiving labels derived from `puzzle.solution.assignment` rather than solving again. Difficulty remains numeric metadata; localized child-facing difficulty labels are provided by the presentation/localization layer for both puzzle and solution PDFs.
+Rationale: the puzzle is intended to be understood visually by children. Keeping illustrations and lineup geometry in focused PDF components preserves the presentation-only boundary: generator, solver, validator, constraints, language semantics, difficulty, and numbering remain unchanged. The solution PDF can safely share the same layout by receiving labels derived from `puzzle.solution.assignment` rather than solving again. Difficulty remains numeric metadata estimated by the generator; localized child-facing difficulty labels are provided by the presentation/localization layer for both puzzle and solution PDFs.
+
+## ADR-016: Estimate displayed difficulty from final visible constraints
+
+Decision: `DifficultyEstimator` classifies each reduced puzzle as numeric difficulty `1` (Easy), `2` (Medium), or `3` (Hard) after clue reduction and final uniqueness validation. It uses only the mathematical constraints that correspond one-to-one with visible clues.
+
+Rationale: child-facing difficulty should describe the puzzle the player actually receives. Removed clues, hidden/original constraints, rendered wording, PDF language, and the target solution must not shortcut the estimate.
+
+Heuristic: `FixedPositionConstraint` is an anchor, including far-left, far-right, and any exact middle position. `DirectLeftOfConstraint` and `DirectRightOfConstraint` are strong relations. `AdjacentConstraint` is ambiguous adjacency. `LeftOfConstraint` and `RightOfConstraint` are weak relative relations. Anchors and direct relations ease the score; missing anchors, adjacency-heavy clue sets, and multiple weak relations increase it. The result is deterministic and child-oriented, not a mathematically absolute difficulty proof.
+
+Consequences: future generated clue/constraint types must define their difficulty impact before they are made visible. PDF localization remains presentation-only: `TranslationCatalog` maps stored numeric values to English/German labels and does not estimate difficulty.

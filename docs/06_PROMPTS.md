@@ -72,4 +72,8 @@ Limit code changes to release metadata, comments, documentation examples, or obv
 
 ## Difficulty label prompt note
 
-When changing PDF difficulty presentation, keep numeric difficulty metadata unchanged and localize child-facing labels only in the presentation/localization layer. Puzzle and solution PDFs should share the same mapping and must not show raw difficulty numbers.
+When changing PDF difficulty presentation, keep numeric difficulty metadata semantic and localize child-facing labels only in the presentation/localization layer. Puzzle and solution PDFs should share the same mapping and must not show raw difficulty numbers.
+
+### Difficulty estimation prompts
+
+For difficulty work, keep the estimator in the generator layer and calculate from final visible constraints after reduction. Do not add CLI difficulty selection, retry-until-difficulty, PDF scoring logic, or translation-layer estimation.
