@@ -73,17 +73,23 @@ class DifficultyPolicy:
         )
         return sum(isinstance(constraint, FixedPositionConstraint) for constraint in constraints)
 
+    def required_fixed_position_count(self, difficulty: Difficulty | str) -> int:
+        requested = self.normalize(difficulty)
+        if requested is Difficulty.EASY:
+            return 2
+        if requested is Difficulty.MEDIUM:
+            return 1
+        if requested is Difficulty.HARD:
+            return 0
+        raise ValueError("A concrete difficulty is required.")
+
     def can_remove_to_match(
         self,
         puzzle_or_constraints: Puzzle | Iterable[Constraint],
         difficulty: Difficulty | str,
     ) -> bool:
         count = self.fixed_position_count(puzzle_or_constraints)
-        requested = self.normalize(difficulty)
-        if requested is Difficulty.EASY:
-            return count == 2
-        if requested is Difficulty.MEDIUM:
-            return count == 1
-        if requested is Difficulty.HARD:
-            return count == 0
-        return False
+        try:
+            return count == self.required_fixed_position_count(difficulty)
+        except ValueError:
+            return False

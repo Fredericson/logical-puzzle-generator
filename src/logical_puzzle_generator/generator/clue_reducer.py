@@ -26,9 +26,12 @@ class ClueReducer:
     def __init__(
         self,
         validator: Validator | None = None,
+        distribution_policy: ConstraintDistributionPolicy | None = None,
     ) -> None:
         self._validator = validator if validator is not None else Validator()
-        self._distribution_policy = ConstraintDistributionPolicy()
+        self._distribution_policy = (
+            distribution_policy if distribution_policy is not None else ConstraintDistributionPolicy()
+        )
 
     def reduce(
         self,

@@ -67,6 +67,7 @@ class PuzzleGenerator:
         validator: Validator | None = None,
         clue_reducer: ClueReducer | None = None,
         fixed_position_generator: FixedPositionGenerator | None = None,
+        distribution_policy: ConstraintDistributionPolicy | None = None,
         difficulty: Difficulty | str | None = None,
         max_attempts: int = 100,
     ) -> None:
@@ -81,7 +82,9 @@ class PuzzleGenerator:
             clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
         )
         self._difficulty_policy = DifficultyPolicy()
-        self._distribution_policy = ConstraintDistributionPolicy()
+        self._distribution_policy = (
+            distribution_policy if distribution_policy is not None else ConstraintDistributionPolicy()
+        )
         self._fixed_position_generator = (
             fixed_position_generator
             if fixed_position_generator is not None
@@ -147,7 +150,11 @@ class PuzzleGenerator:
         if failure is not None:
             return None, failure
 
-        if not self._distribution_policy.accepts(constraints, difficulty):
+        if not self._distribution_policy.accepts(
+            constraints,
+            required_fixed_count=self._difficulty_policy.required_fixed_position_count(difficulty),
+            item_count=len(items),
+        ):
             return None, "generated constraints have a poor clue type distribution"
 
         clue_generator = (
@@ -191,7 +198,7 @@ class PuzzleGenerator:
 
         return reduced, None
 
-    def _quality_score(self, puzzle: Puzzle) -> tuple[int, int, int, int, int]:
+    def _quality_score(self, puzzle: Puzzle) -> tuple[int, ...]:
         meanings = [self._quality_clue_meaning(clue, len(puzzle.items)) for clue in puzzle.clues]
         counts = Counter(meanings)
         unique_type_count = len(counts)
@@ -206,8 +213,8 @@ class PuzzleGenerator:
         distribution_score = self._distribution_policy.score(puzzle.constraints)
 
         return (
-            distribution_score
-            + unique_type_count * QUALITY_UNIQUE_MEANING_WEIGHT
+            *distribution_score,
+            unique_type_count * QUALITY_UNIQUE_MEANING_WEIGHT
             + endpoint_count * QUALITY_ENDPOINT_WEIGHT
             + adjacent_count * QUALITY_ADJACENT_WEIGHT
             + direct_count * QUALITY_DIRECT_RELATION_WEIGHT

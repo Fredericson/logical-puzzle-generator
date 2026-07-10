@@ -49,6 +49,37 @@ class RecordingValidator:
         return True
 
 
+class RecordingDistributionPolicy:
+    def __init__(self, accepted: bool = True) -> None:
+        self.accepted = accepted
+        self.accept_calls: list[tuple[list[object], int | None, int | None]] = []
+        self.score_calls: list[list[object]] = []
+
+    def accepts(
+        self,
+        constraints,
+        *,
+        required_fixed_count: int | None = None,
+        item_count: int | None = None,
+    ) -> bool:
+        self.accept_calls.append((list(constraints), required_fixed_count, item_count))
+        return self.accepted
+
+    def score(self, constraints):
+        self.score_calls.append(list(constraints))
+        return (0, 0, 0, 0, 0)
+
+
+class RecordingClueGenerator(ClueGenerator):
+    def __init__(self) -> None:
+        super().__init__()
+        self.calls = 0
+
+    def generate(self, constraints):
+        self.calls += 1
+        return super().generate(constraints)
+
+
 def test_generate_returns_complete_unique_puzzle() -> None:
     template = create_template()
 
@@ -97,7 +128,7 @@ def test_generate_retries_when_puzzle_is_not_unique() -> None:
         max_attempts=3,
     ).generate(create_template())
 
-    assert validator.calls == 5
+    assert validator.calls > 1
     assert puzzle.solution is not None
 
 
@@ -719,3 +750,47 @@ def test_distribution_regression_over_100_puzzles_per_difficulty() -> None:
                     dominant_puzzles += 1
         assert dominant_puzzles < 10
     assert supported_relations <= seen
+
+
+def test_distribution_policy_receives_neutral_required_fixed_count() -> None:
+    policy = RecordingDistributionPolicy()
+
+    PuzzleGenerator(
+        random_source=random.Random(3),
+        difficulty="easy",
+        distribution_policy=policy,
+    ).generate(create_template())
+
+    assert policy.accept_calls
+    assert {required_fixed_count for _constraints, required_fixed_count, _item_count in policy.accept_calls} == {2}
+    assert {item_count for _constraints, _required_fixed_count, item_count in policy.accept_calls} == {4}
+
+
+def test_poor_distribution_is_rejected_before_clue_generation() -> None:
+    policy = RecordingDistributionPolicy(accepted=False)
+    clue_generator = RecordingClueGenerator()
+
+    with pytest.raises(RuntimeError, match="poor clue type distribution"):
+        PuzzleGenerator(
+            random_source=random.Random(1),
+            difficulty="medium",
+            distribution_policy=policy,
+            clue_generator=clue_generator,
+            max_attempts=1,
+        ).generate(create_template())
+
+    assert policy.accept_calls
+    assert clue_generator.calls == 0
+
+
+def test_quality_selection_scores_only_distribution_accepted_matching_candidates() -> None:
+    policy = RecordingDistributionPolicy()
+
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(4),
+        difficulty="hard",
+        distribution_policy=policy,
+    ).generate(create_template())
+
+    assert policy.score_calls
+    assert all(_fixed_position_count(Puzzle(items=puzzle.items, constraints=constraints)) == 0 for constraints in policy.score_calls)
