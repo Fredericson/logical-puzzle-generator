@@ -699,10 +699,27 @@ def _relation_type_names(puzzle: Puzzle) -> set[str]:
     }
 
 
-def test_generated_clue_sets_use_multiple_relation_types_when_possible() -> None:
-    for difficulty in ("easy", "medium", "hard"):
+def test_generated_medium_and_hard_clue_sets_use_multiple_relation_types_when_possible() -> None:
+    for difficulty in ("medium", "hard"):
         puzzle = PuzzleGenerator(random_source=random.Random(31), difficulty=difficulty).generate(create_template())
         assert len(_relation_type_names(puzzle)) >= 2
+
+
+def test_four_player_difficulties_generate_exactly_three_unique_visible_clues() -> None:
+    solver = Solver()
+
+    expected_fixed_counts = {"easy": 2, "medium": 1, "hard": 0}
+
+    for difficulty in ("easy", "medium", "hard"):
+        for seed in range(50):
+            puzzle = PuzzleGenerator(random_source=random.Random(seed), difficulty=difficulty).generate(create_template())
+            fixed_count = len(_fixed_position_constraints(puzzle))
+
+            assert len(puzzle.clues) == 3
+            assert len(puzzle.constraints) == 3
+            assert fixed_count == expected_fixed_counts[difficulty]
+            assert len(puzzle.constraints) - fixed_count == 3 - expected_fixed_counts[difficulty]
+            assert solver.solve(puzzle, stop_after=2).has_unique_solution
 
 
 def test_identical_seeds_produce_identical_distributions() -> None:
@@ -744,7 +761,7 @@ def test_distribution_regression_over_100_puzzles_per_difficulty() -> None:
                 if not isinstance(constraint, FixedPositionConstraint)
             ]
             seen.update(relation_names)
-            if relation_names:
+            if len(relation_names) > 1:
                 most_common = max(relation_names.count(name) for name in set(relation_names))
                 if most_common == len(relation_names) or most_common >= 4:
                     dominant_puzzles += 1

@@ -4,6 +4,7 @@ import random
 from dataclasses import replace
 from collections import Counter
 from collections.abc import Iterable
+from itertools import combinations
 
 from logical_puzzle_generator.constraints.adjacent import AdjacentConstraint
 from logical_puzzle_generator.constraints.base import Constraint
@@ -142,10 +143,15 @@ class PuzzleGenerator:
         if failure is not None:
             return None, failure
 
-        constraints = [
-            *fixed_position_constraints,
-            *self._derive_relational_constraints(solution),
-        ]
+        relational_constraints = self._derive_relational_constraints(solution)
+        constraints = self._select_visible_constraints(
+            fixed_position_constraints,
+            relational_constraints,
+            items=items,
+            solution=solution,
+            source=source,
+            difficulty=difficulty,
+        )
         failure = self._constraints_failure(constraints, solution)
         if failure is not None:
             return None, failure
@@ -197,6 +203,54 @@ class PuzzleGenerator:
         reduced = self._with_estimated_difficulty(reduced, difficulty)
 
         return reduced, None
+
+
+    def _select_visible_constraints(
+        self,
+        fixed_position_constraints: list[FixedPositionConstraint],
+        relational_constraints: list[Constraint],
+        *,
+        items: list[Item],
+        solution: Solution,
+        source: PuzzleTemplate | Puzzle | Iterable[Item],
+        difficulty: Difficulty,
+    ) -> list[Constraint]:
+        target_relation_count = self._target_relation_count(len(items), difficulty)
+        if target_relation_count is None:
+            return [*fixed_position_constraints, *relational_constraints]
+
+        viable_sets: list[list[Constraint]] = []
+        for relation_subset in combinations(relational_constraints, target_relation_count):
+            constraints = [*fixed_position_constraints, *relation_subset]
+            puzzle = Puzzle(
+                items=items,
+                constraints=constraints,
+                clues=[],
+                metadata=self._metadata_from_source(source),
+                solution=solution,
+            )
+            if self._solver.solve(puzzle, stop_after=2).has_unique_solution:
+                viable_sets.append(constraints)
+
+        if not viable_sets:
+            return [*fixed_position_constraints, *relational_constraints]
+
+        return max(viable_sets, key=self._distribution_policy.score)
+
+    def _target_relation_count(
+        self,
+        item_count: int,
+        difficulty: Difficulty,
+    ) -> int | None:
+        if item_count != 4:
+            return None
+        if difficulty is Difficulty.EASY:
+            return 1
+        if difficulty is Difficulty.MEDIUM:
+            return 2
+        if difficulty is Difficulty.HARD:
+            return 3
+        return None
 
     def _quality_score(self, puzzle: Puzzle) -> tuple[int, ...]:
         meanings = [self._quality_clue_meaning(clue, len(puzzle.items)) for clue in puzzle.clues]

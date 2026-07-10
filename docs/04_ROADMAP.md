@@ -53,4 +53,4 @@ Potential next release work:
 
 Completed: clue variety distribution policy with neutral fixed-count context, rule-based early rejection of repetitive generated constraints, and simple deterministic reducer tie-breaking that preserves diversity where possible.
 
-Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final reduced uniquely solvable puzzle has the requested visible FixedPositionConstraint count.
+Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible FixedPositionConstraint count. Version 1 four-player puzzles now target exactly three visible clues for every difficulty.
