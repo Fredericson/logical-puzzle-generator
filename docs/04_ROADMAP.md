@@ -1,108 +1,50 @@
-# ROADMAP.md
-
 # Logical Puzzle Generator Roadmap
 
 ## Vision
 
-Create an open-source logical puzzle generator capable of producing
-high-quality Einstein-style puzzles with exactly one unique solution.
+Create an open-source logical puzzle generator capable of producing printable Einstein-style puzzles with exactly one unique solution while keeping the codebase simple, educational, and maintainable.
 
-------------------------------------------------------------------------
+## Version 1.0 — Complete
 
-# Version 1.0 (Current Goal)
+Objective: deliver a command-line-capable Python package that generates and validates 4-item ordering puzzles and renders puzzle/solution PDFs.
 
-## Objective
+Completed milestones:
 
-Deliver a complete command-line application capable of generating
-printable 4×4 logical puzzles.
+- Domain model and package structure.
+- Constraint hierarchy with fixed-position, left-of, right-of, and adjacent constraints.
+- Brute-force solver, assignment iterator, solver result, statistics, and validator.
+- Generator pipeline: `SolutionGenerator`, private constraint derivation, `ClueGenerator`, `ClueReducer`, and `PuzzleGenerator`.
+- PDF output: `TextRenderer`, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()`.
+- Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point.
+- Version 1.0 documentation synchronization.
+- Test coverage across engine, model, generator, and PDF packages.
 
-### Milestones
+Version 1.0 accepted limitations:
 
-#### Commit 10
+- Active puzzle solving uses one item category mapped to positions.
+- The Tennis template includes extra thematic categories as template data, but multi-category logic is not solved in Version 1.0.
+- Clue generation supports implemented constraint classes only.
+- `Optimizer` is a compatibility boundary and does not alter puzzles.
 
--   Generator implementation
--   SolutionGenerator
--   ClueGenerator
--   PuzzleGenerator
+## Version 2
 
-#### Commit 11
+Potential next release work:
 
--   PDF renderer
--   Puzzle PDF
--   Solution PDF
+- Multi-category puzzle relationships.
+- Additional implemented constraints such as not-adjacent, between, and not-position.
+- Richer clue generation from multiple categories.
+- Difficulty estimation and puzzle-quality scoring.
+- More sophisticated clue minimization/optimization.
+- JSON export and import.
+- Batch generation.
+- More example themes and committed sample outputs.
+- Packaging polish such as console scripts and published distributions.
 
-#### Commit 12
+## Future ideas
 
--   Tennis theme
--   Example puzzles
--   Test improvements
-
-#### Commit 13
-
--   Documentation
--   Packaging
--   Release
-
-### Definition of Done
-
--   Automatic puzzle generation
--   Unique solution validation
--   Puzzle PDF
--   Solution PDF
--   Tests passing
-
-------------------------------------------------------------------------
-
-# Version 2.0
-
-## Better Puzzle Quality
-
-Features
-
--   5×5 puzzles
--   Difficulty estimation
--   Clue optimisation
--   Better randomisation
--   Performance improvements
-
-------------------------------------------------------------------------
-
-# Version 3.0
-
-## Content Expansion
-
-Themes
-
--   Animals
--   School
--   Holidays
--   Space
--   Fantasy
-
-Features
-
--   JSON export
--   Batch generation
--   Puzzle packs
--   Multi-language support
-
-------------------------------------------------------------------------
-
-# Version 4.0
-
-## Professional Edition
-
-Possible future ideas
-
--   GUI
--   Web application
--   REST API
--   Cloud generation
--   Puzzle marketplace
-
-------------------------------------------------------------------------
-
-# Long-Term Vision
-
-Become one of the best open-source logical puzzle generators while
-keeping the codebase simple, educational and maintainable.
+- Larger puzzle sizes such as 5×5.
+- Puzzle packs.
+- Multi-language clue rendering.
+- GUI or web application.
+- REST API or cloud generation service.
+- Illustration or layout customization.

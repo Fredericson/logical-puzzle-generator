@@ -17,4 +17,4 @@ class Metadata:
 
     author: str = "Logical Puzzle Generator"
 
-    version: str = "0.1.0"
+    version: str = "1.0.0"

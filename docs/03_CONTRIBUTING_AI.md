@@ -1,188 +1,118 @@
-# CONTRIBUTING_AI.md
-
 # AI Contribution Guide
 
-> This document defines the mandatory workflow for any AI assistant
-> contributing to the Logical Puzzle Generator project.
+This document defines the mandatory workflow for AI-assisted contributions.
 
-------------------------------------------------------------------------
+## Required reading
 
-# Purpose
+Before modifying code or documentation, read:
 
-Ensure that every AI contributes consistently, preserves the
-architecture, and produces production-quality code.
+1. `docs/01_AI_DEVELOPMENT_SPEC.md`
+2. `docs/02_ARCHITECTURE.md`
+3. `docs/03_CONTRIBUTING_AI.md`
+4. `docs/04_ROADMAP.md`
+5. `docs/05_DECISIONS.md`
+6. Relevant source files and tests
 
-------------------------------------------------------------------------
-
-# Project Goals
-
-The primary goal is **not** to build the most advanced puzzle generator.
-
-The primary goal is to deliver Version 1.0:
-
--   Automatic 4×4 puzzle generation
--   Exactly one unique solution
--   Printable puzzle PDF
--   Printable solution PDF
-
-------------------------------------------------------------------------
-
-# Required Reading
-
-Before writing any code:
-
-1.  Read `docs/AI_DEVELOPMENT_SPEC.md`
-2.  Read `docs/ARCHITECTURE.md`
-3.  Read the complete repository
-4.  Understand the current implementation
-
-Do not start coding before understanding the project.
-
-------------------------------------------------------------------------
-
-# Development Workflow
+## Development workflow
 
 For every task:
 
-1.  Analyse the existing implementation.
-2.  Produce a short implementation plan.
-3.  Modify the minimum number of files.
-4.  Keep backward compatibility.
-5.  Ensure tests still pass.
-6.  Produce one logical commit.
+1. Inspect the current implementation.
+2. Identify the smallest safe change.
+3. Preserve public APIs and documented architecture boundaries.
+4. Update tests when behavior changes.
+5. Update documentation when behavior, commands, public APIs, or architecture descriptions change.
+6. Run the relevant checks.
+7. Create one focused commit.
+8. Open a pull request describing the change and checks run.
 
-------------------------------------------------------------------------
+## PR workflow
 
-# Commit Rules
+A pull request should include:
 
-One feature per commit.
+- a concise title with an appropriate prefix such as `docs:`, `fix:`, `feat:`, or `test:`;
+- a summary of user-visible or maintainer-visible changes;
+- test/check results;
+- notes about any intentional limitations or deferred Version 2 work.
 
-Preferred commit format:
+Do not mix unrelated feature, refactor, and documentation work in one PR.
 
-    feat(generator): implement puzzle generation pipeline
-    fix(pdf): correct layout
-    refactor(engine): improve solver performance
-    test(generator): add generator tests
-    docs: update architecture
---------------------------------------------------------------------------
+## Review workflow
 
-# Commit Policy
+Reviewers and AI assistants should verify:
 
-Large features must be split into reviewable sub-commits.
+- tests pass;
+- public APIs remain compatible unless a breaking change was requested;
+- documentation examples match the actual code;
+- architecture documentation matches package responsibilities;
+- ADRs are not contradicted;
+- no placeholder implementations, dead prompts, or stale roadmap claims were introduced.
 
-Example:
+## Commit strategy
 
-Commit 10.1
-Core model restoration
+Use one logical commit per task. Preferred examples:
 
-Commit 10.2
-Solution generation
+```text
+docs: synchronize version 1.0 documentation
+feat(generator): implement puzzle generation pipeline
+fix(pdf): handle missing solution output path
+test(generator): cover deterministic generation
+```
 
-Commit 10.3
-Clue generation
+Large work should be split into reviewable sub-commits that preserve a passing test suite.
 
-Commit 10.4
-Pipeline integration
+## Documentation policy
 
-------------------------------------------------------------------------
+Documentation is part of the product. Update it in the same PR when a change affects:
 
-# Coding Rules
+- installation or command examples;
+- public APIs;
+- package responsibilities;
+- generator/PDF behavior;
+- supported constraints or clue types;
+- roadmap status;
+- architectural decisions.
+
+Version 1.0 documentation must describe the implemented repository, not planned work.
+
+## Architecture preservation policy
+
+Stable Version 1.0 boundaries:
+
+- Solver and validator are the mathematical verification boundary.
+- Constraints stay independent and expose `matches()` plus `description`.
+- `PuzzleGenerator` owns orchestration and private constraint derivation.
+- `ClueGenerator` only converts constraints to clues.
+- `ClueReducer` only removes human-readable clues when uniqueness remains true.
+- PDF classes only render existing puzzle data.
+- Themes supply template data only.
+
+Do not redesign these boundaries without an explicit task and ADR update.
+
+## Coding rules
 
 Always:
 
--   use Python type hints
--   use dataclasses where appropriate
--   prefer immutable models
--   keep classes small
--   keep methods focused
--   write readable code
--   follow the existing package structure
+- use type hints in new public code;
+- keep classes and methods focused;
+- prefer readable implementation over clever abstractions;
+- follow the existing package structure;
+- preserve backward-compatible wrappers unless removal is explicitly requested.
 
 Never:
 
--   introduce placeholder code
--   commit TODO implementations
--   duplicate logic
--   redesign working components
+- introduce placeholder code or TODO implementations;
+- duplicate core solver/generator logic;
+- hide imports in `try`/`except` blocks;
+- replace working subsystems for style-only reasons.
 
-------------------------------------------------------------------------
+## Testing rules
 
-# Architecture Rules
+Use pytest for behavior. Run formatting/type checks when relevant:
 
-The following components are considered stable:
-
--   Solver
--   Validator
--   Assignment
--   Constraint hierarchy
--   Repository structure
-
-Extend them only when absolutely necessary.
-
-------------------------------------------------------------------------
-
-# Generator Rules
-
-The generator shall:
-
-1.  Create a candidate solution.
-2.  Derive valid constraints.
-3.  Generate human-readable clues.
-4.  Assemble a puzzle.
-5.  Validate uniqueness.
-6.  Retry if necessary.
-
-------------------------------------------------------------------------
-
-# Testing Rules
-
-Every new feature must include tests.
-
-Required checks:
-
--   Puzzle generation succeeds
--   Exactly one solution exists
--   Generated clues are valid
--   Deterministic behaviour with fixed random seed
-
-------------------------------------------------------------------------
-
-# Pull Request Checklist
-
-Before considering work complete:
-
--   [ ] Code builds
--   [ ] Tests pass
--   [ ] Public APIs preserved
--   [ ] No placeholder code
--   [ ] Documentation updated
--   [ ] Commit message follows conventions
-
-------------------------------------------------------------------------
-
-# AI Behaviour
-
-The AI should:
-
--   preserve architecture
--   avoid unnecessary refactoring
--   return complete files
--   prefer small, reviewable commits
--   explain design decisions briefly
-
-The AI should not:
-
--   invent missing requirements
--   replace existing subsystems
--   optimise prematurely
--   ignore the specification
-
-------------------------------------------------------------------------
-
-# Definition of Success
-
-A successful contribution moves the project closer to Version 1.0
-without breaking the existing architecture.
-
-Every contribution should make the project easier to understand,
-maintain, and extend.
+```bash
+pytest
+ruff check src tests
+black --check src tests
+mypy src
+```

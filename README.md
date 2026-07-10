@@ -1,37 +1,105 @@
 # Logical Puzzle Generator
 
-Generate mathematically verified logic puzzles.
+Logical Puzzle Generator creates small, printable Einstein-style ordering puzzles and verifies them mathematically before returning them. Version 1.0 focuses on a stable 4-item puzzle pipeline: generate a solution, derive constraints, convert them to clues, validate uniqueness, reduce redundant clues, and render puzzle and solution PDFs.
+
+## Version 1.0 capabilities
+
+- Generate a complete one-to-one assignment of puzzle items to positions.
+- Derive internal mathematical constraints from the generated solution.
+- Convert supported constraints into human-readable clues.
+- Validate that a puzzle has exactly one solution using the brute-force solver.
+- Reduce unnecessary clues while preserving unique solvability and at least one clue.
+- Generate printable puzzle and solution PDFs with ReportLab.
+- Provide a Tennis theme and a convenience entry point that writes PDFs to `output/`.
+
+Version 1.0 is intentionally limited to ordering puzzles over one active category of items. Additional category relationships, richer clue types, JSON export, batch generation, GUI/web interfaces, and larger puzzle sizes are Version 2+ work.
+
+## Installation
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r requirements-dev.txt
+python -m pip install -e .
+```
+
+The package requires Python 3.11 or newer.
+
+## Run tests and checks
+
+```bash
+pytest
+ruff check src tests
+black --check src tests
+mypy src
+```
+
+## Generate a puzzle and PDFs
+
+Use the built-in entry point to generate the Tennis puzzle PDFs:
+
+```bash
+python -m logical_puzzle_generator.create_puzzle
+```
+
+By default this writes:
+
+- `output/puzzle_3.pdf`
+- `output/puzzle_3_solution.pdf`
+
+You can also call the public API directly:
+
+```python
+from logical_puzzle_generator.create_puzzle import create_puzzle
+
+puzzle = create_puzzle("output/puzzle.pdf", "output/solution.pdf")
+print(puzzle.metadata.title)
+```
+
+To generate a puzzle without writing PDFs:
+
+```python
+from logical_puzzle_generator.generator import PuzzleGenerator
+from logical_puzzle_generator.themes.tennis import create_template
+
+puzzle = PuzzleGenerator().generate(create_template())
+print([clue.text for clue in puzzle.clues])
+```
+
+To render PDFs for an existing puzzle:
+
+```python
+from logical_puzzle_generator.pdf.generator import PdfGenerator
+
+pdf = PdfGenerator()
+pdf.create_puzzle_pdf(puzzle, "output/puzzle.pdf")
+pdf.create_solution_pdf(puzzle, "output/solution.pdf")
+```
+
+## Project structure
+
+```text
+src/logical_puzzle_generator/
+  model/          Domain models: Item, Position, Puzzle, Solution, Clue, Metadata, Category
+  constraints/    Constraint classes used by the solver and clue generator
+  engine/         Assignment iteration, brute-force solver, statistics, validation, optimizer stub
+  generator/      SolutionGenerator, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleTemplate
+  pdf/            TextRenderer and PdfGenerator presentation layer
+  themes/         Built-in puzzle templates, currently Tennis
+  create_puzzle.py Convenience script for generating the Tennis PDFs
+
+tests/            Pytest coverage for model, engine, generator, and PDF behavior
+docs/             Version 1.0 project documentation and AI workflow guidance
+examples/         Placeholder for generated example artifacts and future examples
+```
 
 ## Documentation
 
-The project documentation can be found in the `docs/` folder.
+Start with `docs/README.md`. The main documents are:
 
-- AI Development Specification
-- Architecture Guide
-- AI Contribution Guide
-- Project Roadmap
-- Architecture Decisions
-- AI Prompt Library
-
-## Features
-- Exactly one solution
-- Automatic validation
-- PDF generation
-- Multiple themes
-- Tennis puzzle support
-
-## Roadmap
-- Solver
-- Validator
-- Clue generator
-- PDF generator
-- Illustrations
-
-## Current Status
-- [x] Project structure
-- [x] Domain model
-- [x] Constraint model
-- [x] Solving engine
-- [ ] Puzzle generator
-- [ ] PDF generator
-- [ ] Tennis theme
+- `docs/01_AI_DEVELOPMENT_SPEC.md`
+- `docs/02_ARCHITECTURE.md`
+- `docs/03_CONTRIBUTING_AI.md`
+- `docs/04_ROADMAP.md`
+- `docs/05_DECISIONS.md`
+- `docs/06_PROMPTS.md`
