@@ -18,13 +18,18 @@ def test_two_fixed_position_constraints_are_easy() -> None:
     ]) is Difficulty.EASY
 
 
-def test_three_fixed_position_constraints_are_easy() -> None:
+def test_three_fixed_position_constraints_are_invalid_for_version_1() -> None:
     mia, emma, lara, _ = items()
-    assert DifficultyPolicy().metadata_value([
-        FixedPositionConstraint(mia, Position(1)),
-        FixedPositionConstraint(emma, Position(2)),
-        FixedPositionConstraint(lara, Position(4)),
-    ]) == 1
+    try:
+        DifficultyPolicy().metadata_value([
+            FixedPositionConstraint(mia, Position(1)),
+            FixedPositionConstraint(emma, Position(2)),
+            FixedPositionConstraint(lara, Position(4)),
+        ])
+    except ValueError as exc:
+        assert "Invalid Version 1 fixed-position clue count 3" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
 
 
 def test_exactly_one_fixed_position_constraint_is_medium() -> None:

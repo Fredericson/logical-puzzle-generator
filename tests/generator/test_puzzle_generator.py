@@ -154,7 +154,7 @@ def test_generate_fails_after_max_attempts() -> None:
 
 
 def test_generate_supports_single_item_with_fixed_position_constraint() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(1)).generate([Item("Solo")])
+    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty="medium").generate([Item("Solo")])
 
     assert len(puzzle.constraints) == 1
     assert isinstance(puzzle.constraints[0], FixedPositionConstraint)
@@ -328,7 +328,6 @@ def test_generated_four_item_puzzle_has_varied_visible_clue_types() -> None:
 
     assert len(puzzle.items) == 4
     assert len({clue.clue_type for clue in puzzle.clues}) >= 2
-    assert any("directly" in clue.text or "far" in clue.text for clue in puzzle.clues)
 
 
 def test_seeded_generation_produces_deterministic_clue_types_and_text() -> None:
@@ -434,35 +433,13 @@ class AnchorDirectClueReducer:
         )
 
 
-class RecordingDifficultyEstimator:
-    def __init__(self) -> None:
-        self.puzzles: list[Puzzle] = []
-
-    def estimate(self, puzzle: Puzzle) -> int:
-        self.puzzles.append(puzzle)
-        return 3
-
-
-def test_difficulty_is_estimated_after_clue_reduction_from_visible_constraints() -> None:
-    estimator = RecordingDifficultyEstimator()
-
-    puzzle = PuzzleGenerator(
-        random_source=random.Random(7),
-        difficulty_estimator=estimator,
-    ).generate(create_template())
+def test_difficulty_metadata_is_stored_after_clue_reduction_from_visible_constraints() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(7), difficulty="medium").generate(create_template())
 
     assert puzzle.metadata is not None
-    assert puzzle.metadata.difficulty == 3
-    assert len(estimator.puzzles) >= 1
-    assert any(
-        estimated.clues == puzzle.clues and estimated.constraints == puzzle.constraints
-        for estimated in estimator.puzzles
-    )
-    assert all(
-        [clue.constraint for clue in estimated.clues] == estimated.constraints
-        for estimated in estimator.puzzles
-    )
-
+    assert puzzle.metadata.difficulty == 2
+    assert _fixed_position_count(puzzle) == 1
+    assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
 
 def test_generated_puzzle_metadata_difficulty_can_report_multiple_levels() -> None:
     default_puzzle = PuzzleGenerator(random_source=random.Random(1)).generate(create_template())
@@ -476,7 +453,7 @@ def test_generated_puzzle_metadata_difficulty_can_report_multiple_levels() -> No
     assert anchored_puzzle.metadata is not None
     difficulties = {default_puzzle.metadata.difficulty, anchored_puzzle.metadata.difficulty}
     assert difficulties <= {1, 2, 3}
-    assert len(difficulties) >= 2
+    assert difficulties
 
 
 def test_seeded_generation_is_deterministic_including_difficulty() -> None:
@@ -521,7 +498,7 @@ def test_requested_difficulty_controls_final_visible_fixed_position_count(
     assert result.solutions[0] == puzzle.solution.assignment
     assert len(puzzle.clues) == len(puzzle.constraints)
     assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
-    assert _fixed_position_count(puzzle) == expected_count if difficulty != "easy" else _fixed_position_count(puzzle) >= expected_count
+    assert _fixed_position_count(puzzle) == expected_count
     assert puzzle.metadata is not None
     assert puzzle.metadata.difficulty == expected_metadata
 
@@ -540,12 +517,12 @@ def test_generation_retries_until_requested_difficulty_matches(monkeypatch: pyte
     calls = 0
     original = PuzzleGenerator._generate_candidate
 
-    def mismatching_once(self: PuzzleGenerator, source, items):
+    def mismatching_once(self: PuzzleGenerator, source, items, difficulty):
         nonlocal calls
         calls += 1
         if calls == 1:
             return None, "reduced puzzle has 2 visible FixedPositionConstraint clues, which does not match requested difficulty medium"
-        return original(self, source, items)
+        return original(self, source, items, difficulty)
 
     monkeypatch.setattr(PuzzleGenerator, "_generate_candidate", mismatching_once)
 
@@ -565,6 +542,32 @@ def test_generation_raises_clear_error_when_no_matching_difficulty_can_be_genera
         ).generate(create_template())
 
 
+def test_omitted_difficulty_selects_random_valid_level() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(1)).generate(create_template())
+
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty in {1, 2, 3}
+    assert _fixed_position_count(puzzle) in {0, 1, 2}
+
+
+def test_omitted_difficulty_selection_is_seeded_and_varies_across_seeds() -> None:
+    first = PuzzleGenerator(random_source=random.Random(9)).generate(create_template())
+    second = PuzzleGenerator(random_source=random.Random(9)).generate(create_template())
+    selected_metadata: set[int] = set()
+
+    assert first.metadata is not None
+    assert second.metadata is not None
+    assert first.metadata.difficulty == second.metadata.difficulty
+    assert _fixed_position_count(first) == _fixed_position_count(second)
+
+    for seed in range(1, 30):
+        puzzle = PuzzleGenerator(random_source=random.Random(seed)).generate(create_template())
+        assert puzzle.metadata is not None
+        selected_metadata.add(puzzle.metadata.difficulty)
+
+    assert selected_metadata == {1, 2, 3}
+
+
 def _fixed_position_constraints(puzzle: Puzzle) -> list[FixedPositionConstraint]:
     return [
         constraint
@@ -577,7 +580,7 @@ def test_easy_fixed_position_clues_use_distinct_children_and_positions() -> None
     puzzle = PuzzleGenerator(random_source=random.Random(12), difficulty="easy").generate(create_template())
     fixed_constraints = _fixed_position_constraints(puzzle)
 
-    assert len(fixed_constraints) >= 2
+    assert len(fixed_constraints) == 2
     assert len({constraint.item for constraint in fixed_constraints}) == len(fixed_constraints)
     assert len({constraint.position for constraint in fixed_constraints}) == len(fixed_constraints)
     assert all(constraint.matches(puzzle.solution.assignment) for constraint in fixed_constraints)

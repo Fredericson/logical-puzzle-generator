@@ -17,7 +17,6 @@ from logical_puzzle_generator.themes.tennis import create_template
 
 DEFAULT_OUTPUT_DIR = Path("output")
 DEFAULT_PUZZLE_NUMBER = 3
-DEFAULT_DIFFICULTY = Difficulty.MEDIUM
 
 
 def _validate_number(number: int) -> int:
@@ -33,13 +32,14 @@ def create_puzzle(
     puzzle_path: str | Path | None = None,
     solution_path: str | Path | None = None,
     language: Language | str = Language.ENGLISH,
-    difficulty: Difficulty | str = DEFAULT_DIFFICULTY,
+    difficulty: Difficulty | str | None = None,
 ) -> Puzzle:
     """
     Generate Aurelia's Tennis puzzle and write puzzle and solution PDFs.
 
-    The default difficulty is medium. Difficulty is selected with "easy",
-    "medium", "hard", or the matching Difficulty enum value.
+    If difficulty is None, Easy, Medium, or Hard is selected randomly.
+    Otherwise difficulty is selected with "easy", "medium", "hard", or the
+    matching Difficulty enum value.
     """
     number = _validate_number(number)
     language = parse_language(language)
@@ -92,8 +92,8 @@ def main(argv: list[str] | None = None) -> Puzzle:
     parser.add_argument(
         "--difficulty",
         type=_parse_difficulty_argument,
-        default=DEFAULT_DIFFICULTY,
-        help="Puzzle difficulty: easy, medium (default), or hard.",
+        default=None,
+        help="Puzzle difficulty: easy, medium, or hard. Omit to choose randomly.",
     )
     args = parser.parse_args(argv)
     number = _validate_number(args.number)

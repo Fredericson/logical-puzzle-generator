@@ -61,7 +61,7 @@ puzzle = create_puzzle(
     puzzle_path="output/puzzle.pdf",
     solution_path="output/solution.pdf",
     language="de",
-    difficulty="easy",  # default is "medium"
+    difficulty="easy",  # use None or omit to choose randomly
 )
 print(puzzle.metadata.title)
 ```
@@ -120,8 +120,8 @@ Start with `docs/README.md`. The main documents are:
 
 ## Language support
 
-English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Difficulty is selected at generation time (default `medium`) and is determined only by the number of final visible `FixedPositionConstraint` clues: Easy has at least two, Medium has exactly one, and Hard has zero. The numeric metadata remains `1`/`2`/`3`; PDFs only render localized labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwierig`).
+English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Difficulty is selected at generation time (omit it or pass `None` to choose randomly) and is determined only by the number of final visible `FixedPositionConstraint` clues: Easy has exactly two, Medium has exactly one, and Hard has zero. The numeric metadata remains `1`/`2`/`3`; PDFs only render localized labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwierig`).
 
 ### Selectable difficulty
 
-Generated puzzles default to `medium` and may be requested with `--difficulty easy`, `--difficulty medium`, or `--difficulty hard`, or programmatically with `create_puzzle(..., difficulty="easy")` / `Difficulty.EASY`. Difficulty is the final visible fixed-position clue count only: Easy `>= 2`, Medium `== 1`, Hard `== 0`. Direct-left, direct-right, adjacent, left-of, and right-of clues do not count as fixed-position clues. Generation uses the injected random source to choose both anchored children and anchored positions, builds a solution consistent with those choices, and retries until the reduced, uniquely solvable visible clue set matches the requested level; PDF localization only maps stored `1/2/3` metadata to labels.
+Generated puzzles choose a random difficulty when `--difficulty` is omitted or `create_puzzle(..., difficulty=None)` is used. A specific level may be requested with `--difficulty easy`, `--difficulty medium`, or `--difficulty hard`, or programmatically with `create_puzzle(..., difficulty="easy")` / `Difficulty.EASY`. Difficulty is the final visible fixed-position clue count only: Easy `== 2`, Medium `== 1`, Hard `== 0`. Direct-left, direct-right, adjacent, left-of, and right-of clues do not count as fixed-position clues. Generation uses the injected random source to choose both anchored children and anchored positions, builds a solution consistent with those choices, and retries until the reduced, uniquely solvable visible clue set matches the requested level; PDF localization only maps stored `1/2/3` metadata to labels.

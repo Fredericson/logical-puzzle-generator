@@ -23,7 +23,9 @@ class Difficulty(Enum):
 class DifficultyPolicy:
     """Classify final visible constraints by fixed-position clue count only."""
 
-    def normalize(self, difficulty: Difficulty | str) -> Difficulty:
+    def normalize(self, difficulty: Difficulty | str | None) -> Difficulty | None:
+        if difficulty is None:
+            return None
         if isinstance(difficulty, Difficulty):
             return difficulty
         if isinstance(difficulty, str):
@@ -36,11 +38,16 @@ class DifficultyPolicy:
 
     def classify(self, puzzle_or_constraints: Puzzle | Iterable[Constraint]) -> Difficulty:
         count = self.fixed_position_count(puzzle_or_constraints)
-        if count >= 2:
+        if count == 2:
             return Difficulty.EASY
         if count == 1:
             return Difficulty.MEDIUM
-        return Difficulty.HARD
+        if count == 0:
+            return Difficulty.HARD
+        raise ValueError(
+            f"Invalid Version 1 fixed-position clue count {count}. "
+            "Expected exactly 2, 1, or 0."
+        )
 
     def metadata_value(self, puzzle_or_constraints: Puzzle | Iterable[Constraint]) -> int:
         return self.classify(puzzle_or_constraints).metadata_value
@@ -53,7 +60,10 @@ class DifficultyPolicy:
         puzzle_or_constraints: Puzzle | Iterable[Constraint],
         difficulty: Difficulty | str,
     ) -> bool:
-        return self.classify(puzzle_or_constraints) is self.normalize(difficulty)
+        try:
+            return self.classify(puzzle_or_constraints) is self.normalize(difficulty)
+        except ValueError:
+            return False
 
     def fixed_position_count(self, puzzle_or_constraints: Puzzle | Iterable[Constraint]) -> int:
         constraints = (
@@ -71,7 +81,7 @@ class DifficultyPolicy:
         count = self.fixed_position_count(puzzle_or_constraints)
         requested = self.normalize(difficulty)
         if requested is Difficulty.EASY:
-            return count >= 2
+            return count == 2
         if requested is Difficulty.MEDIUM:
             return count >= 1
         return True

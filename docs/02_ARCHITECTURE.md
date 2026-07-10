@@ -155,7 +155,7 @@ PDF generation is presentation-only. It must not derive constraints, solve puzzl
 
 `themes.tennis.create_template()` returns the built-in Tennis `PuzzleTemplate`.
 
-`create_puzzle.create_puzzle()` generates that template and writes both default PDFs. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default:
+`create_puzzle.create_puzzle()` generates that template and writes both default PDFs. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default. Difficulty may be `easy`, `medium`, `hard`, a `Difficulty` value, or `None` to choose randomly:
 
 ```text
 output/puzzle_3.pdf
@@ -198,7 +198,7 @@ Significant changes to these boundaries require an ADR update.
 
 ### `DifficultyPolicy`
 
-`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means at least two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count.
+`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count.
 
 Updated generation order:
 

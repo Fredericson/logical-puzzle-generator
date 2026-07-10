@@ -88,3 +88,14 @@ def test_cli_rejects_invalid_difficulty() -> None:
 
     with pytest.raises(SystemExit):
         main(["--difficulty", "beginner"])
+
+
+def test_create_puzzle_none_difficulty_selects_random_level(tmp_path) -> None:
+    puzzle = create_puzzle(
+        difficulty=None,
+        puzzle_path=tmp_path / "p.pdf",
+        solution_path=tmp_path / "s.pdf",
+    )
+
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty in {1, 2, 3}
