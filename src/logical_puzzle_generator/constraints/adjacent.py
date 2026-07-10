@@ -24,13 +24,16 @@ class AdjacentConstraint(Constraint):
         assignment,
     ) -> bool:
 
-        return (
-            abs(
-                assignment.position_of(self.first)
-                - assignment.position_of(self.second)
-            )
-            == 1
-        )
+        first_position = assignment.position_of(self.first)
+        second_position = assignment.position_of(self.second)
+
+        if hasattr(first_position, "index"):
+            first_position = first_position.index
+
+        if hasattr(second_position, "index"):
+            second_position = second_position.index
+
+        return abs(first_position - second_position) == 1
 
     @property
     def description(self) -> str:
