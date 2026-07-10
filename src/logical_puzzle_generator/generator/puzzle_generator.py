@@ -257,10 +257,19 @@ class PuzzleGenerator:
 
         adjacent_constraints: list[Constraint] = []
         for left_item, right_item in zip(ordered_items, ordered_items[1:], strict=False):
-            if self._random.choice([True, False]):
+            constraint_cls = self._random.choice(
+                [
+                    DirectLeftOfConstraint,
+                    DirectRightOfConstraint,
+                    AdjacentConstraint,
+                ]
+            )
+            if constraint_cls is DirectLeftOfConstraint:
                 adjacent_constraints.append(DirectLeftOfConstraint(left_item, right_item))
-            else:
+            elif constraint_cls is DirectRightOfConstraint:
                 adjacent_constraints.append(DirectRightOfConstraint(right_item, left_item))
+            else:
+                adjacent_constraints.append(AdjacentConstraint(left_item, right_item))
 
         self._random.shuffle(adjacent_constraints)
         for constraint in adjacent_constraints:

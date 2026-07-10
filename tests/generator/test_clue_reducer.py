@@ -3,13 +3,16 @@ from __future__ import annotations
 import pytest
 
 from logical_puzzle_generator.constraints import (
+    DirectLeftOfConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
 )
+from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.generator import ClueGenerator, ClueReducer
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.position import Position
 from logical_puzzle_generator.model.puzzle import Puzzle
+from logical_puzzle_generator.model.solution import Solution
 
 
 class SequenceValidator:
@@ -148,3 +151,54 @@ def test_reduce_does_not_return_single_non_unique_visible_left_of_clue() -> None
     assert len(reduced.clues) > 1
     assert len(reduced.clues) == len(reduced.constraints)
     assert reduced.constraints != [constraints[0]]
+
+
+def test_reduce_keeps_valid_alternative_clue_to_preserve_four_item_variation() -> None:
+    emma = Item("Emma")
+    aurelia = Item("Aurelia")
+    mia = Item("Mia")
+    lara = Item("Lara")
+    constraints = [
+        FixedPositionConstraint(emma, Position(1)),
+        FixedPositionConstraint(lara, Position(4)),
+        DirectLeftOfConstraint(aurelia, mia),
+    ]
+    puzzle = Puzzle(
+        items=[emma, aurelia, mia, lara],
+        constraints=constraints,
+        clues=ClueGenerator(item_count=4).generate(constraints),
+        solution=Solution(
+            Assignment(
+                {
+                    emma: Position(1),
+                    aurelia: Position(2),
+                    mia: Position(3),
+                    lara: Position(4),
+                }
+            )
+        ),
+    )
+
+    reduced = ClueReducer().reduce(puzzle)
+
+    assert len(reduced.clues) == len(reduced.constraints)
+    assert [clue.constraint for clue in reduced.clues] == reduced.constraints
+    assert len({_reducer_clue_meaning(clue.text) for clue in reduced.clues}) >= 2
+
+
+def _reducer_clue_meaning(text: str) -> str:
+    if "far left" in text:
+        return "far_left"
+    if "far right" in text:
+        return "far_right"
+    if "directly left" in text:
+        return "directly_left_of"
+    if "directly right" in text:
+        return "directly_right_of"
+    if "left of" in text:
+        return "left_of"
+    if "right of" in text:
+        return "right_of"
+    if "next to" in text:
+        return "next_to"
+    return text

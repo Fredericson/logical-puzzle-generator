@@ -5,6 +5,7 @@ import random
 import pytest
 
 from logical_puzzle_generator.constraints import (
+    AdjacentConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
 )
@@ -343,3 +344,41 @@ def test_generated_visible_puzzle_remains_uniquely_solvable_to_target() -> None:
 
     assert result.has_unique_solution
     assert result.solutions[0] == puzzle.solution.assignment
+
+
+def test_multiple_seeded_four_item_puzzles_keep_visible_invariants_and_variety() -> None:
+    adjacent_seen = False
+
+    for seed in range(1, 16):
+        puzzle = PuzzleGenerator(random_source=random.Random(seed)).generate(create_template())
+        result = Solver().solve(puzzle, stop_after=2)
+
+        assert result.has_unique_solution, seed
+        assert result.solutions[0] == puzzle.solution.assignment
+        assert len(puzzle.clues) == len(puzzle.constraints)
+        assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
+        assert len({_visible_clue_meaning(clue.text) for clue in puzzle.clues}) >= 2
+
+        adjacent_seen = adjacent_seen or any(
+            isinstance(constraint, AdjacentConstraint) for constraint in puzzle.constraints
+        )
+
+    assert adjacent_seen
+
+
+def _visible_clue_meaning(text: str) -> str:
+    if "far left" in text:
+        return "far_left"
+    if "far right" in text:
+        return "far_right"
+    if "directly left" in text:
+        return "directly_left_of"
+    if "directly right" in text:
+        return "directly_right_of"
+    if "left of" in text:
+        return "left_of"
+    if "right of" in text:
+        return "right_of"
+    if "next to" in text:
+        return "next_to"
+    return text
