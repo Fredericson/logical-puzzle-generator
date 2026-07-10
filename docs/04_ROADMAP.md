@@ -11,9 +11,9 @@ Objective: deliver a command-line-capable Python package that generates and vali
 Completed milestones:
 
 - Domain model and package structure.
-- Constraint hierarchy with fixed-position, left-of, right-of, and adjacent constraints.
+- Constraint hierarchy with far-left/far-right fixed-position, direct-left, left-of, direct-right, right-of, and adjacent next-to constraints.
 - Brute-force solver, assignment iterator, solver result, statistics, and validator.
-- Generator pipeline: `SolutionGenerator`, private constraint derivation, `ClueGenerator`, `ClueReducer`, and `PuzzleGenerator`.
+- Generator pipeline: `SolutionGenerator`, varied private constraint derivation, `ClueGenerator`, `ClueReducer`, `Validator`, and PDF generation.
 - PDF output: `TextRenderer`, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()`.
 - Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point.
 - Version 1.0 documentation synchronization.
@@ -23,7 +23,7 @@ Version 1.0 accepted limitations:
 
 - Active puzzle solving uses one item category mapped to positions.
 - The Tennis template includes extra thematic categories as template data, but multi-category logic is not solved in Version 1.0.
-- Clue generation supports implemented constraint classes only.
+- Clue generation supports implemented Version 1.0 positional constraint classes only.
 - `Optimizer` is a compatibility boundary and does not alter puzzles.
 
 ## Version 2

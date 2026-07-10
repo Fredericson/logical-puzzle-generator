@@ -39,14 +39,23 @@ Model objects should remain lightweight. Solver, generator, and PDF behavior bel
 
 ## 4. Constraints package
 
-All constraints inherit from `Constraint` and implement `matches(assignment)`. Implemented Version 1.0 constraints are:
+All constraints inherit from `Constraint` and implement `matches(assignment)`. Implemented Version 1.0 positional constraints are:
 
 - `FixedPositionConstraint(item, position)`
+  - `Position(1)` renders as a far-left clue.
+  - `Position(item_count)` renders as a far-right clue.
+- `DirectLeftOfConstraint(left, right)`
+  - means the left item is immediately left of the right item.
 - `LeftOfConstraint(left, right)`
+  - means the left item is somewhere left of the right item.
+- `DirectRightOfConstraint(right, left)`
+  - means the right item is immediately right of the left item.
 - `RightOfConstraint(right, left)`
+  - means the right item is somewhere right of the left item.
 - `AdjacentConstraint(first, second)`
+  - means the two items are next to each other, but the direction is unknown.
 
-Each constraint exposes a human-readable `description`. Constraint classes do not know about solving, PDF rendering, clue reduction, or other constraints.
+Each constraint exposes a human-readable `description`. Constraint classes do not know about solving, PDF rendering, clue reduction, or other constraints. Every visible `Clue` owns exactly one corresponding `Constraint`; the generator and reducer preserve this one-to-one relationship so the puzzle shown to the player is the same puzzle validated by the engine.
 
 ## 5. Engine package
 
@@ -76,15 +85,15 @@ Creates a random one-to-one mapping from active items to positions. It accepts a
 
 `PuzzleGenerator` owns constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0.
 
-Current derivation sorts the generated solution by position and creates enough ordered `LeftOfConstraint` instances between neighboring ordered items to uniquely determine that order. For a one-item puzzle it creates a `FixedPositionConstraint` instead. Derived constraints are de-duplicated and verified against the generated solution.
+Current derivation sorts the generated solution by position and creates a varied set of true positional constraints. It may include far-left and far-right fixed-position constraints, direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. For a one-item puzzle it creates a `FixedPositionConstraint` instead. Derived constraints are de-duplicated and verified against the generated solution.
 
 ### `ClueGenerator`
 
-Converts supplied constraint instances into deterministic `Clue` objects. It supports fixed-position, left-of, right-of, and adjacent constraints. It does not create constraints, solve puzzles, reduce clues, or randomize output.
+Converts supplied constraint instances into deterministic `Clue` objects. It supports far-left, far-right, directly-left-of, left-of, directly-right-of, right-of, and next-to wording. It does not create constraints, solve puzzles, reduce clues, or randomize output.
 
 ### `ClueReducer`
 
-Attempts a deterministic remove-and-validate pass over human-readable clues. It never changes the puzzle's items, mathematical constraints, metadata, or solution. It stops before returning an empty clue set and only accepts removals when `Validator.has_unique_solution()` remains true.
+Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
 
 ### `PuzzleGenerator`
 
@@ -93,26 +102,22 @@ Coordinates the complete pipeline and validates every stage. It accepts optional
 Pipeline:
 
 ```text
-source
-  ↓
-extract and validate items
-  ↓
-generate Solution
-  ↓
-derive constraints internally
-  ↓
-generate Clue objects
-  ↓
-assemble Puzzle
-  ↓
-validate unique solution
-  ↓
-reduce clues
-  ↓
-validate reduced puzzle still has a unique solution
-  ↓
-return Puzzle
+Source template/items
+        ↓
+SolutionGenerator
+        ↓
+Constraint derivation
+        ↓
+ClueGenerator
+        ↓
+ClueReducer
+        ↓
+Validator
+        ↓
+PDF Generator
 ```
+
+During generation, `PuzzleGenerator` assembles a candidate puzzle, validates uniqueness, reduces visible clues and their matching constraints together, and validates the reduced visible puzzle again before returning it. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
 
 ## 7. PDF package
 
@@ -144,23 +149,13 @@ Theme/PuzzleTemplate or Item iterable
         ↓
 SolutionGenerator
         ↓
-Solution + Assignment
-        ↓
-PuzzleGenerator private constraint derivation
-        ↓
-Constraint list
+Constraint derivation
         ↓
 ClueGenerator
         ↓
-Clue list
-        ↓
-Puzzle
-        ↓
-Validator → Solver → AssignmentIterator
-        ↓
 ClueReducer
         ↓
-Validator → Solver
+Validator → Solver → AssignmentIterator
         ↓
 PdfGenerator / TextRenderer
 ```
