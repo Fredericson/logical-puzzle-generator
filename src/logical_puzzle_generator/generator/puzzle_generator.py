@@ -12,7 +12,6 @@ from logical_puzzle_generator.constraints.direct_left_of import DirectLeftOfCons
 from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
-from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.engine.solver import Solver
 from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.model.clue import Clue
@@ -26,6 +25,7 @@ from logical_puzzle_generator.model.solution import Solution
 from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
 from .difficulty import Difficulty, DifficultyPolicy
+from .fixed_position_generator import FixedPositionGenerator
 from .puzzle_template import PuzzleTemplate
 from .solution_generator import SolutionGenerator
 
@@ -65,7 +65,7 @@ class PuzzleGenerator:
         clue_generator: ClueGenerator | None = None,
         validator: Validator | None = None,
         clue_reducer: ClueReducer | None = None,
-        difficulty_estimator: DifficultyPolicy | None = None,
+        fixed_position_generator: FixedPositionGenerator | None = None,
         difficulty: Difficulty | str | None = None,
         max_attempts: int = 100,
     ) -> None:
@@ -73,11 +73,6 @@ class PuzzleGenerator:
             raise ValueError("PuzzleGenerator requires at least one attempt.")
 
         self._random = random_source if random_source is not None else random.Random()
-        self._solution_generator = (
-            solution_generator
-            if solution_generator is not None
-            else SolutionGenerator(self._random)
-        )
         self._clue_generator = clue_generator
         self._validator = validator if validator is not None else Validator()
         self._solver = Solver()
@@ -85,7 +80,11 @@ class PuzzleGenerator:
             clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
         )
         self._difficulty_policy = DifficultyPolicy()
-        _ = difficulty_estimator
+        self._fixed_position_generator = (
+            fixed_position_generator
+            if fixed_position_generator is not None
+            else FixedPositionGenerator(self._random, solution_generator=solution_generator)
+        )
         self._requested_difficulty = self._difficulty_policy.normalize(difficulty)
         self._max_attempts = max_attempts
 
@@ -133,12 +132,15 @@ class PuzzleGenerator:
         items: list[Item],
         difficulty: Difficulty,
     ) -> tuple[Puzzle, None] | tuple[None, str]:
-        fixed_position_constraints, solution = self._solution_with_requested_fixed_positions(source, items, difficulty)
+        fixed_position_constraints, solution = self._fixed_position_generator.generate(items, difficulty)
         failure = self._solution_failure(solution, items)
         if failure is not None:
             return None, failure
 
-        constraints = self._derive_constraints(solution, fixed_position_constraints)
+        constraints = [
+            *fixed_position_constraints,
+            *self._derive_relational_constraints(solution),
+        ]
         failure = self._constraints_failure(constraints, solution)
         if failure is not None:
             return None, failure
@@ -316,68 +318,9 @@ class PuzzleGenerator:
             return self._requested_difficulty
         return self._random.choice(list(Difficulty))
 
-    def _solution_with_requested_fixed_positions(
-        self,
-        source: PuzzleTemplate | Puzzle | Iterable[Item],
-        items: list[Item],
-        difficulty: Difficulty,
-    ) -> tuple[list[FixedPositionConstraint], Solution]:
-        if self._solution_generator.__class__ is not SolutionGenerator:
-            solution = self._solution_generator.generate(source)
-            if not isinstance(solution, Solution):
-                return [], solution
-            return self._selected_fixed_position_constraints(solution, difficulty), solution
-
-        selected_positions = self._selected_fixed_positions(len(items), difficulty)
-        if not selected_positions:
-            return [], self._solution_generator.generate(source)
-
-        selected_items = self._random.sample(items, k=len(selected_positions))
-        self._random.shuffle(selected_positions)
-        assignment_by_item: dict[Item, Position] = dict(zip(selected_items, selected_positions, strict=True))
-        remaining_items = [item for item in items if item not in assignment_by_item]
-        self._random.shuffle(remaining_items)
-        remaining_positions = [
-            Position(index)
-            for index in range(1, len(items) + 1)
-            if Position(index) not in assignment_by_item.values()
-        ]
-        self._random.shuffle(remaining_positions)
-        assignment_by_item.update(dict(zip(remaining_items, remaining_positions, strict=True)))
-
-        solution = Solution(Assignment(assignment_by_item))
-        fixed_constraints = [
-            FixedPositionConstraint(item, assignment_by_item[item]) for item in selected_items
-        ]
-        return fixed_constraints, solution
-
-    def _selected_fixed_positions(self, item_count: int, difficulty: Difficulty) -> list[Position]:
-        if difficulty is Difficulty.HARD:
-            return []
-
-        required_count = 2 if difficulty is Difficulty.EASY else 1
-        if item_count < required_count:
-            return []
-
-        position_indexes = self._random.sample(range(1, item_count + 1), k=required_count)
-        return [Position(index) for index in position_indexes]
-
-    def _selected_fixed_position_constraints(
+    def _derive_relational_constraints(
         self,
         solution: Solution,
-        difficulty: Difficulty,
-    ) -> list[FixedPositionConstraint]:
-        positions = self._selected_fixed_positions(len(solution.positions), difficulty)
-        if not positions:
-            return []
-
-        items_by_position = {position: item for item, position in solution.positions.items()}
-        return [FixedPositionConstraint(items_by_position[position], position) for position in positions]
-
-    def _derive_constraints(
-        self,
-        solution: Solution,
-        fixed_position_constraints: list[FixedPositionConstraint] | None = None,
     ) -> list[Constraint]:
         ordered_items = sorted(
             solution.positions,
@@ -388,10 +331,7 @@ class PuzzleGenerator:
         seen: set[tuple[object, ...]] = set()
         item_count = len(ordered_items)
 
-        for constraint in fixed_position_constraints or []:
-            self._append_unique(constraints, seen, constraint)
-
-        if item_count == 1 and constraints:
+        if item_count == 1:
             return constraints
 
         adjacent_constraints: list[Constraint] = []

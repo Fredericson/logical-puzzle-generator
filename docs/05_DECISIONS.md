@@ -137,7 +137,7 @@ Rationale: the puzzle is intended to be understood visually by children. Keeping
 
 ## ADR-016: Superseded heuristic difficulty estimate
 
-Decision: superseded by ADR-017. The old score-based `DifficultyEstimator` heuristic is no longer the authoritative difficulty definition.
+Decision: superseded by ADR-017. The old score-based difficulty heuristic is no longer the authoritative difficulty definition.
 
 Rationale: child-facing difficulty should describe the puzzle the player actually receives. Removed clues, hidden/original constraints, rendered wording, PDF language, and the target solution must not shortcut the estimate.
 
@@ -151,4 +151,4 @@ Decision: ADR-016 is superseded for Version 1 difficulty classification. `Diffic
 
 Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child. A fixed-position-count rule is predictable, testable, independent of language/PDF text, and based on the puzzle the child actually sees.
 
-Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitted/`None` chooses randomly with the injected random source), reduces clues and constraints together, validates unique solvability, classifies the final visible constraints, and retries until a matching candidate is found or raises a clear `RuntimeError` after `max_attempts`. Numeric metadata remains `1` Easy, `2` Medium, and `3` Hard. PDF and translation components render stored metadata only and do not recalculate difficulty.
+Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitted/`None` chooses randomly with the injected random source), delegates mandatory fixed assignment and target solution construction to `FixedPositionGenerator`, derives relational constraints separately, reduces clues and constraints together while preserving the exact fixed count, validates unique solvability, classifies the final visible constraints, and retries until a matching candidate is found or raises a clear `RuntimeError` after `max_attempts`. Numeric metadata remains `1` Easy, `2` Medium, and `3` Hard. PDF and translation components render stored metadata only and do not recalculate difficulty.

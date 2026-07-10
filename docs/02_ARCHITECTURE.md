@@ -83,11 +83,13 @@ Defines a title, theme, and categories. `players` returns the first category, wh
 
 Creates a random one-to-one mapping from active items to positions. It accepts a `PuzzleTemplate`, `Puzzle`, or iterable of `Item` objects. A caller may inject `random.Random` for deterministic generation.
 
-### Internal constraint derivation
+### `FixedPositionGenerator`
 
-`PuzzleGenerator` owns constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0.
+Constructs the selected difficulty anchors before relational constraints exist. It determines the required fixed count (Easy 2, Medium 1, Hard 0), randomly selects distinct items and distinct positions with the injected `random.Random`, pairs those fixed assignments, fills remaining items and positions one-to-one, and returns the mandatory `FixedPositionConstraint` instances together with the complete target `Solution`. It does not generate relational constraints, clues, solve, validate, reduce clues, score quality, write metadata, or render PDFs.
 
-Current generation first uses the injected random source to select requested fixed-position anchors for Easy and Medium: it randomly selects distinct eligible positions, randomly selects distinct children for those slots, then constructs a one-to-one target solution consistent with those choices. Constraint derivation then sorts the generated solution by position and creates a varied set of true positional constraints. It includes only the requested fixed-position constraints for Easy/Medium and none for Hard; direct-left/direct-right or undirected adjacent constraints are used for neighboring ordered items, and ordinary left-of/right-of constraints are used for longer-range relationships. Derived constraints are de-duplicated and verified against the generated solution.
+### Internal relational constraint derivation
+
+`PuzzleGenerator` owns relational constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0. After `FixedPositionGenerator` returns mandatory anchors and the target solution, relational derivation sorts the solution by position and creates only non-fixed true positional constraints: direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. Relational derivation must not create additional `FixedPositionConstraint` instances. Derived constraints are de-duplicated and verified against the generated solution.
 
 ### `ClueGenerator`
 
@@ -95,20 +97,24 @@ Converts supplied constraint instances into deterministic English `Clue` objects
 
 ### `ClueReducer`
 
-Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
+Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain and the exact requested fixed-position count is preserved. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
 
 ### `PuzzleGenerator`
 
-Coordinates the complete pipeline and validates every stage. It accepts optional injected `SolutionGenerator`, `ClueGenerator`, `Validator`, and `ClueReducer` instances for tests and compatibility. It retries up to `max_attempts` and raises `RuntimeError` with the last failure when generation cannot produce a valid uniquely solvable puzzle.
+Coordinates the complete pipeline and validates every stage. It accepts optional injected `SolutionGenerator`, `FixedPositionGenerator`, `ClueGenerator`, `Validator`, and `ClueReducer` instances for tests and compatibility. It retries up to `max_attempts` and raises `RuntimeError` with the last failure when generation cannot produce a valid uniquely solvable puzzle.
 
 Pipeline:
 
 ```text
 Source template/items
         ↓
-SolutionGenerator
+Difficulty selection
         ↓
-Constraint derivation
+FixedPositionGenerator
+        ↓
+Target Solution + mandatory fixed constraints
+        ↓
+Relational constraint derivation
         ↓
 ClueGenerator
         ↓
@@ -167,9 +173,13 @@ output/puzzle_3_solution.pdf
 ```text
 Theme/PuzzleTemplate or Item iterable
         ↓
-SolutionGenerator
+Difficulty selection
         ↓
-Constraint derivation
+FixedPositionGenerator
+        ↓
+Target Solution + mandatory fixed constraints
+        ↓
+Relational constraint derivation
         ↓
 ClueGenerator
         ↓
@@ -203,7 +213,8 @@ Significant changes to these boundaries require an ADR update.
 Updated generation order:
 
 ```text
-SolutionGenerator -> private constraint derivation -> ClueGenerator -> Validator
--> ClueReducer (clues and matching constraints together) -> Validator
+Difficulty selection -> FixedPositionGenerator -> target Solution + mandatory fixed constraints
+-> private relational constraint derivation -> ClueGenerator -> Validator
+-> ClueReducer (clues and matching constraints together, exact fixed count preserved) -> Validator
 -> DifficultyPolicy match/classify -> quality selection among matching candidates -> PdfGenerator presentation
 ```

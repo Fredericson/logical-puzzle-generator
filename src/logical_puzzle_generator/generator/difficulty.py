@@ -83,9 +83,7 @@ class DifficultyPolicy:
         if requested is Difficulty.EASY:
             return count == 2
         if requested is Difficulty.MEDIUM:
-            return count >= 1
-        return True
-
-
-# Backward-compatible name; the heuristic estimator was intentionally replaced.
-DifficultyEstimator = DifficultyPolicy
+            return count == 1
+        if requested is Difficulty.HARD:
+            return count == 0
+        return False

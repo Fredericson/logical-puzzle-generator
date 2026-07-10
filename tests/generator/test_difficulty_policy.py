@@ -61,3 +61,21 @@ def test_invalid_difficulty_fails_clearly() -> None:
         assert "easy, medium, hard" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_reduction_predicate_uses_exact_fixed_position_counts() -> None:
+    mia, emma, lara, _ = items()
+    policy = DifficultyPolicy()
+
+    two = [FixedPositionConstraint(mia, Position(1)), FixedPositionConstraint(emma, Position(2))]
+    one = [FixedPositionConstraint(mia, Position(1)), LeftOfConstraint(mia, emma)]
+    zero = [LeftOfConstraint(mia, emma)]
+    three = [*two, FixedPositionConstraint(lara, Position(3))]
+
+    assert policy.can_remove_to_match(two, Difficulty.EASY)
+    assert not policy.can_remove_to_match(one, Difficulty.EASY)
+    assert policy.can_remove_to_match(one, Difficulty.MEDIUM)
+    assert not policy.can_remove_to_match(two, Difficulty.MEDIUM)
+    assert policy.can_remove_to_match(zero, Difficulty.HARD)
+    assert not policy.can_remove_to_match(one, Difficulty.HARD)
+    assert not policy.can_remove_to_match(three, Difficulty.EASY)

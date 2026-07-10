@@ -221,6 +221,7 @@ def test_generate_rejects_invalid_generated_solution_with_clear_message() -> Non
     with pytest.raises(RuntimeError, match="solution generator did not return a Solution"):
         PuzzleGenerator(
             solution_generator=InvalidSolutionGenerator(),
+            difficulty="hard",
             max_attempts=2,
         ).generate(create_template())
 
@@ -271,6 +272,7 @@ def test_generate_retry_sequence_is_deterministic() -> None:
     with pytest.raises(RuntimeError, match="not uniquely solvable before clue reduction"):
         PuzzleGenerator(
             solution_generator=first_generator,
+            difficulty="hard",
             validator=RejectingValidator(),
             max_attempts=3,
         ).generate(items)
@@ -278,6 +280,7 @@ def test_generate_retry_sequence_is_deterministic() -> None:
     with pytest.raises(RuntimeError, match="not uniquely solvable before clue reduction"):
         PuzzleGenerator(
             solution_generator=second_generator,
+            difficulty="hard",
             validator=RejectingValidator(),
             max_attempts=3,
         ).generate(items)
@@ -634,3 +637,24 @@ def test_hard_fixed_position_selection_never_retains_anchors() -> None:
         )
 
         assert _fixed_position_constraints(puzzle) == []
+
+
+def test_relational_derivation_never_introduces_extra_fixed_constraints() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(4), difficulty="easy").generate(create_template())
+    generator = PuzzleGenerator(random_source=random.Random(4), difficulty="easy")
+
+    relational_constraints = generator._derive_relational_constraints(puzzle.solution)
+
+    assert relational_constraints
+    assert not any(isinstance(constraint, FixedPositionConstraint) for constraint in relational_constraints)
+
+
+def test_mandatory_fixed_anchors_survive_reduction() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(5), difficulty="easy").generate(create_template())
+
+    assert len(_fixed_position_constraints(puzzle)) == 2
+    assert all(
+        clue.constraint in puzzle.constraints
+        for clue in puzzle.clues
+        if isinstance(clue.constraint, FixedPositionConstraint)
+    )

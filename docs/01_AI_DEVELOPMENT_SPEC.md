@@ -64,19 +64,25 @@ The application shall:
 ```text
 Source template, puzzle, or iterable of Item
         ↓
-SolutionGenerator.generate(source)
+Select requested/random Difficulty
         ↓
-PuzzleGenerator._derive_constraints(solution)
+FixedPositionGenerator.generate(items, difficulty)
         ↓
-ClueGenerator.generate(constraints)
+Target Solution + mandatory FixedPositionConstraint anchors
+        ↓
+PuzzleGenerator._derive_relational_constraints(solution)
+        ↓
+ClueGenerator.generate(fixed + relational constraints)
         ↓
 Puzzle assembly
         ↓
 Validator.has_unique_solution(puzzle)
         ↓
-ClueReducer.reduce(puzzle)
+ClueReducer.reduce(puzzle, difficulty) preserving exact fixed count
         ↓
 Validator.has_unique_solution(reduced)
+        ↓
+DifficultyPolicy match/classify
         ↓
 Return Puzzle or retry until max_attempts is exhausted
 ```
