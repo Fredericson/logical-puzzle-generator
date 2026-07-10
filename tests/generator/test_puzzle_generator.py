@@ -27,6 +27,11 @@ class RejectThenAcceptValidator:
         return self.calls > 1
 
 
+class IdentityClueReducer:
+    def reduce(self, puzzle: Puzzle) -> Puzzle:
+        return puzzle
+
+
 class RecordingValidator:
     def __init__(self) -> None:
         self.puzzles: list[Puzzle] = []
@@ -47,7 +52,7 @@ def test_generate_returns_complete_unique_puzzle() -> None:
     assert puzzle.metadata.title == template.title
     assert puzzle.metadata.theme == template.theme
     assert len(puzzle.constraints) == len(template.players.items) - 1
-    assert len(puzzle.clues) == len(puzzle.constraints)
+    assert len(puzzle.clues) <= len(puzzle.constraints)
     assert len(puzzle.clues) == len({(clue.clue_type, clue.text) for clue in puzzle.clues})
     assert all(
         constraint.matches(puzzle.solution.assignment)
@@ -62,6 +67,7 @@ def test_generate_validates_uniqueness() -> None:
     puzzle = PuzzleGenerator(
         random_source=random.Random(11),
         validator=validator,
+        clue_reducer=IdentityClueReducer(),
     ).generate(create_template())
 
     assert validator.puzzles == [puzzle]
@@ -73,6 +79,7 @@ def test_generate_retries_when_puzzle_is_not_unique() -> None:
     puzzle = PuzzleGenerator(
         random_source=random.Random(13),
         validator=validator,
+        clue_reducer=IdentityClueReducer(),
         max_attempts=3,
     ).generate(create_template())
 

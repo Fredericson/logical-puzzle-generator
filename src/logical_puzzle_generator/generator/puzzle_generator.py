@@ -15,6 +15,7 @@ from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.model.solution import Solution
 
 from .clue_generator import ClueGenerator
+from .clue_reducer import ClueReducer
 from .puzzle_template import PuzzleTemplate
 from .solution_generator import SolutionGenerator
 
@@ -35,6 +36,7 @@ class PuzzleGenerator:
         solution_generator: SolutionGenerator | None = None,
         clue_generator: ClueGenerator | None = None,
         validator: Validator | None = None,
+        clue_reducer: ClueReducer | None = None,
         max_attempts: int = 100,
     ) -> None:
         if max_attempts < 1:
@@ -51,6 +53,11 @@ class PuzzleGenerator:
             else ClueGenerator()
         )
         self._validator = validator if validator is not None else Validator()
+        self._clue_reducer = (
+            clue_reducer
+            if clue_reducer is not None
+            else ClueReducer(self._validator)
+        )
         self._max_attempts = max_attempts
 
     def generate(
@@ -77,7 +84,7 @@ class PuzzleGenerator:
             )
 
             if self._validator.has_unique_solution(puzzle):
-                return puzzle
+                return self._clue_reducer.reduce(puzzle)
 
         raise RuntimeError(
             "Unable to generate a uniquely solvable puzzle within "
