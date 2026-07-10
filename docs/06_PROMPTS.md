@@ -12,10 +12,10 @@ Preserve the Version 1.0 architecture:
 - constraints remain independent matches() implementations;
 - solver and validator remain the verification boundary;
 - PuzzleGenerator remains the orchestration boundary;
-- PDF remains presentation-only.
+- PDF remains presentation-only, including A4 child-friendly lineup rendering.
 - Localization remains presentation-only and must not affect solver, validator, constraints, or generation semantics.
 
-Make the smallest safe change, update tests and documentation when needed, and keep public APIs stable unless explicitly requested otherwise.
+Make the smallest safe change, update tests and documentation when needed, and keep public APIs stable unless explicitly requested otherwise. If PDF presentation changes, verify German and English output and keep puzzle and solution layout sharing free of solving logic.
 ```
 
 ## Bug fix prompt

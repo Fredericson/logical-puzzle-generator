@@ -21,7 +21,7 @@ Completed capabilities:
 - Brute-force engine: assignment iteration, solver result, statistics, validator, and optimizer compatibility class.
 - Generator package: `SolutionGenerator`, `ClueGenerator`, `ClueReducer`, `PuzzleGenerator`, and `PuzzleTemplate`.
 - Internal constraint derivation inside `PuzzleGenerator`.
-- PDF package: `TextRenderer` and `PdfGenerator` for puzzle and solution PDFs.
+- PDF package: `TextRenderer`, `GirlFigureRenderer`, `PlayerLineupRenderer`, and `PdfGenerator` for child-friendly A4 puzzle and solution PDFs.
 - Localization: `Language`, `TranslationCatalog`, and `ClueTextRenderer` for English/German presentation text.
 - Tennis theme and `create_puzzle` entry point.
 - Pytest coverage for engine, generator, model, and PDF behavior.
@@ -55,8 +55,9 @@ The application shall:
 - reduce visible clues and their corresponding constraints together while preserving items, metadata, and solution;
 - validate uniqueness only against the remaining visible constraints;
 - forbid hidden constraints that are not represented by visible clues;
-- export a printable puzzle PDF in English or German;
-- export a printable solution PDF in English or German.
+- export a printable A4 portrait puzzle PDF in English or German with localized headings and clues;
+- show the four-player Tennis puzzle as four anonymous vector girl placeholders in left-to-right position order, with one empty writable name box under each figure and a separate available-names list;
+- export a printable A4 portrait solution PDF in English or German using the same lineup with names filled from `puzzle.solution.assignment` in position order.
 
 ## 5. Generator pipeline
 
@@ -174,3 +175,7 @@ A change is complete when:
 - ADRs do not contradict implementation;
 - public API compatibility is preserved or explicitly documented;
 - one focused commit and pull request are prepared.
+
+## 11. Commit 11.3 PDF presentation requirement
+
+The current Tennis PDF presentation is child-facing rather than a technical solving table. The PDF layer draws anonymous girl figures directly with ReportLab vector primitives and must not depend on external images, URLs, or downloads. Position 1 is the far-left lineup slot, position 4 is the far-right slot, and neighbouring slots represent adjacent positions. Puzzle PDFs leave all name boxes empty; solution PDFs fill those boxes from the existing `Puzzle.solution.assignment` only. This remains presentation-only and must not change generation, solving, validation, clue semantics, difficulty, or puzzle numbering.

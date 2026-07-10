@@ -16,7 +16,7 @@ logical_puzzle_generator/
   constraints/    Mathematical rules over assignments
   engine/         Brute-force solving and validation
   generator/      Puzzle generation orchestration
-  pdf/            Presentation-only PDF rendering
+  pdf/            Presentation-only text, vector lineup, and PDF rendering
   localization.py Language enum and translation catalog
   clue_text_renderer.py Localized clue wording
   themes/         Reusable puzzle templates
@@ -133,19 +133,23 @@ The number of valid candidates considered is controlled by the internal `QUALITY
 
 `Language` defines supported presentation languages: `Language.ENGLISH` (`en`) and `Language.GERMAN` (`de`). `TranslationCatalog` centralizes PDF headings, labels, CLI-facing output labels, and metadata-title translations. `ClueTextRenderer` renders clue wording from each clue's linked constraint in the selected language. This keeps German wording out of constraints, solver, validator, and generator logic. English remains the default and uses stored `Clue.text` for backward compatibility.
 
-German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Lösungsraster`, `Antwort`, and `Lösung`.
+German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Trage die Namen ein`, `Verfügbare Namen`, and `Lösung`.
 
 ## 8. PDF package
 
 `TextRenderer` renders clues, solution rows, and item names as strings. It validates that rendered text is human-readable.
 
-`PdfGenerator` writes ReportLab PDFs:
+`GirlFigureRenderer` draws anonymous Tennis-themed girl placeholders using ReportLab primitives only. It has no puzzle logic and does not know player names or solutions.
 
-- `create_puzzle_pdf(puzzle, filename)` writes the unsolved puzzle PDF.
-- `create_solution_pdf(puzzle, filename)` writes the solved PDF.
+`PlayerLineupRenderer` is a reusable ReportLab flowable for the horizontal lineup. Its layout maps slot index `0..3` to visible positions `1..4` from left to right, draws one writable box per slot, and optionally accepts already-rendered labels for the solution PDF.
+
+`PdfGenerator` writes A4 portrait ReportLab PDFs:
+
+- `create_puzzle_pdf(puzzle, filename)` writes the unsolved puzzle PDF with localized clues, four anonymous figures, empty name boxes, position numbers, and available names.
+- `create_solution_pdf(puzzle, filename)` writes the solved PDF with the same lineup and labels taken from `puzzle.solution.assignment`.
 - `create(puzzle, filename)` is a backward-compatible wrapper for `create_puzzle_pdf()`.
 
-PDF generation is presentation-only. It must not derive constraints, solve puzzles, or alter puzzle data.
+PDF generation is presentation-only. It must not derive constraints, solve puzzles, reveal solution names in unsolved boxes, or alter puzzle data.
 
 ## 9. Theme and entry-point flow
 

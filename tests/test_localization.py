@@ -47,12 +47,36 @@ def test_english_clue_text_remains_unchanged() -> None:
 @pytest.mark.parametrize(
     ("constraint", "clue_type", "expected"),
     [
-        (FixedPositionConstraint(Item("Emma"), Position(1)), ClueType.FIXED_POSITION, "Emma steht ganz links."),
-        (FixedPositionConstraint(Item("Mia"), Position(4)), ClueType.FIXED_POSITION, "Mia steht ganz rechts."),
-        (DirectLeftOfConstraint(Item("Emma"), Item("Aurelia")), ClueType.DIRECT_LEFT_OF, "Emma steht direkt links von Aurelia."),
-        (LeftOfConstraint(Item("Emma"), Item("Aurelia")), ClueType.LEFT_OF, "Emma steht links von Aurelia."),
-        (DirectRightOfConstraint(Item("Aurelia"), Item("Emma")), ClueType.DIRECT_RIGHT_OF, "Aurelia steht direkt rechts von Emma."),
-        (RightOfConstraint(Item("Aurelia"), Item("Emma")), ClueType.RIGHT_OF, "Aurelia steht rechts von Emma."),
+        (
+            FixedPositionConstraint(Item("Emma"), Position(1)),
+            ClueType.FIXED_POSITION,
+            "Emma steht ganz links.",
+        ),
+        (
+            FixedPositionConstraint(Item("Mia"), Position(4)),
+            ClueType.FIXED_POSITION,
+            "Mia steht ganz rechts.",
+        ),
+        (
+            DirectLeftOfConstraint(Item("Emma"), Item("Aurelia")),
+            ClueType.DIRECT_LEFT_OF,
+            "Emma steht direkt links von Aurelia.",
+        ),
+        (
+            LeftOfConstraint(Item("Emma"), Item("Aurelia")),
+            ClueType.LEFT_OF,
+            "Emma steht links von Aurelia.",
+        ),
+        (
+            DirectRightOfConstraint(Item("Aurelia"), Item("Emma")),
+            ClueType.DIRECT_RIGHT_OF,
+            "Aurelia steht direkt rechts von Emma.",
+        ),
+        (
+            RightOfConstraint(Item("Aurelia"), Item("Emma")),
+            ClueType.RIGHT_OF,
+            "Aurelia steht rechts von Emma.",
+        ),
         (AdjacentConstraint(Item("Lara"), Item("Mia")), ClueType.ADJACENT, "Lara steht neben Mia."),
     ],
 )
@@ -92,7 +116,9 @@ def test_create_puzzle_language_writes_both_pdfs(tmp_path) -> None:
     assert Validator().has_unique_solution(puzzle)
 
 
-def test_german_puzzle_pdf_contains_german_headings_and_clues_without_english_leaks(tmp_path) -> None:
+def test_german_puzzle_pdf_contains_german_headings_and_clues_without_english_leaks(
+    tmp_path,
+) -> None:
     puzzle = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
     path = tmp_path / "puzzle-de.pdf"
 
@@ -103,13 +129,14 @@ def test_german_puzzle_pdf_contains_german_headings_and_clues_without_english_le
     assert "Thema" in text
     assert "Schwierigkeit" in text
     assert "Hinweise" in text
-    assert "Position" in text
-    assert "Antwort" in text
+    assert "Trage die Namen ein" in text
+    assert "Verf\\374gbare Namen" in text
     assert "steht" in text
     assert "Theme" not in text
     assert "Difficulty" not in text
     assert "Clues" not in text
     assert "Solving Grid" not in text
+    assert "Players / Items" not in text
 
 
 def test_german_solution_pdf_contains_german_headings(tmp_path) -> None:
@@ -122,7 +149,7 @@ def test_german_solution_pdf_contains_german_headings(tmp_path) -> None:
     assert "Tennistraining" in text
     assert "Thema" in text
     assert "Schwierigkeit" in text
-    assert "Position" in text
+    assert "Trage die Namen ein" in text
     assert "Hinweise" in text
     assert "Aurelia" in text
     assert "Theme" not in text

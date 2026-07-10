@@ -1,6 +1,6 @@
 # Logical Puzzle Generator
 
-Logical Puzzle Generator creates small, printable Einstein-style ordering puzzles and verifies them mathematically before returning them. Version 1.0 focuses on a stable 4-item puzzle pipeline: generate a solution, derive constraints, convert them to clues, validate uniqueness, reduce redundant clues, and render puzzle and solution PDFs.
+Logical Puzzle Generator creates small, printable Einstein-style ordering puzzles and verifies them mathematically before returning them. Version 1.0 focuses on a stable 4-item puzzle pipeline: generate a solution, derive constraints, convert them to clues, validate uniqueness, reduce redundant clues, and render child-friendly A4 puzzle and solution PDFs.
 
 ## Version 1.0 capabilities
 
@@ -9,7 +9,8 @@ Logical Puzzle Generator creates small, printable Einstein-style ordering puzzle
 - Convert supported constraints into human-readable English clues and render localized clue text for PDFs.
 - Validate that a puzzle has exactly one solution using the brute-force solver.
 - Reduce unnecessary clues while preserving unique solvability and at least one clue.
-- Generate printable puzzle and solution PDFs with ReportLab in English (`en`, default) or German (`de`).
+- Generate printable A4 puzzle and solution PDFs with ReportLab in English (`en`, default) or German (`de`).
+- Render the Tennis puzzle as a horizontal child-friendly lineup of four anonymous vector girls, empty handwriting boxes, and left-to-right position numbers.
 - Provide a Tennis theme and a convenience entry point that writes PDFs to `output/`.
 
 Version 1.0 is intentionally limited to ordering puzzles over one active category of items. Additional category relationships, richer clue types, JSON export, batch generation, GUI/web interfaces, and larger puzzle sizes are Version 2+ work.
@@ -73,6 +74,8 @@ puzzle = PuzzleGenerator().generate(create_template())
 print([clue.text for clue in puzzle.clues])
 ```
 
+The puzzle PDF uses A4 portrait output. Its Tennis layout shows four anonymous vector girls from left to right, one empty writable name box per position, position numbers 1-4, localized clues, and a separate available-names list. The solution PDF reuses the same lineup and fills the boxes from `puzzle.solution.assignment` without solving again.
+
 To render PDFs for an existing puzzle:
 
 ```python
@@ -91,7 +94,7 @@ src/logical_puzzle_generator/
   constraints/    Constraint classes used by the solver and clue generator
   engine/         Assignment iteration, brute-force solver, statistics, validation, optimizer stub
   generator/      SolutionGenerator, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleTemplate
-  pdf/            TextRenderer and PdfGenerator presentation layer
+  pdf/            TextRenderer, vector lineup renderers, and PdfGenerator presentation layer
   localization.py Language enum and translation catalog
   clue_text_renderer.py Localized clue wording for presentation
   themes/         Built-in puzzle templates, currently Tennis
