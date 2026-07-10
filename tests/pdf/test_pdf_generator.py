@@ -273,15 +273,15 @@ def test_pdf_uses_localized_child_facing_difficulty_labels(
 def test_generated_pdf_shows_localized_calculated_difficulty(tmp_path) -> None:
     puzzle = PuzzleGenerator(random_source=random.Random(1)).generate(create_template())
     assert puzzle.metadata is not None
-    assert puzzle.metadata.difficulty == 2
+    assert puzzle.metadata.difficulty == 1
 
     en_path = tmp_path / "generated-en.pdf"
     de_path = tmp_path / "generated-de.pdf"
     PdfGenerator(language="en").create_puzzle_pdf(puzzle, en_path)
     PdfGenerator(language="de").create_puzzle_pdf(puzzle, de_path)
 
-    assert "Difficulty: Medium" in pdf_text_bytes(en_path)
-    assert "Schwierigkeit: Mittel" in pdf_text_bytes(de_path)
+    assert "Difficulty: Easy" in pdf_text_bytes(en_path)
+    assert "Schwierigkeit: Leicht" in pdf_text_bytes(de_path)
 
 
 def test_missing_difficulty_omits_difficulty_line(tmp_path) -> None:

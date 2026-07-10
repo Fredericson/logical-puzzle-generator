@@ -33,7 +33,7 @@ Dependencies flow inward to the model and engine. The engine does not depend on 
 - `Position`: immutable 1-based ordered position.
 - `Category` and `CategoryType`: named item groups for templates.
 - `Clue` and `ClueType`: human-readable clue model and clue classification.
-- `Metadata`: title, theme, numeric difficulty, author, and version information. The numeric difficulty is estimated after clue reduction from final visible constraints; child-facing labels are a PDF localization concern.
+- `Metadata`: title, theme, numeric difficulty, author, and version information. The numeric difficulty is selected at generation time and stored after classifying final visible constraints by `FixedPositionConstraint` count; child-facing labels are a PDF localization concern.
 - `Puzzle`: items, constraints, clues, optional metadata, and optional solution.
 - `Solution`: generated assignment plus solver iteration metadata.
 
@@ -83,11 +83,13 @@ Defines a title, theme, and categories. `players` returns the first category, wh
 
 Creates a random one-to-one mapping from active items to positions. It accepts a `PuzzleTemplate`, `Puzzle`, or iterable of `Item` objects. A caller may inject `random.Random` for deterministic generation.
 
-### Internal constraint derivation
+### `FixedPositionGenerator`
 
-`PuzzleGenerator` owns constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0.
+Constructs the selected difficulty anchors before relational constraints exist. It determines the required fixed count (Easy 2, Medium 1, Hard 0), randomly selects distinct items and distinct positions with the injected `random.Random`, pairs those fixed assignments, fills remaining items and positions one-to-one, and returns the mandatory `FixedPositionConstraint` instances together with the complete target `Solution`. It does not generate relational constraints, clues, solve, validate, reduce clues, score quality, write metadata, or render PDFs.
 
-Current derivation sorts the generated solution by position and creates a varied set of true positional constraints. It may include far-left and far-right fixed-position constraints, direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. For a one-item puzzle it creates a `FixedPositionConstraint` instead. Derived constraints are de-duplicated and verified against the generated solution.
+### Internal relational constraint derivation
+
+`PuzzleGenerator` owns relational constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0. After `FixedPositionGenerator` returns mandatory anchors and the target solution, relational derivation sorts the solution by position and creates only non-fixed true positional constraints: direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. Relational derivation must not create additional `FixedPositionConstraint` instances. Derived constraints are de-duplicated and verified against the generated solution.
 
 ### `ClueGenerator`
 
@@ -95,20 +97,24 @@ Converts supplied constraint instances into deterministic English `Clue` objects
 
 ### `ClueReducer`
 
-Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
+Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain and the exact requested fixed-position count is preserved. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
 
 ### `PuzzleGenerator`
 
-Coordinates the complete pipeline and validates every stage. It accepts optional injected `SolutionGenerator`, `ClueGenerator`, `Validator`, and `ClueReducer` instances for tests and compatibility. It retries up to `max_attempts` and raises `RuntimeError` with the last failure when generation cannot produce a valid uniquely solvable puzzle.
+Coordinates the complete pipeline and validates every stage. It accepts optional injected `SolutionGenerator`, `FixedPositionGenerator`, `ClueGenerator`, `Validator`, and `ClueReducer` instances for tests and compatibility. It retries up to `max_attempts` and raises `RuntimeError` with the last failure when generation cannot produce a valid uniquely solvable puzzle.
 
 Pipeline:
 
 ```text
 Source template/items
         ↓
-SolutionGenerator
+Difficulty selection
         ↓
-Constraint derivation
+FixedPositionGenerator
+        ↓
+Target Solution + mandatory fixed constraints
+        ↓
+Relational constraint derivation
         ↓
 ClueGenerator
         ↓
@@ -125,7 +131,7 @@ During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles 
 
 After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
 
-The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Its weights are intentionally simple and documented in code: clue-meaning variety receives the largest reward because avoiding repetition is the main quality goal; endpoint clues receive a smaller reward because they give useful starting anchors; adjacent and direct-left/direct-right relationship clues receive medium rewards because they create interesting relational deductions; duplicate meanings and a dominant single meaning receive penalties to keep the distribution balanced. The quality heuristic is separate from difficulty estimation.
+The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Its weights are intentionally simple and documented in code: clue-meaning variety receives the largest reward because avoiding repetition is the main quality goal; adjacent and direct-left/direct-right relationship clues receive medium rewards because they create interesting relational deductions; duplicate meanings and a dominant single meaning receive penalties to keep the distribution balanced. The quality heuristic is separate from difficulty classification and only compares candidates matching the requested difficulty.
 
 The number of valid candidates considered is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant. Seeded `random.Random` inputs remain deterministic because candidate generation consumes randomness in a stable sequence, every valid candidate is scored with a pure deterministic function, and ties are resolved by the stable order of the generated candidate list.
 
@@ -155,7 +161,7 @@ PDF generation is presentation-only. It must not derive constraints, solve puzzl
 
 `themes.tennis.create_template()` returns the built-in Tennis `PuzzleTemplate`.
 
-`create_puzzle.create_puzzle()` generates that template and writes both default PDFs. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default:
+`create_puzzle.create_puzzle()` generates that template and writes both default PDFs. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default. Difficulty may be `easy`, `medium`, `hard`, a `Difficulty` value, or `None` to choose randomly:
 
 ```text
 output/puzzle_3.pdf
@@ -167,9 +173,13 @@ output/puzzle_3_solution.pdf
 ```text
 Theme/PuzzleTemplate or Item iterable
         ↓
-SolutionGenerator
+Difficulty selection
         ↓
-Constraint derivation
+FixedPositionGenerator
+        ↓
+Target Solution + mandatory fixed constraints
+        ↓
+Relational constraint derivation
         ↓
 ClueGenerator
         ↓
@@ -196,14 +206,15 @@ Stable boundaries:
 
 Significant changes to these boundaries require an ADR update.
 
-### `DifficultyEstimator`
+### `DifficultyPolicy`
 
-`DifficultyEstimator` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints) and stores `1`, `2`, or `3` in copied puzzle metadata. The estimator reads only constraint classes: fixed-position anchors, strong direct-left/direct-right relations, ambiguous adjacency, and weak left/right relations. It is a child-oriented heuristic rather than an absolute mathematical complexity measure.
+`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count.
 
 Updated generation order:
 
 ```text
-SolutionGenerator -> private constraint derivation -> ClueGenerator -> Validator
--> ClueReducer (clues and matching constraints together) -> Validator
--> DifficultyEstimator -> quality selection -> PdfGenerator presentation
+Difficulty selection -> FixedPositionGenerator -> target Solution + mandatory fixed constraints
+-> private relational constraint derivation -> ClueGenerator -> Validator
+-> ClueReducer (clues and matching constraints together, exact fixed count preserved) -> Validator
+-> DifficultyPolicy match/classify -> quality selection among matching candidates -> PdfGenerator presentation
 ```

@@ -133,14 +133,22 @@ Status: Accepted
 
 Decision: replace the technical vertical solving table in generated PDFs with an A4 portrait, child-friendly horizontal lineup for the four-player Tennis puzzle. The PDF package owns `GirlFigureRenderer` for anonymous ReportLab vector figures and `PlayerLineupRenderer` for left-to-right position slots, writable boxes, and optional solved labels.
 
-Rationale: the puzzle is intended to be understood visually by children. Keeping illustrations and lineup geometry in focused PDF components preserves the presentation-only boundary: generator, solver, validator, constraints, language semantics, difficulty, and numbering remain unchanged. The solution PDF can safely share the same layout by receiving labels derived from `puzzle.solution.assignment` rather than solving again. Difficulty remains numeric metadata estimated by the generator; localized child-facing difficulty labels are provided by the presentation/localization layer for both puzzle and solution PDFs.
+Rationale: the puzzle is intended to be understood visually by children. Keeping illustrations and lineup geometry in focused PDF components preserves the presentation-only boundary: generator, solver, validator, constraints, language semantics, difficulty, and numbering remain unchanged. The solution PDF can safely share the same layout by receiving labels derived from `puzzle.solution.assignment` rather than solving again. Difficulty remains numeric metadata classified by the generator from final visible fixed-position clues; localized child-facing difficulty labels are provided by the presentation/localization layer for both puzzle and solution PDFs.
 
-## ADR-016: Estimate displayed difficulty from final visible constraints
+## ADR-016: Superseded heuristic difficulty estimate
 
-Decision: `DifficultyEstimator` classifies each reduced puzzle as numeric difficulty `1` (Easy), `2` (Medium), or `3` (Hard) after clue reduction and final uniqueness validation. It uses only the mathematical constraints that correspond one-to-one with visible clues.
+Decision: superseded by ADR-017. The old score-based difficulty heuristic is no longer the authoritative difficulty definition.
 
 Rationale: child-facing difficulty should describe the puzzle the player actually receives. Removed clues, hidden/original constraints, rendered wording, PDF language, and the target solution must not shortcut the estimate.
 
-Heuristic: `FixedPositionConstraint` is an anchor, including far-left, far-right, and any exact middle position. `DirectLeftOfConstraint` and `DirectRightOfConstraint` are strong relations. `AdjacentConstraint` is ambiguous adjacency. `LeftOfConstraint` and `RightOfConstraint` are weak relative relations. Anchors and direct relations ease the score; missing anchors, adjacency-heavy clue sets, and multiple weak relations increase it. The result is deterministic and child-oriented, not a mathematically absolute difficulty proof.
+Current rule: see ADR-017. Only the count of final visible `FixedPositionConstraint` clues matters.
 
 Consequences: future generated clue/constraint types must define their difficulty impact before they are made visible. PDF localization remains presentation-only: `TranslationCatalog` maps stored numeric values to English/German labels and does not estimate difficulty.
+
+## ADR-017: Select difficulty by visible fixed-position clue count
+
+Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only the final reduced puzzle constraints that correspond one-to-one with visible clues. Easy means exactly two visible `FixedPositionConstraint` clues, Medium means exactly one, and Hard means zero. Direct-left, direct-right, adjacent, left-of, and right-of constraints are not fixed-position clues and never count as anchors.
+
+Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child. A fixed-position-count rule is predictable, testable, independent of language/PDF text, and based on the puzzle the child actually sees.
+
+Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitted/`None` chooses randomly with the injected random source), delegates mandatory fixed assignment and target solution construction to `FixedPositionGenerator`, derives relational constraints separately, reduces clues and constraints together while preserving the exact fixed count, validates unique solvability, classifies the final visible constraints, and retries until a matching candidate is found or raises a clear `RuntimeError` after `max_attempts`. Numeric metadata remains `1` Easy, `2` Medium, and `3` Hard. PDF and translation components render stored metadata only and do not recalculate difficulty.

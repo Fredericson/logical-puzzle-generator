@@ -24,7 +24,8 @@ from logical_puzzle_generator.model.solution import Solution
 
 from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
-from .difficulty_estimator import DifficultyEstimator
+from .difficulty import Difficulty, DifficultyPolicy
+from .fixed_position_generator import FixedPositionGenerator
 from .puzzle_template import PuzzleTemplate
 from .solution_generator import SolutionGenerator
 
@@ -32,8 +33,8 @@ QUALITY_CANDIDATE_COUNT = 8
 
 # Rewards one-time use of each clue meaning so varied clue sets beat repetitive ones.
 QUALITY_UNIQUE_MEANING_WEIGHT = 12
-# Endpoint clues anchor the ordering puzzle and are easy for humans to start from.
-QUALITY_ENDPOINT_WEIGHT = 4
+# Endpoint anchors are intentionally not rewarded so random fixed-position slots are not biased to endpoints.
+QUALITY_ENDPOINT_WEIGHT = 0
 # Undirected adjacency clues add useful relational variety without revealing direction.
 QUALITY_ADJACENT_WEIGHT = 3
 # Direct left/right clues are strong but still relational, so they receive adjacency-level weight.
@@ -64,27 +65,27 @@ class PuzzleGenerator:
         clue_generator: ClueGenerator | None = None,
         validator: Validator | None = None,
         clue_reducer: ClueReducer | None = None,
-        difficulty_estimator: DifficultyEstimator | None = None,
+        fixed_position_generator: FixedPositionGenerator | None = None,
+        difficulty: Difficulty | str | None = None,
         max_attempts: int = 100,
     ) -> None:
         if max_attempts < 1:
             raise ValueError("PuzzleGenerator requires at least one attempt.")
 
         self._random = random_source if random_source is not None else random.Random()
-        self._solution_generator = (
-            solution_generator
-            if solution_generator is not None
-            else SolutionGenerator(self._random)
-        )
         self._clue_generator = clue_generator
         self._validator = validator if validator is not None else Validator()
         self._solver = Solver()
         self._clue_reducer = (
             clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
         )
-        self._difficulty_estimator = (
-            difficulty_estimator if difficulty_estimator is not None else DifficultyEstimator()
+        self._difficulty_policy = DifficultyPolicy()
+        self._fixed_position_generator = (
+            fixed_position_generator
+            if fixed_position_generator is not None
+            else FixedPositionGenerator(self._random, solution_generator=solution_generator)
         )
+        self._requested_difficulty = self._difficulty_policy.normalize(difficulty)
         self._max_attempts = max_attempts
 
     def generate(
@@ -97,12 +98,13 @@ class PuzzleGenerator:
         items = self._items_from_source(source)
         self._validate_items(items)
 
+        selected_difficulty = self._select_difficulty()
         last_failure = "generation did not run"
         candidates: list[Puzzle] = []
 
         for attempt in range(1, self._max_attempts + 1):
             try:
-                candidate, failure = self._generate_candidate(source, items)
+                candidate, failure = self._generate_candidate(source, items, selected_difficulty)
                 if failure is not None:
                     last_failure = f"attempt {attempt}: {failure}"
                     continue
@@ -117,21 +119,28 @@ class PuzzleGenerator:
             return max(candidates, key=self._quality_score)
 
         raise RuntimeError(
-            "Unable to generate a valid uniquely solvable puzzle within "
-            f"{self._max_attempts} attempts. Last failure: {last_failure}."
+            "Unable to generate a valid uniquely solvable "
+            f"{selected_difficulty.cli_value} puzzle within {self._max_attempts} attempts. "
+            "Difficulty is defined by final visible FixedPositionConstraint clues "
+            "(easy == 2, medium == 1, hard == 0). "
+            f"Last failure: {last_failure}."
         )
 
     def _generate_candidate(
         self,
         source: PuzzleTemplate | Puzzle | Iterable[Item],
         items: list[Item],
+        difficulty: Difficulty,
     ) -> tuple[Puzzle, None] | tuple[None, str]:
-        solution = self._solution_generator.generate(source)
+        fixed_position_constraints, solution = self._fixed_position_generator.generate(items, difficulty)
         failure = self._solution_failure(solution, items)
         if failure is not None:
             return None, failure
 
-        constraints = self._derive_constraints(solution)
+        constraints = [
+            *fixed_position_constraints,
+            *self._derive_relational_constraints(solution),
+        ]
         failure = self._constraints_failure(constraints, solution)
         if failure is not None:
             return None, failure
@@ -155,7 +164,10 @@ class PuzzleGenerator:
         if not self._validator.has_unique_solution(puzzle):
             return None, "generated puzzle is not uniquely solvable before clue reduction"
 
-        reduced = self._clue_reducer.reduce(puzzle)
+        try:
+            reduced = self._clue_reducer.reduce(puzzle, difficulty=difficulty)
+        except TypeError:
+            reduced = self._clue_reducer.reduce(puzzle)
         failure = self._reduced_puzzle_failure(reduced, items, solution)
         if failure is not None:
             return None, failure
@@ -163,7 +175,14 @@ class PuzzleGenerator:
         if not self._validator.has_unique_solution(reduced):
             return None, "reduced clue set is not uniquely solvable"
 
-        reduced = self._with_estimated_difficulty(reduced)
+        if not self._difficulty_policy.matches(reduced, difficulty):
+            count = self._difficulty_policy.fixed_position_count(reduced)
+            return None, (
+                f"reduced puzzle has {count} visible FixedPositionConstraint clues, "
+                f"which does not match requested difficulty {difficulty.cli_value}"
+            )
+
+        reduced = self._with_estimated_difficulty(reduced, difficulty)
 
         return reduced, None
 
@@ -171,7 +190,7 @@ class PuzzleGenerator:
         meanings = [self._quality_clue_meaning(clue, len(puzzle.items)) for clue in puzzle.clues]
         counts = Counter(meanings)
         unique_type_count = len(counts)
-        endpoint_count = counts[QUALITY_FAR_LEFT_MEANING] + counts[QUALITY_FAR_RIGHT_MEANING]
+        endpoint_count = 0
         adjacent_count = counts[ClueType.ADJACENT.value]
         direct_count = (
             counts[ClueType.DIRECT_LEFT_OF.value] + counts[ClueType.DIRECT_RIGHT_OF.value]
@@ -294,7 +313,12 @@ class PuzzleGenerator:
 
         return None
 
-    def _derive_constraints(
+    def _select_difficulty(self) -> Difficulty:
+        if self._requested_difficulty is not None:
+            return self._requested_difficulty
+        return self._random.choice(list(Difficulty))
+
+    def _derive_relational_constraints(
         self,
         solution: Solution,
     ) -> list[Constraint]:
@@ -308,21 +332,7 @@ class PuzzleGenerator:
         item_count = len(ordered_items)
 
         if item_count == 1:
-            item = ordered_items[0]
-            self._append_unique(
-                constraints,
-                seen,
-                FixedPositionConstraint(item, Position(1)),
-            )
             return constraints
-
-        endpoint_constraints = [
-            FixedPositionConstraint(ordered_items[0], Position(1)),
-            FixedPositionConstraint(ordered_items[-1], Position(item_count)),
-        ]
-        self._random.shuffle(endpoint_constraints)
-        for constraint in endpoint_constraints:
-            self._append_unique(constraints, seen, constraint)
 
         adjacent_constraints: list[Constraint] = []
         for left_item, right_item in zip(ordered_items, ordered_items[1:], strict=False):
@@ -456,11 +466,10 @@ class PuzzleGenerator:
 
         return None
 
-    def _with_estimated_difficulty(self, puzzle: Puzzle) -> Puzzle:
-        difficulty = self._difficulty_estimator.estimate(puzzle)
+    def _with_estimated_difficulty(self, puzzle: Puzzle, difficulty: Difficulty) -> Puzzle:
         metadata = self._copy_metadata(puzzle.metadata)
         if metadata is not None:
-            metadata.difficulty = difficulty
+            metadata.difficulty = difficulty.metadata_value
 
         return Puzzle(
             items=puzzle.items,

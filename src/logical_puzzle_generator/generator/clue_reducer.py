@@ -8,6 +8,7 @@ from logical_puzzle_generator.constraints.fixed_position import FixedPositionCon
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.engine.validator import Validator
+from logical_puzzle_generator.generator.difficulty import Difficulty, DifficultyPolicy
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.puzzle import Puzzle
 
@@ -30,6 +31,7 @@ class ClueReducer:
     def reduce(
         self,
         puzzle: Puzzle,
+        difficulty: Difficulty | str | None = None,
     ) -> Puzzle:
         """
         Return a puzzle reduced by the deterministic remove-and-validate pass.
@@ -52,6 +54,12 @@ class ClueReducer:
                 candidate = self._copy_with_clues(reduced, candidate_clues)
 
                 if self._would_remove_required_variation(reduced, candidate):
+                    continue
+
+                if (
+                    difficulty is not None
+                    and not DifficultyPolicy().can_remove_to_match(candidate, difficulty)
+                ):
                     continue
 
                 if self._validator.has_unique_solution(candidate):

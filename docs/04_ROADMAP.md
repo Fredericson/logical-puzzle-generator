@@ -33,7 +33,7 @@ Potential next release work:
 - Multi-category puzzle relationships.
 - Additional implemented constraints such as not-adjacent, between, and not-position.
 - Richer clue generation from multiple categories.
-- Puzzle-quality scoring remains intentionally simple. Difficulty estimation is implemented with a child-oriented heuristic derived from the final visible constraints after clue reduction.
+- Puzzle-quality scoring remains intentionally simple and only compares candidates that already match the requested difficulty. Difficulty selection is implemented with the final visible fixed-position-count rule after clue reduction.
 - More sophisticated clue minimization/optimization.
 - JSON export and import.
 - Batch generation.
@@ -51,4 +51,4 @@ Potential next release work:
 
 ## Commit 11.5 status
 
-Completed: final visible constraint difficulty estimation. The generator now calculates stored numeric difficulty after clue reduction and validation. Remaining future work may add user-requested difficulty generation, but no CLI selector or retry-until-requested-difficulty behavior exists yet.
+Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final reduced uniquely solvable puzzle has the requested visible FixedPositionConstraint count.

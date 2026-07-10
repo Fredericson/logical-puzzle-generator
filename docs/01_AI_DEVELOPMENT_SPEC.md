@@ -64,19 +64,25 @@ The application shall:
 ```text
 Source template, puzzle, or iterable of Item
         ↓
-SolutionGenerator.generate(source)
+Select requested/random Difficulty
         ↓
-PuzzleGenerator._derive_constraints(solution)
+FixedPositionGenerator.generate(items, difficulty)
         ↓
-ClueGenerator.generate(constraints)
+Target Solution + mandatory FixedPositionConstraint anchors
+        ↓
+PuzzleGenerator._derive_relational_constraints(solution)
+        ↓
+ClueGenerator.generate(fixed + relational constraints)
         ↓
 Puzzle assembly
         ↓
 Validator.has_unique_solution(puzzle)
         ↓
-ClueReducer.reduce(puzzle)
+ClueReducer.reduce(puzzle, difficulty) preserving exact fixed count
         ↓
 Validator.has_unique_solution(reduced)
+        ↓
+DifficultyPolicy match/classify
         ↓
 Return Puzzle or retry until max_attempts is exhausted
 ```
@@ -187,4 +193,4 @@ Puzzle difficulty remains numeric internal metadata, calculated from final visib
 
 ## 13. Commit 11.5 difficulty estimation requirement
 
-Difficulty is calculated after clue reduction from the final visible constraints only. `FixedPositionConstraint` anchors (far left, far right, or exact position) make puzzles easier; direct left/right relations are strong; adjacency is ambiguous; plain left/right relations are weak. The heuristic is deterministic and child-oriented, not an absolute proof of solving complexity. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
+Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.

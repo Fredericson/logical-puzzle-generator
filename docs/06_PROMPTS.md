@@ -74,6 +74,6 @@ Limit code changes to release metadata, comments, documentation examples, or obv
 
 When changing PDF difficulty presentation, keep numeric difficulty metadata semantic and localize child-facing labels only in the presentation/localization layer. Puzzle and solution PDFs should share the same mapping and must not show raw difficulty numbers.
 
-### Difficulty estimation prompts
+### Difficulty policy prompts
 
-For difficulty work, keep the estimator in the generator layer and calculate from final visible constraints after reduction. Do not add CLI difficulty selection, retry-until-difficulty, PDF scoring logic, or translation-layer estimation.
+For difficulty work, keep `DifficultyPolicy` and `FixedPositionGenerator` in the generator layer. Fixed assignments are created before relational constraints, final difficulty is classified from visible constraints after reduction, and generation retries until the requested exact fixed-position-count rule matches. Do not add PDF scoring logic or translation-layer estimation.
