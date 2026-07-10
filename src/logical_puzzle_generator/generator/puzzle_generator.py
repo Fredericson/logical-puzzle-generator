@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 from collections import Counter
 from collections.abc import Iterable
 
@@ -23,6 +24,7 @@ from logical_puzzle_generator.model.solution import Solution
 
 from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
+from .difficulty_estimator import DifficultyEstimator
 from .puzzle_template import PuzzleTemplate
 from .solution_generator import SolutionGenerator
 
@@ -62,6 +64,7 @@ class PuzzleGenerator:
         clue_generator: ClueGenerator | None = None,
         validator: Validator | None = None,
         clue_reducer: ClueReducer | None = None,
+        difficulty_estimator: DifficultyEstimator | None = None,
         max_attempts: int = 100,
     ) -> None:
         if max_attempts < 1:
@@ -78,6 +81,9 @@ class PuzzleGenerator:
         self._solver = Solver()
         self._clue_reducer = (
             clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
+        )
+        self._difficulty_estimator = (
+            difficulty_estimator if difficulty_estimator is not None else DifficultyEstimator()
         )
         self._max_attempts = max_attempts
 
@@ -156,6 +162,8 @@ class PuzzleGenerator:
 
         if not self._validator.has_unique_solution(reduced):
             return None, "reduced clue set is not uniquely solvable"
+
+        reduced = self._with_estimated_difficulty(reduced)
 
         return reduced, None
 
@@ -444,6 +452,26 @@ class PuzzleGenerator:
             )
 
         if isinstance(source, Puzzle):
-            return source.metadata
+            return self._copy_metadata(source.metadata)
 
         return None
+
+    def _with_estimated_difficulty(self, puzzle: Puzzle) -> Puzzle:
+        difficulty = self._difficulty_estimator.estimate(puzzle)
+        metadata = self._copy_metadata(puzzle.metadata)
+        if metadata is not None:
+            metadata.difficulty = difficulty
+
+        return Puzzle(
+            items=puzzle.items,
+            constraints=puzzle.constraints,
+            clues=puzzle.clues,
+            metadata=metadata,
+            solution=puzzle.solution,
+        )
+
+    def _copy_metadata(self, metadata: Metadata | None) -> Metadata | None:
+        if metadata is None:
+            return None
+
+        return replace(metadata)

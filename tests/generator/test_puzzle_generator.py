@@ -6,6 +6,8 @@ import pytest
 
 from logical_puzzle_generator.constraints import (
     AdjacentConstraint,
+    DirectLeftOfConstraint,
+    DirectRightOfConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
 )
@@ -73,7 +75,10 @@ def test_generate_validates_uniqueness() -> None:
     ).generate(create_template())
 
     assert len(validator.puzzles) >= 2
-    assert validator.puzzles[-1] == puzzle
+    assert validator.puzzles[-1].items == puzzle.items
+    assert validator.puzzles[-1].constraints == puzzle.constraints
+    assert validator.puzzles[-1].clues == puzzle.clues
+    assert validator.puzzles[-1].solution == puzzle.solution
     assert all(
         validator.puzzles[index] == validator.puzzles[index + 1]
         for index in range(0, len(validator.puzzles), 2)
@@ -406,3 +411,90 @@ def _visible_clue_meaning(clue: Clue) -> str:
         return "far_right"
 
     return clue.clue_type.value
+
+
+class AnchorDirectClueReducer:
+    def reduce(self, puzzle: Puzzle) -> Puzzle:
+        selected = [
+            clue
+            for clue in puzzle.clues
+            if isinstance(
+                clue.constraint,
+                FixedPositionConstraint | DirectLeftOfConstraint | DirectRightOfConstraint,
+            )
+        ][:3]
+        return Puzzle(
+            items=puzzle.items,
+            constraints=[clue.constraint for clue in selected],
+            clues=selected,
+            metadata=puzzle.metadata,
+            solution=puzzle.solution,
+        )
+
+
+class RecordingDifficultyEstimator:
+    def __init__(self) -> None:
+        self.puzzles: list[Puzzle] = []
+
+    def estimate(self, puzzle: Puzzle) -> int:
+        self.puzzles.append(puzzle)
+        return 3
+
+
+def test_difficulty_is_estimated_after_clue_reduction_from_visible_constraints() -> None:
+    estimator = RecordingDifficultyEstimator()
+
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(7),
+        difficulty_estimator=estimator,
+    ).generate(create_template())
+
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty == 3
+    assert len(estimator.puzzles) >= 1
+    assert any(
+        estimated.clues == puzzle.clues and estimated.constraints == puzzle.constraints
+        for estimated in estimator.puzzles
+    )
+    assert all(
+        [clue.constraint for clue in estimated.clues] == estimated.constraints
+        for estimated in estimator.puzzles
+    )
+
+
+def test_generated_puzzle_metadata_difficulty_can_report_multiple_levels() -> None:
+    default_puzzle = PuzzleGenerator(random_source=random.Random(1)).generate(create_template())
+    anchored_puzzle = PuzzleGenerator(
+        random_source=random.Random(1),
+        clue_reducer=AnchorDirectClueReducer(),
+    ).generate(create_template())
+
+    assert default_puzzle.metadata is not None
+    assert anchored_puzzle.metadata is not None
+    difficulties = {default_puzzle.metadata.difficulty, anchored_puzzle.metadata.difficulty}
+    assert difficulties <= {1, 2, 3}
+    assert len(difficulties) >= 2
+
+
+def test_seeded_generation_is_deterministic_including_difficulty() -> None:
+    template = create_template()
+
+    first = PuzzleGenerator(random_source=random.Random(101)).generate(template)
+    second = PuzzleGenerator(random_source=random.Random(101)).generate(template)
+
+    assert first.metadata is not None
+    assert second.metadata is not None
+    assert first.metadata.difficulty == second.metadata.difficulty
+
+
+def test_source_puzzle_metadata_is_copied_not_mutated() -> None:
+    source = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
+    assert source.metadata is not None
+    source.metadata.difficulty = 1
+
+    generated = PuzzleGenerator(random_source=random.Random(8)).generate(source)
+
+    assert generated.metadata is not None
+    assert generated.metadata is not source.metadata
+    assert source.metadata.difficulty == 1
+    assert generated.metadata.difficulty in {1, 2, 3}
