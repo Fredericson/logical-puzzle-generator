@@ -33,7 +33,7 @@ Dependencies flow inward to the model and engine. The engine does not depend on 
 - `Position`: immutable 1-based ordered position.
 - `Category` and `CategoryType`: named item groups for templates.
 - `Clue` and `ClueType`: human-readable clue model and clue classification.
-- `Metadata`: title, theme, numeric difficulty, author, and version information. The numeric difficulty is estimated after clue reduction from final visible constraints; child-facing labels are a PDF localization concern.
+- `Metadata`: title, theme, numeric difficulty, author, and version information. The numeric difficulty is selected at generation time and stored after classifying final visible constraints by `FixedPositionConstraint` count; child-facing labels are a PDF localization concern.
 - `Puzzle`: items, constraints, clues, optional metadata, and optional solution.
 - `Solution`: generated assignment plus solver iteration metadata.
 
@@ -125,7 +125,7 @@ During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles 
 
 After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
 
-The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Its weights are intentionally simple and documented in code: clue-meaning variety receives the largest reward because avoiding repetition is the main quality goal; endpoint clues receive a smaller reward because they give useful starting anchors; adjacent and direct-left/direct-right relationship clues receive medium rewards because they create interesting relational deductions; duplicate meanings and a dominant single meaning receive penalties to keep the distribution balanced. The quality heuristic is separate from difficulty estimation.
+The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Its weights are intentionally simple and documented in code: clue-meaning variety receives the largest reward because avoiding repetition is the main quality goal; endpoint clues receive a smaller reward because they give useful starting anchors; adjacent and direct-left/direct-right relationship clues receive medium rewards because they create interesting relational deductions; duplicate meanings and a dominant single meaning receive penalties to keep the distribution balanced. The quality heuristic is separate from difficulty classification and only compares candidates matching the requested difficulty.
 
 The number of valid candidates considered is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant. Seeded `random.Random` inputs remain deterministic because candidate generation consumes randomness in a stable sequence, every valid candidate is scored with a pure deterministic function, and ties are resolved by the stable order of the generated candidate list.
 
@@ -196,14 +196,14 @@ Stable boundaries:
 
 Significant changes to these boundaries require an ADR update.
 
-### `DifficultyEstimator`
+### `DifficultyPolicy`
 
-`DifficultyEstimator` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints) and stores `1`, `2`, or `3` in copied puzzle metadata. The estimator reads only constraint classes: fixed-position anchors, strong direct-left/direct-right relations, ambiguous adjacency, and weak left/right relations. It is a child-oriented heuristic rather than an absolute mathematical complexity measure.
+`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means at least two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count.
 
 Updated generation order:
 
 ```text
 SolutionGenerator -> private constraint derivation -> ClueGenerator -> Validator
 -> ClueReducer (clues and matching constraints together) -> Validator
--> DifficultyEstimator -> quality selection -> PdfGenerator presentation
+-> DifficultyPolicy match/classify -> quality selection among matching candidates -> PdfGenerator presentation
 ```

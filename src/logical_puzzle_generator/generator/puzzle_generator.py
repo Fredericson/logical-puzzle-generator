@@ -24,7 +24,7 @@ from logical_puzzle_generator.model.solution import Solution
 
 from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
-from .difficulty_estimator import DifficultyEstimator
+from .difficulty import Difficulty, DifficultyPolicy
 from .puzzle_template import PuzzleTemplate
 from .solution_generator import SolutionGenerator
 
@@ -64,7 +64,8 @@ class PuzzleGenerator:
         clue_generator: ClueGenerator | None = None,
         validator: Validator | None = None,
         clue_reducer: ClueReducer | None = None,
-        difficulty_estimator: DifficultyEstimator | None = None,
+        difficulty_estimator: DifficultyPolicy | None = None,
+        difficulty: Difficulty | str = Difficulty.MEDIUM,
         max_attempts: int = 100,
     ) -> None:
         if max_attempts < 1:
@@ -82,9 +83,9 @@ class PuzzleGenerator:
         self._clue_reducer = (
             clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
         )
-        self._difficulty_estimator = (
-            difficulty_estimator if difficulty_estimator is not None else DifficultyEstimator()
-        )
+        self._difficulty_policy = DifficultyPolicy()
+        self._metadata_difficulty_estimator = difficulty_estimator
+        self._difficulty = self._difficulty_policy.normalize(difficulty)
         self._max_attempts = max_attempts
 
     def generate(
@@ -117,8 +118,11 @@ class PuzzleGenerator:
             return max(candidates, key=self._quality_score)
 
         raise RuntimeError(
-            "Unable to generate a valid uniquely solvable puzzle within "
-            f"{self._max_attempts} attempts. Last failure: {last_failure}."
+            "Unable to generate a valid uniquely solvable "
+            f"{self._difficulty.cli_value} puzzle within {self._max_attempts} attempts. "
+            "Difficulty is defined by final visible FixedPositionConstraint clues "
+            "(easy >= 2, medium == 1, hard == 0). "
+            f"Last failure: {last_failure}."
         )
 
     def _generate_candidate(
@@ -155,13 +159,23 @@ class PuzzleGenerator:
         if not self._validator.has_unique_solution(puzzle):
             return None, "generated puzzle is not uniquely solvable before clue reduction"
 
-        reduced = self._clue_reducer.reduce(puzzle)
+        try:
+            reduced = self._clue_reducer.reduce(puzzle, difficulty=self._difficulty)
+        except TypeError:
+            reduced = self._clue_reducer.reduce(puzzle)
         failure = self._reduced_puzzle_failure(reduced, items, solution)
         if failure is not None:
             return None, failure
 
         if not self._validator.has_unique_solution(reduced):
             return None, "reduced clue set is not uniquely solvable"
+
+        if not self._difficulty_policy.matches(reduced, self._difficulty):
+            count = self._difficulty_policy.fixed_position_count(reduced)
+            return None, (
+                f"reduced puzzle has {count} visible FixedPositionConstraint clues, "
+                f"which does not match requested difficulty {self._difficulty.cli_value}"
+            )
 
         reduced = self._with_estimated_difficulty(reduced)
 
@@ -457,7 +471,11 @@ class PuzzleGenerator:
         return None
 
     def _with_estimated_difficulty(self, puzzle: Puzzle) -> Puzzle:
-        difficulty = self._difficulty_estimator.estimate(puzzle)
+        difficulty = (
+            self._metadata_difficulty_estimator.estimate(puzzle)
+            if self._metadata_difficulty_estimator is not None
+            else self._difficulty_policy.metadata_value(puzzle)
+        )
         metadata = self._copy_metadata(puzzle.metadata)
         if metadata is not None:
             metadata.difficulty = difficulty

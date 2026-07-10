@@ -76,4 +76,4 @@ When changing PDF difficulty presentation, keep numeric difficulty metadata sema
 
 ### Difficulty estimation prompts
 
-For difficulty work, keep the estimator in the generator layer and calculate from final visible constraints after reduction. Do not add CLI difficulty selection, retry-until-difficulty, PDF scoring logic, or translation-layer estimation.
+For difficulty work, keep `DifficultyPolicy` in the generator layer and calculate from final visible constraints after reduction. CLI/API difficulty selection is supported; generation retries until the requested fixed-position-count rule matches. Do not add PDF scoring logic or translation-layer estimation.

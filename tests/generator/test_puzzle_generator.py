@@ -72,6 +72,7 @@ def test_generate_validates_uniqueness() -> None:
         random_source=random.Random(11),
         validator=validator,
         clue_reducer=IdentityClueReducer(),
+        difficulty="easy",
     ).generate(create_template())
 
     assert len(validator.puzzles) >= 2
@@ -92,6 +93,7 @@ def test_generate_retries_when_puzzle_is_not_unique() -> None:
         random_source=random.Random(13),
         validator=validator,
         clue_reducer=IdentityClueReducer(),
+        difficulty="easy",
         max_attempts=3,
     ).generate(create_template())
 
@@ -467,6 +469,7 @@ def test_generated_puzzle_metadata_difficulty_can_report_multiple_levels() -> No
     anchored_puzzle = PuzzleGenerator(
         random_source=random.Random(1),
         clue_reducer=AnchorDirectClueReducer(),
+        difficulty="easy",
     ).generate(create_template())
 
     assert default_puzzle.metadata is not None
@@ -498,3 +501,65 @@ def test_source_puzzle_metadata_is_copied_not_mutated() -> None:
     assert generated.metadata is not source.metadata
     assert source.metadata.difficulty == 1
     assert generated.metadata.difficulty in {1, 2, 3}
+
+
+def _fixed_position_count(puzzle: Puzzle) -> int:
+    return sum(isinstance(constraint, FixedPositionConstraint) for constraint in puzzle.constraints)
+
+
+@pytest.mark.parametrize(
+    ("difficulty", "expected_metadata", "expected_count"),
+    [("easy", 1, 2), ("medium", 2, 1), ("hard", 3, 0)],
+)
+def test_requested_difficulty_controls_final_visible_fixed_position_count(
+    difficulty: str, expected_metadata: int, expected_count: int
+) -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty=difficulty).generate(create_template())
+    result = Solver().solve(puzzle, stop_after=2)
+
+    assert result.has_unique_solution
+    assert result.solutions[0] == puzzle.solution.assignment
+    assert len(puzzle.clues) == len(puzzle.constraints)
+    assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
+    assert _fixed_position_count(puzzle) == expected_count if difficulty != "easy" else _fixed_position_count(puzzle) >= expected_count
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty == expected_metadata
+
+
+def test_typed_requested_difficulty_is_supported() -> None:
+    from logical_puzzle_generator.generator import Difficulty
+
+    puzzle = PuzzleGenerator(random_source=random.Random(2), difficulty=Difficulty.HARD).generate(create_template())
+
+    assert _fixed_position_count(puzzle) == 0
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty == 3
+
+
+def test_generation_retries_until_requested_difficulty_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+    original = PuzzleGenerator._generate_candidate
+
+    def mismatching_once(self: PuzzleGenerator, source, items):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return None, "reduced puzzle has 2 visible FixedPositionConstraint clues, which does not match requested difficulty medium"
+        return original(self, source, items)
+
+    monkeypatch.setattr(PuzzleGenerator, "_generate_candidate", mismatching_once)
+
+    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty="medium", max_attempts=10).generate(create_template())
+
+    assert calls >= 2
+    assert _fixed_position_count(puzzle) == 1
+
+
+def test_generation_raises_clear_error_when_no_matching_difficulty_can_be_generated() -> None:
+    with pytest.raises(RuntimeError, match="Unable to generate a valid uniquely solvable hard puzzle"):
+        PuzzleGenerator(
+            random_source=random.Random(1),
+            difficulty="hard",
+            clue_reducer=IdentityClueReducer(),
+            max_attempts=1,
+        ).generate(create_template())

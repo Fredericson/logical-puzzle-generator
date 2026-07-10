@@ -120,4 +120,4 @@ mypy src
 
 ### Difficulty-estimator guidance
 
-When adding a visible clue or constraint type, update `DifficultyEstimator` tests and documentation with its intended difficulty impact. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog. Estimate only from final visible constraints after clue reduction.
+Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraints after clue reduction and count `FixedPositionConstraint` clues. Easy is >=2, Medium is exactly 1, Hard is 0. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog.
