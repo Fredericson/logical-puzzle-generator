@@ -35,11 +35,12 @@ class ClueReducer:
         while changed:
             changed = False
 
+            if len(reduced.clues) <= 1:
+                break
+
             for index in range(len(reduced.clues)):
                 candidate_clues = [
-                    clue
-                    for clue_index, clue in enumerate(reduced.clues)
-                    if clue_index != index
+                    clue for clue_index, clue in enumerate(reduced.clues) if clue_index != index
                 ]
                 candidate = self._copy_with_clues(reduced, candidate_clues)
 
