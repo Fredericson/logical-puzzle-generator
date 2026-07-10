@@ -6,6 +6,8 @@ from collections.abc import Iterable
 from logical_puzzle_generator.constraints.adjacent import AdjacentConstraint
 from logical_puzzle_generator.constraints.base import Constraint
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
+from logical_puzzle_generator.constraints.direct_left_of import DirectLeftOfConstraint
+from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.engine.solver import Solver
@@ -45,12 +47,13 @@ class PuzzleGenerator:
         if max_attempts < 1:
             raise ValueError("PuzzleGenerator requires at least one attempt.")
 
+        self._random = random_source if random_source is not None else random.Random()
         self._solution_generator = (
             solution_generator
             if solution_generator is not None
-            else SolutionGenerator(random_source)
+            else SolutionGenerator(self._random)
         )
-        self._clue_generator = clue_generator if clue_generator is not None else ClueGenerator()
+        self._clue_generator = clue_generator
         self._validator = validator if validator is not None else Validator()
         self._solver = Solver()
         self._clue_reducer = (
@@ -84,7 +87,12 @@ class PuzzleGenerator:
                     last_failure = f"attempt {attempt}: {failure}"
                     continue
 
-                clues = self._clue_generator.generate(constraints)
+                clue_generator = (
+                    self._clue_generator
+                    if self._clue_generator is not None
+                    else ClueGenerator(len(items))
+                )
+                clues = clue_generator.generate(constraints)
                 failure = self._clues_failure(clues)
                 if failure is not None:
                     last_failure = f"attempt {attempt}: {failure}"
@@ -223,34 +231,52 @@ class PuzzleGenerator:
     ) -> list[Constraint]:
         ordered_items = sorted(
             solution.positions,
-            key=lambda item: solution.assignment.position_of(item),
+            key=lambda item: solution.assignment.position_of(item).index,
         )
 
         constraints: list[Constraint] = []
         seen: set[tuple[object, ...]] = set()
+        item_count = len(ordered_items)
 
-        if len(ordered_items) == 1:
+        if item_count == 1:
             item = ordered_items[0]
             self._append_unique(
                 constraints,
                 seen,
-                FixedPositionConstraint(
-                    item,
-                    solution.assignment.position_of(item),
-                ),
+                FixedPositionConstraint(item, Position(1)),
             )
             return constraints
 
-        for left_item, right_item in zip(
-            ordered_items,
-            ordered_items[1:],
-            strict=False,
-        ):
-            self._append_unique(
-                constraints,
-                seen,
-                LeftOfConstraint(left_item, right_item),
-            )
+        endpoint_constraints = [
+            FixedPositionConstraint(ordered_items[0], Position(1)),
+            FixedPositionConstraint(ordered_items[-1], Position(item_count)),
+        ]
+        self._random.shuffle(endpoint_constraints)
+        for constraint in endpoint_constraints:
+            self._append_unique(constraints, seen, constraint)
+
+        adjacent_constraints: list[Constraint] = []
+        for left_item, right_item in zip(ordered_items, ordered_items[1:], strict=False):
+            if self._random.choice([True, False]):
+                adjacent_constraints.append(DirectLeftOfConstraint(left_item, right_item))
+            else:
+                adjacent_constraints.append(DirectRightOfConstraint(right_item, left_item))
+
+        self._random.shuffle(adjacent_constraints)
+        for constraint in adjacent_constraints:
+            self._append_unique(constraints, seen, constraint)
+
+        relational_constraints: list[Constraint] = []
+        for left_index, left_item in enumerate(ordered_items):
+            for right_item in ordered_items[left_index + 2 :]:
+                if self._random.choice([True, False]):
+                    relational_constraints.append(LeftOfConstraint(left_item, right_item))
+                else:
+                    relational_constraints.append(RightOfConstraint(right_item, left_item))
+
+        self._random.shuffle(relational_constraints)
+        for constraint in relational_constraints:
+            self._append_unique(constraints, seen, constraint)
 
         return constraints
 
@@ -273,6 +299,20 @@ class PuzzleGenerator:
                 FixedPositionConstraint,
                 constraint.item,
                 constraint.position,
+            )
+
+        if isinstance(constraint, DirectLeftOfConstraint):
+            return (
+                DirectLeftOfConstraint,
+                constraint.left,
+                constraint.right,
+            )
+
+        if isinstance(constraint, DirectRightOfConstraint):
+            return (
+                DirectRightOfConstraint,
+                constraint.right,
+                constraint.left,
             )
 
         if isinstance(constraint, LeftOfConstraint):

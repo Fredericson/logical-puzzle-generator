@@ -14,6 +14,10 @@ class ClueType(str, Enum):
 
     RIGHT_OF = "right_of"
 
+    DIRECT_LEFT_OF = "direct_left_of"
+
+    DIRECT_RIGHT_OF = "direct_right_of"
+
     ADJACENT = "adjacent"
 
     NOT_ADJACENT = "not_adjacent"
