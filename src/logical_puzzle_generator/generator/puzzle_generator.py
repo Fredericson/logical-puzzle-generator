@@ -12,6 +12,7 @@ from logical_puzzle_generator.constraints.direct_left_of import DirectLeftOfCons
 from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
+from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.engine.solver import Solver
 from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.model.clue import Clue
@@ -32,8 +33,8 @@ QUALITY_CANDIDATE_COUNT = 8
 
 # Rewards one-time use of each clue meaning so varied clue sets beat repetitive ones.
 QUALITY_UNIQUE_MEANING_WEIGHT = 12
-# Endpoint clues anchor the ordering puzzle and are easy for humans to start from.
-QUALITY_ENDPOINT_WEIGHT = 4
+# Endpoint anchors are intentionally not rewarded so random fixed-position slots are not biased to endpoints.
+QUALITY_ENDPOINT_WEIGHT = 0
 # Undirected adjacency clues add useful relational variety without revealing direction.
 QUALITY_ADJACENT_WEIGHT = 3
 # Direct left/right clues are strong but still relational, so they receive adjacency-level weight.
@@ -130,12 +131,12 @@ class PuzzleGenerator:
         source: PuzzleTemplate | Puzzle | Iterable[Item],
         items: list[Item],
     ) -> tuple[Puzzle, None] | tuple[None, str]:
-        solution = self._solution_generator.generate(source)
+        fixed_position_constraints, solution = self._solution_with_requested_fixed_positions(source, items)
         failure = self._solution_failure(solution, items)
         if failure is not None:
             return None, failure
 
-        constraints = self._derive_constraints(solution)
+        constraints = self._derive_constraints(solution, fixed_position_constraints)
         failure = self._constraints_failure(constraints, solution)
         if failure is not None:
             return None, failure
@@ -185,7 +186,7 @@ class PuzzleGenerator:
         meanings = [self._quality_clue_meaning(clue, len(puzzle.items)) for clue in puzzle.clues]
         counts = Counter(meanings)
         unique_type_count = len(counts)
-        endpoint_count = counts[QUALITY_FAR_LEFT_MEANING] + counts[QUALITY_FAR_RIGHT_MEANING]
+        endpoint_count = 0
         adjacent_count = counts[ClueType.ADJACENT.value]
         direct_count = (
             counts[ClueType.DIRECT_LEFT_OF.value] + counts[ClueType.DIRECT_RIGHT_OF.value]
@@ -308,9 +309,64 @@ class PuzzleGenerator:
 
         return None
 
+    def _solution_with_requested_fixed_positions(
+        self,
+        source: PuzzleTemplate | Puzzle | Iterable[Item],
+        items: list[Item],
+    ) -> tuple[list[FixedPositionConstraint], Solution]:
+        if self._solution_generator.__class__ is not SolutionGenerator:
+            solution = self._solution_generator.generate(source)
+            if not isinstance(solution, Solution):
+                return [], solution
+            return self._selected_fixed_position_constraints(solution), solution
+
+        selected_positions = self._selected_fixed_positions(len(items))
+        if not selected_positions:
+            return [], self._solution_generator.generate(source)
+
+        selected_items = self._random.sample(items, k=len(selected_positions))
+        assignment_by_item: dict[Item, Position] = dict(zip(selected_items, selected_positions, strict=True))
+        remaining_items = [item for item in items if item not in assignment_by_item]
+        remaining_positions = [
+            Position(index)
+            for index in range(1, len(items) + 1)
+            if Position(index) not in assignment_by_item.values()
+        ]
+        self._random.shuffle(remaining_positions)
+        assignment_by_item.update(dict(zip(remaining_items, remaining_positions, strict=True)))
+
+        solution = Solution(Assignment(assignment_by_item))
+        fixed_constraints = [
+            FixedPositionConstraint(item, assignment_by_item[item]) for item in selected_items
+        ]
+        return fixed_constraints, solution
+
+    def _selected_fixed_positions(self, item_count: int) -> list[Position]:
+        if self._difficulty is Difficulty.HARD:
+            return []
+
+        required_count = 2 if self._difficulty is Difficulty.EASY else 1
+        if item_count < required_count:
+            return []
+
+        position_indexes = self._random.sample(range(1, item_count + 1), k=required_count)
+        return [Position(index) for index in position_indexes]
+
+    def _selected_fixed_position_constraints(
+        self,
+        solution: Solution,
+    ) -> list[FixedPositionConstraint]:
+        positions = self._selected_fixed_positions(len(solution.positions))
+        if not positions:
+            return []
+
+        items_by_position = {position: item for item, position in solution.positions.items()}
+        return [FixedPositionConstraint(items_by_position[position], position) for position in positions]
+
     def _derive_constraints(
         self,
         solution: Solution,
+        fixed_position_constraints: list[FixedPositionConstraint] | None = None,
     ) -> list[Constraint]:
         ordered_items = sorted(
             solution.positions,
@@ -321,22 +377,11 @@ class PuzzleGenerator:
         seen: set[tuple[object, ...]] = set()
         item_count = len(ordered_items)
 
-        if item_count == 1:
-            item = ordered_items[0]
-            self._append_unique(
-                constraints,
-                seen,
-                FixedPositionConstraint(item, Position(1)),
-            )
-            return constraints
-
-        endpoint_constraints = [
-            FixedPositionConstraint(ordered_items[0], Position(1)),
-            FixedPositionConstraint(ordered_items[-1], Position(item_count)),
-        ]
-        self._random.shuffle(endpoint_constraints)
-        for constraint in endpoint_constraints:
+        for constraint in fixed_position_constraints or []:
             self._append_unique(constraints, seen, constraint)
+
+        if item_count == 1 and constraints:
+            return constraints
 
         adjacent_constraints: list[Constraint] = []
         for left_item, right_item in zip(ordered_items, ordered_items[1:], strict=False):
