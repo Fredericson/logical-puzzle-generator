@@ -2,3 +2,4 @@ pytest
 ruff
 black
 mypy
+setuptools>=64
