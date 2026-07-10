@@ -33,7 +33,7 @@ Dependencies flow inward to the model and engine. The engine does not depend on 
 - `Position`: immutable 1-based ordered position.
 - `Category` and `CategoryType`: named item groups for templates.
 - `Clue` and `ClueType`: human-readable clue model and clue classification.
-- `Metadata`: title, theme, difficulty, author, and version information.
+- `Metadata`: title, theme, numeric difficulty, author, and version information. The numeric difficulty is stored unchanged; child-facing labels are a PDF localization concern.
 - `Puzzle`: items, constraints, clues, optional metadata, and optional solution.
 - `Solution`: generated assignment plus solver iteration metadata.
 
@@ -133,7 +133,7 @@ The number of valid candidates considered is controlled by the internal `QUALITY
 
 `Language` defines supported presentation languages: `Language.ENGLISH` (`en`) and `Language.GERMAN` (`de`). `TranslationCatalog` centralizes PDF headings, labels, CLI-facing output labels, and metadata-title translations. `ClueTextRenderer` renders clue wording from each clue's linked constraint in the selected language. This keeps German wording out of constraints, solver, validator, and generator logic. English remains the default and uses stored `Clue.text` for backward compatibility.
 
-German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Trage die Namen ein`, `Verfügbare Namen`, and `Lösung`.
+PDF difficulty labels are localized presentation text: English maps numeric metadata `1`, `2`, and `>=3` to `Easy`, `Medium`, and `Hard`; German maps them to `Leicht`, `Mittel`, and `Schwierig`. Missing difficulty omits the line, while invalid values fail clearly. German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Trage die Namen ein`, `Verfügbare Namen`, and `Lösung`.
 
 ## 8. PDF package
 

@@ -68,3 +68,8 @@ Verify installation instructions, command examples, public API examples, languag
 Do not add new features.
 Limit code changes to release metadata, comments, documentation examples, or obvious inconsistencies.
 ```
+
+
+## Difficulty label prompt note
+
+When changing PDF difficulty presentation, keep numeric difficulty metadata unchanged and localize child-facing labels only in the presentation/localization layer. Puzzle and solution PDFs should share the same mapping and must not show raw difficulty numbers.

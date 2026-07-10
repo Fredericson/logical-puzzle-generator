@@ -111,18 +111,18 @@ English (`en`) is the default presentation language. German (`de`) is first-clas
 
 Puzzle PDF:
 
-- title, theme, and optional difficulty metadata;
+- title, theme, and optional difficulty metadata rendered with localized child-friendly labels;
 - numbered clues;
 - empty solving grid;
 - item list.
 
 Solution PDF:
 
-- title, theme, and optional difficulty metadata;
+- title, theme, and optional difficulty metadata rendered with localized child-friendly labels;
 - completed position-to-item solution table;
 - original clue list.
 
-PDF generation is presentation-only and must not perform solving or generation.
+PDF generation is presentation-only and must not perform solving or generation. Difficulty values remain numeric in `Metadata`; the PDF/localization layer maps those numbers to child-friendly labels for display only and omits the difficulty line when no value is present.
 
 ## 10. Coding standards
 
@@ -179,3 +179,8 @@ A change is complete when:
 ## 11. Commit 11.3 PDF presentation requirement
 
 The current Tennis PDF presentation is child-facing rather than a technical solving table. The PDF layer draws anonymous girl figures directly with ReportLab vector primitives and must not depend on external images, URLs, or downloads. Position 1 is the far-left lineup slot, position 4 is the far-right slot, and neighbouring slots represent adjacent positions. Puzzle PDFs leave all name boxes empty; solution PDFs fill those boxes from the existing `Puzzle.solution.assignment` only. This remains presentation-only and must not change generation, solving, validation, clue semantics, difficulty, or puzzle numbering.
+
+
+## 12. Commit 11.4 difficulty label requirement
+
+Puzzle difficulty remains numeric internal metadata. Child-facing puzzle and solution PDFs must never render that raw number; they render localized presentation labels instead (`Easy`, `Medium`, `Hard` in English and `Leicht`, `Mittel`, `Schwierig` in German). The mapping belongs only in the localization/presentation layer and must not change solver, validator, generator, constraints, clue reduction, metadata storage, puzzle numbering, or lineup geometry.

@@ -57,6 +57,11 @@ class TranslationCatalog:
         },
     }
 
+    _DIFFICULTY_LABELS = {
+        Language.ENGLISH: {"easy": "Easy", "medium": "Medium", "hard": "Hard"},
+        Language.GERMAN: {"easy": "Leicht", "medium": "Mittel", "hard": "Schwierig"},
+    }
+
     _TITLE_TRANSLATIONS = {
         Language.GERMAN: {
             "Tennis Training": "Tennistraining",
@@ -72,6 +77,21 @@ class TranslationCatalog:
 
     def title(self, title: str) -> str:
         return self._TITLE_TRANSLATIONS.get(self.language, {}).get(title, title)
+
+    def difficulty_label(self, value: int) -> str:
+        """Return the localized child-facing label for a numeric difficulty value."""
+
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError(
+                f"Unsupported difficulty value {value!r}. Expected an integer greater than or equal to 1."
+            )
+        if value == 1:
+            key = "easy"
+        elif value == 2:
+            key = "medium"
+        else:
+            key = "hard"
+        return self._DIFFICULTY_LABELS[self.language][key]
 
 
 def parse_language(language: Language | str) -> Language:

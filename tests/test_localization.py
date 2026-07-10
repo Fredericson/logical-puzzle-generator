@@ -17,7 +17,7 @@ from logical_puzzle_generator.constraints import (
 from logical_puzzle_generator.create_puzzle import create_puzzle, main
 from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
-from logical_puzzle_generator.localization import Language, parse_language
+from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 from logical_puzzle_generator.model.item import Item
@@ -189,3 +189,14 @@ def test_seeded_generation_is_deterministic_regardless_of_output_language(tmp_pa
 
     assert puzzle_de == puzzle_en
     assert Validator().has_unique_solution(puzzle_en)
+
+
+def test_translation_catalog_localizes_difficulty_labels() -> None:
+    assert TranslationCatalog("en").difficulty_label(1) == "Easy"
+    assert TranslationCatalog("en").difficulty_label(2) == "Medium"
+    assert TranslationCatalog("en").difficulty_label(3) == "Hard"
+    assert TranslationCatalog("en").difficulty_label(4) == "Hard"
+    assert TranslationCatalog("de").difficulty_label(1) == "Leicht"
+    assert TranslationCatalog("de").difficulty_label(2) == "Mittel"
+    assert TranslationCatalog("de").difficulty_label(3) == "Schwierig"
+    assert TranslationCatalog("de").difficulty_label(4) == "Schwierig"
