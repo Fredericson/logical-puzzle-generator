@@ -13,7 +13,6 @@ from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.position import Position
-from logical_puzzle_generator.model.puzzle import Puzzle
 
 
 def test_generate_fixed_position_clue() -> None:
@@ -116,25 +115,6 @@ def test_generate_preserves_deterministic_order() -> None:
         ClueType.ADJACENT,
         ClueType.FIXED_POSITION,
         ClueType.RIGHT_OF,
-    ]
-
-
-def test_generate_accepts_puzzle_and_returns_puzzle_with_clues() -> None:
-    lara = Item("Lara")
-    mia = Item("Mia")
-    constraints = [LeftOfConstraint(lara, mia)]
-    puzzle = Puzzle(items=[lara, mia], constraints=constraints)
-
-    generated = ClueGenerator().generate(puzzle)
-
-    assert isinstance(generated, Puzzle)
-    assert generated.items == [lara, mia]
-    assert generated.constraints == constraints
-    assert generated.clues == [
-        Clue(
-            clue_type=ClueType.LEFT_OF,
-            text="Lara stands left of Mia.",
-        )
     ]
 
 

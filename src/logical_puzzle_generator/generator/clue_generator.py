@@ -9,7 +9,6 @@ from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
-from logical_puzzle_generator.model.puzzle import Puzzle
 
 
 class ClueGenerator:
@@ -23,32 +22,11 @@ class ClueGenerator:
 
     def generate(
         self,
-        source: Puzzle | Iterable[Constraint],
-    ) -> list[Clue] | Puzzle:
-        """
-        Generate deterministic clues for a puzzle or iterable of constraints.
-
-        Supplying a ``Puzzle`` returns a new ``Puzzle`` with the same items,
-        constraints, metadata, and solution, plus generated clues. Supplying an
-        iterable of constraints returns the generated clue list directly.
-        """
-        if isinstance(source, Puzzle):
-            clues = self._generate_clues(source.constraints)
-
-            return Puzzle(
-                items=list(source.items),
-                constraints=list(source.constraints),
-                clues=clues,
-                metadata=source.metadata,
-                solution=source.solution,
-            )
-
-        return self._generate_clues(source)
-
-    def _generate_clues(
-        self,
         constraints: Iterable[Constraint],
     ) -> list[Clue]:
+        """
+        Generate deterministic clues for an iterable of constraints.
+        """
         unique_clues: list[Clue] = []
         seen: set[tuple[ClueType, str]] = set()
 
