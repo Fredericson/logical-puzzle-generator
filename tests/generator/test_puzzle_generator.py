@@ -12,6 +12,7 @@ from logical_puzzle_generator.constraints import (
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.engine.solver import Solver
 from logical_puzzle_generator.generator import ClueGenerator
+from logical_puzzle_generator.generator import puzzle_generator as puzzle_generator_module
 from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.generator.puzzle_template import PuzzleTemplate
 from logical_puzzle_generator.model.category import Category
@@ -71,7 +72,12 @@ def test_generate_validates_uniqueness() -> None:
         clue_reducer=IdentityClueReducer(),
     ).generate(create_template())
 
-    assert validator.puzzles == [puzzle, puzzle]
+    assert len(validator.puzzles) >= 2
+    assert validator.puzzles[-1] == puzzle
+    assert all(
+        validator.puzzles[index] == validator.puzzles[index + 1]
+        for index in range(0, len(validator.puzzles), 2)
+    )
 
 
 def test_generate_retries_when_puzzle_is_not_unique() -> None:
@@ -84,7 +90,7 @@ def test_generate_retries_when_puzzle_is_not_unique() -> None:
         max_attempts=3,
     ).generate(create_template())
 
-    assert validator.calls == 3
+    assert validator.calls == 5
     assert puzzle.solution is not None
 
 
@@ -357,7 +363,7 @@ def test_multiple_seeded_four_item_puzzles_keep_visible_invariants_and_variety()
         assert result.solutions[0] == puzzle.solution.assignment
         assert len(puzzle.clues) == len(puzzle.constraints)
         assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
-        assert len({_visible_clue_meaning(clue.text) for clue in puzzle.clues}) >= 2
+        assert len({_visible_clue_meaning(clue) for clue in puzzle.clues}) >= 2
 
         adjacent_seen = adjacent_seen or any(
             isinstance(constraint, AdjacentConstraint) for constraint in puzzle.constraints
@@ -366,19 +372,37 @@ def test_multiple_seeded_four_item_puzzles_keep_visible_invariants_and_variety()
     assert adjacent_seen
 
 
-def _visible_clue_meaning(text: str) -> str:
-    if "far left" in text:
-        return "far_left"
-    if "far right" in text:
+def test_quality_selection_improves_clue_type_variety(monkeypatch: pytest.MonkeyPatch) -> None:
+    template = create_template()
+
+    monkeypatch.setattr(puzzle_generator_module, "QUALITY_CANDIDATE_COUNT", 1)
+    first_valid = PuzzleGenerator(random_source=random.Random(2)).generate(template)
+
+    monkeypatch.setattr(puzzle_generator_module, "QUALITY_CANDIDATE_COUNT", 8)
+    quality_selected = PuzzleGenerator(random_source=random.Random(2)).generate(template)
+
+    first_variety = len({_visible_clue_meaning(clue) for clue in first_valid.clues})
+    selected_variety = len({_visible_clue_meaning(clue) for clue in quality_selected.clues})
+
+    assert selected_variety > first_variety
+    assert PuzzleGenerator()._quality_score(quality_selected) >= PuzzleGenerator()._quality_score(
+        first_valid
+    )
+
+
+def test_generated_four_item_puzzles_use_multiple_clue_types_when_possible() -> None:
+    for seed in range(1, 8):
+        puzzle = PuzzleGenerator(random_source=random.Random(seed)).generate(create_template())
+
+        assert len(puzzle.items) == 4
+        assert len({_visible_clue_meaning(clue) for clue in puzzle.clues}) >= 2
+
+
+def _visible_clue_meaning(clue: Clue) -> str:
+    constraint = clue.constraint
+    if isinstance(constraint, FixedPositionConstraint):
+        if constraint.position.index == 1:
+            return "far_left"
         return "far_right"
-    if "directly left" in text:
-        return "directly_left_of"
-    if "directly right" in text:
-        return "directly_right_of"
-    if "left of" in text:
-        return "left_of"
-    if "right of" in text:
-        return "right_of"
-    if "next to" in text:
-        return "next_to"
-    return text
+
+    return clue.clue_type.value

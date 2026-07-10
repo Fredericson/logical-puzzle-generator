@@ -105,3 +105,14 @@ Decision:
 - Fixed-position endpoint clues render as "far left" and "far right".
 
 Rationale: puzzles must not appear ambiguous to the player while remaining unique internally. The visible clue set and the mathematical constraint set therefore stay aligned throughout generation, reduction, validation, and PDF rendering.
+
+
+## ADR-013: Select the highest-quality valid generated candidate
+
+Status: Accepted
+
+Decision: `PuzzleGenerator` generates multiple valid candidate puzzles when possible, validates unique solvability before and after clue reduction, scores the reduced visible clue sets with a deterministic quality heuristic, and returns the highest-scoring candidate.
+
+The internal quality score rewards varied clue meanings, endpoint clues, adjacent clues, direct-left/direct-right clues, and balanced clue distributions. It penalizes duplicate clue meanings and candidates dominated by one clue meaning. Scoring is based on constraint type and `ClueType`, not rendered clue text, so it remains independent from localisation and PDF wording. Candidate count is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant rather than by a new public API.
+
+Rationale: Version 1.0 already guarantees mathematical correctness and unique solvability. Human-facing quality improves when the generator can compare several valid alternatives instead of returning the first valid puzzle. Keeping the selection stage inside `PuzzleGenerator` preserves the existing Solver, Validator, ClueReducer, PDF, and public API boundaries while maintaining deterministic output for seeded random sources.

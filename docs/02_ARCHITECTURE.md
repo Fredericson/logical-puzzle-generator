@@ -114,10 +114,18 @@ ClueReducer
         ↓
 Validator
         ↓
+Quality selection
+        ↓
 PDF Generator
 ```
 
-During generation, `PuzzleGenerator` assembles a candidate puzzle, validates uniqueness, reduces visible clues and their matching constraints together, and validates the reduced visible puzzle again before returning it. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+
+After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
+
+The quality score is based on constraint type and `ClueType`, not rendered English text, so scoring stays independent from localisation, clue wording, and PDF presentation. Its weights are intentionally simple and documented in code: clue-meaning variety receives the largest reward because avoiding repetition is the main quality goal; endpoint clues receive a smaller reward because they give useful starting anchors; adjacent and direct-left/direct-right relationship clues receive medium rewards because they create interesting relational deductions; duplicate meanings and a dominant single meaning receive penalties to keep the distribution balanced. The heuristic is not a difficulty estimate.
+
+The number of valid candidates considered is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant. Seeded `random.Random` inputs remain deterministic because candidate generation consumes randomness in a stable sequence, every valid candidate is scored with a pure deterministic function, and ties are resolved by the stable order of the generated candidate list.
 
 ## 7. PDF package
 
@@ -156,6 +164,8 @@ ClueGenerator
 ClueReducer
         ↓
 Validator → Solver → AssignmentIterator
+        ↓
+Quality selection
         ↓
 PdfGenerator / TextRenderer
 ```

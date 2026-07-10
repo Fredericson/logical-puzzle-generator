@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from collections import Counter
 from collections.abc import Iterable
 
 from logical_puzzle_generator.constraints.adjacent import AdjacentConstraint
@@ -13,6 +14,7 @@ from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.engine.solver import Solver
 from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.model.clue import Clue
+from logical_puzzle_generator.model.clue_type import ClueType
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.metadata import Metadata
 from logical_puzzle_generator.model.position import Position
@@ -23,6 +25,24 @@ from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
 from .puzzle_template import PuzzleTemplate
 from .solution_generator import SolutionGenerator
+
+QUALITY_CANDIDATE_COUNT = 8
+
+# Rewards one-time use of each clue meaning so varied clue sets beat repetitive ones.
+QUALITY_UNIQUE_MEANING_WEIGHT = 12
+# Endpoint clues anchor the ordering puzzle and are easy for humans to start from.
+QUALITY_ENDPOINT_WEIGHT = 4
+# Undirected adjacency clues add useful relational variety without revealing direction.
+QUALITY_ADJACENT_WEIGHT = 3
+# Direct left/right clues are strong but still relational, so they receive adjacency-level weight.
+QUALITY_DIRECT_RELATION_WEIGHT = 3
+# Duplicate meanings are allowed, but each repeat makes the clue set feel more mechanical.
+QUALITY_DUPLICATE_MEANING_PENALTY = 5
+# Dominant meanings are penalized separately to avoid clue sets made mostly from one pattern.
+QUALITY_DOMINANT_MEANING_PENALTY = 3
+
+QUALITY_FAR_LEFT_MEANING = "far_left"
+QUALITY_FAR_RIGHT_MEANING = "far_right"
 
 
 class PuzzleGenerator:
@@ -72,67 +92,108 @@ class PuzzleGenerator:
         self._validate_items(items)
 
         last_failure = "generation did not run"
+        candidates: list[Puzzle] = []
 
         for attempt in range(1, self._max_attempts + 1):
             try:
-                solution = self._solution_generator.generate(source)
-                failure = self._solution_failure(solution, items)
+                candidate, failure = self._generate_candidate(source, items)
                 if failure is not None:
                     last_failure = f"attempt {attempt}: {failure}"
                     continue
 
-                constraints = self._derive_constraints(solution)
-                failure = self._constraints_failure(constraints, solution)
-                if failure is not None:
-                    last_failure = f"attempt {attempt}: {failure}"
-                    continue
-
-                clue_generator = (
-                    self._clue_generator
-                    if self._clue_generator is not None
-                    else ClueGenerator(len(items))
-                )
-                clues = clue_generator.generate(constraints)
-                failure = self._clues_failure(clues)
-                if failure is not None:
-                    last_failure = f"attempt {attempt}: {failure}"
-                    continue
-
-                puzzle = Puzzle(
-                    items=items,
-                    constraints=constraints,
-                    clues=clues,
-                    metadata=self._metadata_from_source(source),
-                    solution=solution,
-                )
-
-                if not self._validator.has_unique_solution(puzzle):
-                    last_failure = (
-                        f"attempt {attempt}: generated puzzle is not uniquely "
-                        "solvable before clue reduction"
-                    )
-                    continue
-
-                reduced = self._clue_reducer.reduce(puzzle)
-                failure = self._reduced_puzzle_failure(reduced, items, solution)
-                if failure is not None:
-                    last_failure = f"attempt {attempt}: {failure}"
-                    continue
-
-                if not self._validator.has_unique_solution(reduced):
-                    last_failure = (
-                        f"attempt {attempt}: reduced clue set is not uniquely " "solvable"
-                    )
-                    continue
-
-                return reduced
+                candidates.append(candidate)
+                if len(candidates) >= QUALITY_CANDIDATE_COUNT:
+                    break
             except Exception as exc:
                 last_failure = f"attempt {attempt}: {exc.__class__.__name__}: {exc}"
+
+        if candidates:
+            return max(candidates, key=self._quality_score)
 
         raise RuntimeError(
             "Unable to generate a valid uniquely solvable puzzle within "
             f"{self._max_attempts} attempts. Last failure: {last_failure}."
         )
+
+    def _generate_candidate(
+        self,
+        source: PuzzleTemplate | Puzzle | Iterable[Item],
+        items: list[Item],
+    ) -> tuple[Puzzle, None] | tuple[None, str]:
+        solution = self._solution_generator.generate(source)
+        failure = self._solution_failure(solution, items)
+        if failure is not None:
+            return None, failure
+
+        constraints = self._derive_constraints(solution)
+        failure = self._constraints_failure(constraints, solution)
+        if failure is not None:
+            return None, failure
+
+        clue_generator = (
+            self._clue_generator if self._clue_generator is not None else ClueGenerator(len(items))
+        )
+        clues = clue_generator.generate(constraints)
+        failure = self._clues_failure(clues)
+        if failure is not None:
+            return None, failure
+
+        puzzle = Puzzle(
+            items=items,
+            constraints=constraints,
+            clues=clues,
+            metadata=self._metadata_from_source(source),
+            solution=solution,
+        )
+
+        if not self._validator.has_unique_solution(puzzle):
+            return None, "generated puzzle is not uniquely solvable before clue reduction"
+
+        reduced = self._clue_reducer.reduce(puzzle)
+        failure = self._reduced_puzzle_failure(reduced, items, solution)
+        if failure is not None:
+            return None, failure
+
+        if not self._validator.has_unique_solution(reduced):
+            return None, "reduced clue set is not uniquely solvable"
+
+        return reduced, None
+
+    def _quality_score(self, puzzle: Puzzle) -> tuple[int, int, int, int, int]:
+        meanings = [self._quality_clue_meaning(clue, len(puzzle.items)) for clue in puzzle.clues]
+        counts = Counter(meanings)
+        unique_type_count = len(counts)
+        endpoint_count = counts[QUALITY_FAR_LEFT_MEANING] + counts[QUALITY_FAR_RIGHT_MEANING]
+        adjacent_count = counts[ClueType.ADJACENT.value]
+        direct_count = (
+            counts[ClueType.DIRECT_LEFT_OF.value] + counts[ClueType.DIRECT_RIGHT_OF.value]
+        )
+        duplicate_penalty = sum(count - 1 for count in counts.values() if count > 1)
+        dominant_penalty = max(counts.values(), default=0) - 1
+
+        return (
+            unique_type_count * QUALITY_UNIQUE_MEANING_WEIGHT
+            + endpoint_count * QUALITY_ENDPOINT_WEIGHT
+            + adjacent_count * QUALITY_ADJACENT_WEIGHT
+            + direct_count * QUALITY_DIRECT_RELATION_WEIGHT
+            - duplicate_penalty * QUALITY_DUPLICATE_MEANING_PENALTY
+            - dominant_penalty * QUALITY_DOMINANT_MEANING_PENALTY,
+            unique_type_count,
+            endpoint_count + adjacent_count + direct_count,
+            -len(puzzle.clues),
+            -duplicate_penalty,
+        )
+
+    def _quality_clue_meaning(self, clue: Clue, item_count: int) -> str:
+        constraint = clue.constraint
+        if isinstance(constraint, FixedPositionConstraint):
+            if constraint.position.index == 1:
+                return QUALITY_FAR_LEFT_MEANING
+            if constraint.position.index == item_count:
+                return QUALITY_FAR_RIGHT_MEANING
+            return ClueType.FIXED_POSITION.value
+
+        return clue.clue_type.value
 
     def _solution_failure(
         self,
