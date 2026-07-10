@@ -5,10 +5,8 @@ import random
 import pytest
 
 from logical_puzzle_generator.constraints import (
-    AdjacentConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
-    RightOfConstraint,
 )
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
