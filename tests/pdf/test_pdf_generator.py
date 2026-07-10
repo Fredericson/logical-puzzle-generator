@@ -127,3 +127,120 @@ def test_puzzle_pdf_contains_varied_human_readable_clue_text(tmp_path) -> None:
         assert clue.text in pdf_text
     assert "DirectLeftOfConstraint" not in pdf_text
     assert "DirectRightOfConstraint" not in pdf_text
+
+
+def pdf_page_count(path) -> int:
+    text = pdf_text_bytes(path)
+    return text.count("/Type /Page") - text.count("/Type /Pages")
+
+
+def test_puzzle_lineup_contains_four_visual_position_placeholders() -> None:
+    lineup = PdfGenerator()._lineup(sample_puzzle())
+
+    slots = lineup.layout_slots()
+
+    assert [slot.position for slot in slots] == [1, 2, 3, 4]
+    assert [slot.label for slot in slots] == ["", "", "", ""]
+    assert all(left.x < right.x for left, right in zip(slots, slots[1:]))
+
+
+def test_puzzle_lineup_contains_four_empty_writable_boxes() -> None:
+    lineup = PdfGenerator()._lineup(sample_puzzle())
+
+    slots = lineup.layout_slots()
+
+    assert len(slots) == 4
+    assert all(slot.box_width >= 1.0 * 72 for slot in slots)
+    assert all(slot.box_height >= 0.35 * 72 for slot in slots)
+    assert all(slot.label == "" for slot in slots)
+
+
+def test_solution_pdf_contains_solved_names_in_position_order(tmp_path) -> None:
+    path = tmp_path / "solution.pdf"
+
+    PdfGenerator().create_solution_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert text.index("Aurelia") < text.index("Emma") < text.index("Lara") < text.index("Mia")
+
+
+def test_german_pdf_contains_child_facing_labels(tmp_path) -> None:
+    path = tmp_path / "raetsel.pdf"
+
+    PdfGenerator(language="de").create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert "Tennistraining" in text
+    assert "Thema" in text
+    assert "Schwierigkeit" in text
+    assert "Hinweise" in text
+    assert "Trage die Namen ein" in text
+    assert "Verf\\374gbare Namen" in text
+    assert "Players / Items" not in text
+
+
+def test_english_pdf_remains_supported(tmp_path) -> None:
+    path = tmp_path / "puzzle.pdf"
+
+    PdfGenerator(language="en").create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert "Theme" in text
+    assert "Difficulty" in text
+    assert "Clues" in text
+    assert "Write the names" in text
+    assert "Available Names" in text
+
+
+def test_puzzle_lineup_does_not_reveal_solution_in_name_boxes() -> None:
+    puzzle = sample_puzzle()
+
+    lineup = PdfGenerator()._lineup(puzzle)
+
+    assert [slot.label for slot in lineup.layout_slots()] == ["", "", "", ""]
+    assert PdfGenerator()._solution_labels(puzzle) == ["Aurelia", "Emma", "Lara", "Mia"]
+
+
+def test_solution_labels_use_puzzle_solution_assignment() -> None:
+    puzzle = sample_puzzle()
+    items = {item.name: item for item in puzzle.items}
+    puzzle.solution = Solution(
+        Assignment(
+            {
+                items["Mia"]: Position(1),
+                items["Lara"]: Position(2),
+                items["Emma"]: Position(3),
+                items["Aurelia"]: Position(4),
+            }
+        )
+    )
+
+    assert PdfGenerator()._solution_labels(puzzle) == ["Mia", "Lara", "Emma", "Aurelia"]
+
+
+def test_four_player_tennis_pdfs_remain_one_page(tmp_path) -> None:
+    puzzle_path = tmp_path / "puzzle.pdf"
+    solution_path = tmp_path / "solution.pdf"
+    generator = PdfGenerator()
+
+    generator.create_puzzle_pdf(sample_puzzle(), puzzle_path)
+    generator.create_solution_pdf(sample_puzzle(), solution_path)
+
+    assert pdf_page_count(puzzle_path) == 1
+    assert pdf_page_count(solution_path) == 1
+
+
+def test_generated_pdf_files_are_non_empty(tmp_path) -> None:
+    puzzle_path = tmp_path / "puzzle.pdf"
+    solution_path = tmp_path / "solution.pdf"
+
+    PdfGenerator().create_puzzle_pdf(sample_puzzle(), puzzle_path)
+    PdfGenerator().create_solution_pdf(sample_puzzle(), solution_path)
+
+    assert puzzle_path.stat().st_size > 0
+    assert solution_path.stat().st_size > 0
+
+
+def test_unsupported_pdf_language_is_rejected() -> None:
+    with pytest.raises(ValueError, match="Unsupported language"):
+        PdfGenerator(language="fr")

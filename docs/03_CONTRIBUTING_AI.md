@@ -69,7 +69,7 @@ Documentation is part of the product. Update it in the same PR when a change aff
 - installation or command examples;
 - public APIs;
 - package responsibilities;
-- generator/PDF behavior;
+- generator/PDF behavior, including child-friendly A4 lineup presentation;
 - supported constraints or clue types;
 - roadmap status;
 - architectural decisions.

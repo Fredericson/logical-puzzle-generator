@@ -4,14 +4,15 @@ from pathlib import Path
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
 from logical_puzzle_generator.model.puzzle import Puzzle
 
+from .lineup import PlayerLineupRenderer
 from .renderer import TextRenderer
 
 
@@ -26,11 +27,31 @@ class PdfGenerator:
         language: Language | str = Language.ENGLISH,
     ) -> None:
         self.language = parse_language(language)
-        self._text_renderer = text_renderer if text_renderer is not None else TextRenderer(self.language)
+        self._text_renderer = (
+            text_renderer if text_renderer is not None else TextRenderer(self.language)
+        )
         self._catalog = TranslationCatalog(self.language)
         self._styles = getSampleStyleSheet()
-        self._styles.add(ParagraphStyle(name="ChildClue", parent=self._styles["BodyText"], fontSize=13, leading=17, spaceAfter=8))
-        self._styles.add(ParagraphStyle(name="SectionHeading", parent=self._styles["Heading2"], fontSize=15, leading=18, spaceBefore=8, spaceAfter=8, textColor=colors.darkblue))
+        self._styles.add(
+            ParagraphStyle(
+                name="ChildClue",
+                parent=self._styles["BodyText"],
+                fontSize=12,
+                leading=15,
+                spaceAfter=5,
+            )
+        )
+        self._styles.add(
+            ParagraphStyle(
+                name="SectionHeading",
+                parent=self._styles["Heading2"],
+                fontSize=14,
+                leading=16,
+                spaceBefore=6,
+                spaceAfter=6,
+                textColor=colors.darkblue,
+            )
+        )
 
     def create(self, puzzle: Puzzle, filename: str | Path) -> None:
         """
@@ -45,15 +66,20 @@ class PdfGenerator:
         story: list[Any] = []
         story.extend(self._header(puzzle))
         story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
-        for rendered_clue in self._text_renderer.render_clues(puzzle.clues, item_count=len(puzzle.items)):
+        for rendered_clue in self._text_renderer.render_clues(
+            puzzle.clues, item_count=len(puzzle.items)
+        ):
             story.append(Paragraph(rendered_clue, self._styles["ChildClue"]))
 
-        story.append(Spacer(1, 0.2 * inch))
-        story.append(Paragraph(self._catalog.label("solving_grid"), self._styles["SectionHeading"]))
-        story.append(self._empty_grid(puzzle))
-        story.append(Spacer(1, 0.2 * inch))
-        story.append(Paragraph(self._catalog.label("players_items"), self._styles["SectionHeading"]))
-        story.append(Paragraph(", ".join(item.name for item in puzzle.items), self._styles["BodyText"]))
+        story.append(Spacer(1, 0.12 * inch))
+        story.append(self._lineup(puzzle))
+        story.append(Spacer(1, 0.12 * inch))
+        story.append(
+            Paragraph(self._catalog.label("players_items"), self._styles["SectionHeading"])
+        )
+        story.append(
+            Paragraph(", ".join(item.name for item in puzzle.items), self._styles["BodyText"])
+        )
 
         self._build(output_path, story)
 
@@ -66,10 +92,14 @@ class PdfGenerator:
         story: list[Any] = []
         story.extend(self._header(puzzle))
         story.append(Paragraph(self._catalog.label("solution"), self._styles["Title"]))
-        story.append(self._solution_table(puzzle))
+        story.append(self._lineup(puzzle, labels=self._solution_labels(puzzle)))
         story.append(Spacer(1, 0.2 * inch))
-        story.append(Paragraph(self._catalog.label("original_clues"), self._styles["SectionHeading"]))
-        for rendered_clue in self._text_renderer.render_clues(puzzle.clues, item_count=len(puzzle.items)):
+        story.append(
+            Paragraph(self._catalog.label("original_clues"), self._styles["SectionHeading"])
+        )
+        for rendered_clue in self._text_renderer.render_clues(
+            puzzle.clues, item_count=len(puzzle.items)
+        ):
             story.append(Paragraph(rendered_clue, self._styles["ChildClue"]))
 
         self._build(output_path, story)
@@ -80,50 +110,28 @@ class PdfGenerator:
         theme = metadata.theme if metadata is not None else self._catalog.label("general")
 
         story: list[Any] = [Paragraph(self._catalog.title(title), self._styles["Title"])]
-        story.append(Paragraph(f"{self._catalog.label('theme')}: {theme}", self._styles["BodyText"]))
+        story.append(
+            Paragraph(f"{self._catalog.label('theme')}: {theme}", self._styles["BodyText"])
+        )
         if metadata is not None and metadata.difficulty is not None:
-            story.append(Paragraph(f"{self._catalog.label('difficulty')}: {metadata.difficulty}", self._styles["BodyText"]))
+            story.append(
+                Paragraph(
+                    f"{self._catalog.label('difficulty')}: {metadata.difficulty}",
+                    self._styles["BodyText"],
+                )
+            )
         story.append(Spacer(1, 0.2 * inch))
         return story
 
-    def _empty_grid(self, puzzle: Puzzle) -> Table:
-        header = [self._catalog.label("position"), self._catalog.label("answer")]
-        data = [header]
-        for index in range(1, len(puzzle.items) + 1):
-            data.append([str(index), ""])
+    def _lineup(self, puzzle: Puzzle, labels: list[str] | None = None) -> PlayerLineupRenderer:
+        return PlayerLineupRenderer(
+            item_count=len(puzzle.items),
+            labels=labels,
+            instruction=self._catalog.label("solving_grid"),
+        )
 
-        table = Table(
-            data,
-            colWidths=[1.2 * inch, 5.5 * inch],
-            rowHeights=[0.4 * inch] + [0.78 * inch] * len(puzzle.items),
-        )
-        table.setStyle(
-            TableStyle(
-                [
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
-        )
-        return table
-
-    def _solution_table(self, puzzle: Puzzle) -> Table:
-        data = [[self._catalog.label("position"), self._catalog.label("player_item")]]
-        data.extend(self._text_renderer.render_solution_rows(puzzle))
-        table = Table(data, colWidths=[1.2 * inch, 5.5 * inch])
-        table.setStyle(
-            TableStyle(
-                [
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
-        )
-        return table
+    def _solution_labels(self, puzzle: Puzzle) -> list[str]:
+        return [name for _, name in self._text_renderer.render_solution_rows(puzzle)]
 
     def _validate_puzzle(self, puzzle: Puzzle) -> None:
         if not isinstance(puzzle, Puzzle):
@@ -146,12 +154,12 @@ class PdfGenerator:
         try:
             doc = SimpleDocTemplate(
                 str(output_path),
-                pagesize=letter,
+                pagesize=A4,
                 pageCompression=0,
                 leftMargin=0.7 * inch,
                 rightMargin=0.7 * inch,
-                topMargin=0.6 * inch,
-                bottomMargin=0.6 * inch,
+                topMargin=0.45 * inch,
+                bottomMargin=0.45 * inch,
             )
             doc.build(story)
         except Exception as exc:

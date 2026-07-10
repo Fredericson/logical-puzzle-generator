@@ -125,3 +125,12 @@ Status: Accepted
 Decision: support English and German through a small internal `Language` abstraction, `TranslationCatalog`, and `ClueTextRenderer`. Constraints, solver, validator, and generator remain language-independent. English clue text stored on `Clue` remains backward compatible; localized PDF clue wording is rendered from the clue's one-to-one constraint in the presentation layer.
 
 Rationale: localization changes how a puzzle is presented, not what mathematical constraints mean or how puzzles are generated and validated. Centralizing translated labels and clue wording avoids scattered language checks while preserving existing architecture boundaries.
+
+
+## ADR-015: Render the Tennis PDF as a reusable vector lineup
+
+Status: Accepted
+
+Decision: replace the technical vertical solving table in generated PDFs with an A4 portrait, child-friendly horizontal lineup for the four-player Tennis puzzle. The PDF package owns `GirlFigureRenderer` for anonymous ReportLab vector figures and `PlayerLineupRenderer` for left-to-right position slots, writable boxes, and optional solved labels.
+
+Rationale: the puzzle is intended to be understood visually by children. Keeping illustrations and lineup geometry in focused PDF components preserves the presentation-only boundary: generator, solver, validator, constraints, language semantics, difficulty, and numbering remain unchanged. The solution PDF can safely share the same layout by receiving labels derived from `puzzle.solution.assignment` rather than solving again.
