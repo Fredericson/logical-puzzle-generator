@@ -9,8 +9,10 @@ from logical_puzzle_generator.constraints.fixed_position import FixedPositionCon
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.engine.validator import Validator
+from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.metadata import Metadata
+from logical_puzzle_generator.model.position import Position
 from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.model.solution import Solution
 
@@ -47,16 +49,10 @@ class PuzzleGenerator:
             if solution_generator is not None
             else SolutionGenerator(random_source)
         )
-        self._clue_generator = (
-            clue_generator
-            if clue_generator is not None
-            else ClueGenerator()
-        )
+        self._clue_generator = clue_generator if clue_generator is not None else ClueGenerator()
         self._validator = validator if validator is not None else Validator()
         self._clue_reducer = (
-            clue_reducer
-            if clue_reducer is not None
-            else ClueReducer(self._validator)
+            clue_reducer if clue_reducer is not None else ClueReducer(self._validator)
         )
         self._max_attempts = max_attempts
 
@@ -70,26 +66,140 @@ class PuzzleGenerator:
         items = self._items_from_source(source)
         self._validate_items(items)
 
-        for _attempt in range(self._max_attempts):
-            solution = self._solution_generator.generate(source)
-            constraints = self._derive_constraints(solution)
-            clues = self._clue_generator.generate(constraints)
+        last_failure = "generation did not run"
 
-            puzzle = Puzzle(
-                items=items,
-                constraints=constraints,
-                clues=clues,
-                metadata=self._metadata_from_source(source),
-                solution=solution,
-            )
+        for attempt in range(1, self._max_attempts + 1):
+            try:
+                solution = self._solution_generator.generate(source)
+                failure = self._solution_failure(solution, items)
+                if failure is not None:
+                    last_failure = f"attempt {attempt}: {failure}"
+                    continue
 
-            if self._validator.has_unique_solution(puzzle):
-                return self._clue_reducer.reduce(puzzle)
+                constraints = self._derive_constraints(solution)
+                failure = self._constraints_failure(constraints, solution)
+                if failure is not None:
+                    last_failure = f"attempt {attempt}: {failure}"
+                    continue
+
+                clues = self._clue_generator.generate(constraints)
+                failure = self._clues_failure(clues)
+                if failure is not None:
+                    last_failure = f"attempt {attempt}: {failure}"
+                    continue
+
+                puzzle = Puzzle(
+                    items=items,
+                    constraints=constraints,
+                    clues=clues,
+                    metadata=self._metadata_from_source(source),
+                    solution=solution,
+                )
+
+                if not self._validator.has_unique_solution(puzzle):
+                    last_failure = (
+                        f"attempt {attempt}: generated puzzle is not uniquely "
+                        "solvable before clue reduction"
+                    )
+                    continue
+
+                reduced = self._clue_reducer.reduce(puzzle)
+                failure = self._reduced_puzzle_failure(reduced, items, solution)
+                if failure is not None:
+                    last_failure = f"attempt {attempt}: {failure}"
+                    continue
+
+                if not self._validator.has_unique_solution(reduced):
+                    last_failure = (
+                        f"attempt {attempt}: reduced clue set is not uniquely " "solvable"
+                    )
+                    continue
+
+                return reduced
+            except Exception as exc:
+                last_failure = f"attempt {attempt}: {exc.__class__.__name__}: {exc}"
 
         raise RuntimeError(
-            "Unable to generate a uniquely solvable puzzle within "
-            f"{self._max_attempts} attempts."
+            "Unable to generate a valid uniquely solvable puzzle within "
+            f"{self._max_attempts} attempts. Last failure: {last_failure}."
         )
+
+    def _solution_failure(
+        self,
+        solution: object,
+        items: list[Item],
+    ) -> str | None:
+        if not isinstance(solution, Solution):
+            return "solution generator did not return a Solution"
+
+        if set(solution.positions) != set(items):
+            return "generated solution does not assign exactly the puzzle items"
+
+        positions = list(solution.positions.values())
+        expected_positions = {Position(index) for index in range(1, len(items) + 1)}
+        if set(positions) != expected_positions or len(set(positions)) != len(positions):
+            return "generated solution does not contain a unique complete position set"
+
+        return None
+
+    def _constraints_failure(
+        self,
+        constraints: object,
+        solution: Solution,
+    ) -> str | None:
+        if not isinstance(constraints, list):
+            return "constraint derivation did not return a list"
+
+        if not constraints:
+            return "constraint derivation produced no constraints"
+
+        if any(not isinstance(constraint, Constraint) for constraint in constraints):
+            return "constraint derivation produced a non-Constraint value"
+
+        if any(not constraint.matches(solution.assignment) for constraint in constraints):
+            return "derived constraints do not match the generated solution"
+
+        return None
+
+    def _clues_failure(
+        self,
+        clues: object,
+    ) -> str | None:
+        if not isinstance(clues, list):
+            return "clue generation did not return a list"
+
+        if not clues:
+            return "clue generation produced no clues"
+
+        if any(not isinstance(clue, Clue) for clue in clues):
+            return "clue generation produced a non-Clue value"
+
+        return None
+
+    def _reduced_puzzle_failure(
+        self,
+        puzzle: object,
+        items: list[Item],
+        solution: Solution,
+    ) -> str | None:
+        if not isinstance(puzzle, Puzzle):
+            return "clue reduction did not return a Puzzle"
+
+        if puzzle.items != items:
+            return "clue reduction changed puzzle items"
+
+        if puzzle.solution != solution:
+            return "clue reduction changed the puzzle solution"
+
+        constraints_failure = self._constraints_failure(puzzle.constraints, solution)
+        if constraints_failure is not None:
+            return f"clue reduction returned invalid constraints: {constraints_failure}"
+
+        clues_failure = self._clues_failure(puzzle.clues)
+        if clues_failure is not None:
+            return f"clue reduction returned invalid clues: {clues_failure}"
+
+        return None
 
     def _derive_constraints(
         self,

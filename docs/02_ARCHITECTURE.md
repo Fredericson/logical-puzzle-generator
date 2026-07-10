@@ -26,12 +26,18 @@ Puzzle Assembly
       ↓
 Uniqueness Validation
       ↓
+Clue Reduction
+      ↓
+Final Uniqueness Validation
+      ↓
 Puzzle PDF
       ↓
 Solution PDF
 ```
 
-Only puzzles with exactly one solution are accepted.
+Only puzzles with exactly one solution are accepted. The generator rejects
+invalid intermediate states and retries deterministically until it either
+produces a valid puzzle or raises a clear generation error.
 
 ------------------------------------------------------------------------
 
@@ -122,20 +128,28 @@ Classes:
 
 SolutionGenerator Creates random candidate solutions.
 
-ClueGenerator Converts a solution into logical constraints and human
-readable clues.
+ClueGenerator Converts mathematical constraints into human readable clues.
 
-PuzzleGenerator Coordinates the complete generation pipeline.
+ClueReducer Removes unnecessary clues while preserving a non-empty clue set
+and unique solvability.
+
+PuzzleGenerator Coordinates the complete generation pipeline and validates
+each intermediate state before returning a puzzle.
 
 Pseudo flow:
 
 ``` python
-while True:
-    solution = SolutionGenerator().generate()
-    clues = ClueGenerator().generate(solution)
+for attempt in range(max_attempts):
+    solution = SolutionGenerator().generate(source)
+    constraints = derive_constraints(solution)
+    clues = ClueGenerator().generate(constraints)
     puzzle = Puzzle(...)
-    if Validator().has_unique_solution(puzzle):
-        return puzzle
+    if not Validator().has_unique_solution(puzzle):
+        continue
+    reduced = ClueReducer().reduce(puzzle)
+    if Validator().has_unique_solution(reduced):
+        return reduced
+raise RuntimeError("clear generation failure")
 ```
 
 ------------------------------------------------------------------------
@@ -182,6 +196,10 @@ ClueGenerator
 Constraint + Clue
    ↓
 Puzzle
+   ↓
+Validator
+   ↓
+ClueReducer
    ↓
 Validator
    ↓

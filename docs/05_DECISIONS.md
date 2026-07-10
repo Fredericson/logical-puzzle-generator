@@ -149,6 +149,26 @@ Status: Accepted
 
 ------------------------------------------------------------------------
 
+## ADR-009
+
+### Decision
+
+Harden the generator loop without changing the public API.
+
+PuzzleGenerator validates each Version 1.0 pipeline stage, retries invalid
+attempts deterministically, re-validates after clue reduction, and raises a
+clear RuntimeError when attempts are exhausted. ClueReducer preserves at
+least one human-readable clue so the generator never returns a puzzle with
+an empty reduced clue set.
+
+Reason
+
+The generator is the orchestration boundary. Keeping robustness checks there
+reuses SolutionGenerator, ClueGenerator, ClueReducer, and Validator without
+introducing new generator classes or redesigning stable subsystems.
+
+Status: Accepted
+
 # Future ADRs
 
 Additional decisions should be recorded rather than being lost in commit
