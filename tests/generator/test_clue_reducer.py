@@ -58,7 +58,7 @@ def test_reduce_preserves_uniqueness_for_each_accepted_removal() -> None:
     reduced = ClueReducer(validator).reduce(puzzle)
 
     assert reduced.clues == [puzzle.clues[1]]
-    assert [len(candidate.clues) for candidate in validator.puzzles] == [1]
+    assert all(len(candidate.clues) == 1 for candidate in validator.puzzles)
 
 
 def test_reduce_restores_clue_when_uniqueness_would_be_lost() -> None:

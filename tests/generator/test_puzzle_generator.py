@@ -658,3 +658,64 @@ def test_mandatory_fixed_anchors_survive_reduction() -> None:
         for clue in puzzle.clues
         if isinstance(clue.constraint, FixedPositionConstraint)
     )
+
+
+def _relation_type_names(puzzle: Puzzle) -> set[str]:
+    return {
+        type(constraint).__name__
+        for constraint in puzzle.constraints
+        if not isinstance(constraint, FixedPositionConstraint)
+    }
+
+
+def test_generated_clue_sets_use_multiple_relation_types_when_possible() -> None:
+    for difficulty in ("easy", "medium", "hard"):
+        puzzle = PuzzleGenerator(random_source=random.Random(31), difficulty=difficulty).generate(create_template())
+        assert len(_relation_type_names(puzzle)) >= 2
+
+
+def test_identical_seeds_produce_identical_distributions() -> None:
+    first = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(create_template())
+    second = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(create_template())
+
+    assert [type(constraint) for constraint in first.constraints] == [
+        type(constraint) for constraint in second.constraints
+    ]
+
+
+def test_different_seeds_produce_different_distributions() -> None:
+    distributions = {
+        tuple(type(constraint).__name__ for constraint in PuzzleGenerator(
+            random_source=random.Random(seed), difficulty="medium"
+        ).generate(create_template()).constraints)
+        for seed in range(40, 46)
+    }
+
+    assert len(distributions) > 1
+
+
+def test_distribution_regression_over_100_puzzles_per_difficulty() -> None:
+    supported_relations = {
+        "DirectLeftOfConstraint",
+        "LeftOfConstraint",
+        "DirectRightOfConstraint",
+        "RightOfConstraint",
+        "AdjacentConstraint",
+    }
+    seen: set[str] = set()
+    for difficulty in ("easy", "medium", "hard"):
+        dominant_puzzles = 0
+        for seed in range(100):
+            puzzle = PuzzleGenerator(random_source=random.Random(seed), difficulty=difficulty).generate(create_template())
+            relation_names = [
+                type(constraint).__name__
+                for constraint in puzzle.constraints
+                if not isinstance(constraint, FixedPositionConstraint)
+            ]
+            seen.update(relation_names)
+            if relation_names:
+                most_common = max(relation_names.count(name) for name in set(relation_names))
+                if most_common == len(relation_names) or most_common >= 4:
+                    dominant_puzzles += 1
+        assert dominant_puzzles < 10
+    assert supported_relations <= seen

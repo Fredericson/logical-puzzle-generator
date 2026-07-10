@@ -91,13 +91,19 @@ Constructs the selected difficulty anchors before relational constraints exist. 
 
 `PuzzleGenerator` owns relational constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0. After `FixedPositionGenerator` returns mandatory anchors and the target solution, relational derivation sorts the solution by position and creates only non-fixed true positional constraints: direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. Relational derivation must not create additional `FixedPositionConstraint` instances. Derived constraints are de-duplicated and verified against the generated solution.
 
+### `ConstraintDistributionPolicy`
+
+Analyzes the list of generated constraints after fixed anchors and private relational derivation, before clues are rendered. It counts supported constraint classes, computes a deterministic diversity score, rejects poor distributions early, and provides the same score for quality selection and reduction tie-breaking. It does not solve puzzles, generate solutions, validate uniqueness, render PDFs, translate clues, or introduce new constraint types. Diversity is a human-facing quality optimization, not a correctness rule; `Validator` remains authoritative for unique solvability.
+
+Difficulty-specific quality goals are soft: Easy keeps exactly two fixed-position anchors and prefers at least one relation type, Medium keeps exactly one fixed-position anchor and favors mixed direct/ordinary/adjacent relations, and Hard keeps zero fixed-position anchors while avoiding clue sets dominated by ordinary left/right relations.
+
 ### `ClueGenerator`
 
 Converts supplied constraint instances into deterministic English `Clue` objects for backward compatibility. It supports far-left, far-right, directly-left-of, left-of, directly-right-of, right-of, and next-to wording. It does not create constraints, solve puzzles, reduce clues, or randomize output.
 
 ### `ClueReducer`
 
-Attempts a deterministic remove-and-validate pass over human-readable clues. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain and the exact requested fixed-position count is preserved. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
+Attempts a deterministic remove-and-validate pass over human-readable clues. When multiple removable clues are valid alternatives, it prefers the candidate with the higher `ConstraintDistributionPolicy` score so diversity is preserved where possible. It removes a `Clue` and its corresponding `Constraint` together, never validates hidden constraints, and only accepts removals when `Validator.has_unique_solution()` remains true for the visible constraints that remain and the exact requested fixed-position count is preserved. For normal four-item puzzles it preserves at least two visible clue meanings when a varied valid alternative is available.
 
 ### `PuzzleGenerator`
 
@@ -115,6 +121,8 @@ FixedPositionGenerator
 Target Solution + mandatory fixed constraints
         ↓
 Relational constraint derivation
+        ↓
+ConstraintDistributionPolicy
         ↓
 ClueGenerator
         ↓
@@ -181,6 +189,8 @@ Target Solution + mandatory fixed constraints
         ↓
 Relational constraint derivation
         ↓
+ConstraintDistributionPolicy
+        ↓
 ClueGenerator
         ↓
 ClueReducer
@@ -214,7 +224,7 @@ Updated generation order:
 
 ```text
 Difficulty selection -> FixedPositionGenerator -> target Solution + mandatory fixed constraints
--> private relational constraint derivation -> ClueGenerator -> Validator
+-> private relational constraint derivation -> ConstraintDistributionPolicy -> ClueGenerator -> Validator
 -> ClueReducer (clues and matching constraints together, exact fixed count preserved) -> Validator
 -> DifficultyPolicy match/classify -> quality selection among matching candidates -> PdfGenerator presentation
 ```

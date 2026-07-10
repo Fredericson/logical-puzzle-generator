@@ -8,6 +8,7 @@ from logical_puzzle_generator.constraints.fixed_position import FixedPositionCon
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.engine.validator import Validator
+from logical_puzzle_generator.generator.constraint_distribution_policy import ConstraintDistributionPolicy
 from logical_puzzle_generator.generator.difficulty import Difficulty, DifficultyPolicy
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.puzzle import Puzzle
@@ -27,6 +28,7 @@ class ClueReducer:
         validator: Validator | None = None,
     ) -> None:
         self._validator = validator if validator is not None else Validator()
+        self._distribution_policy = ConstraintDistributionPolicy()
 
     def reduce(
         self,
@@ -47,6 +49,7 @@ class ClueReducer:
             if len(reduced.clues) <= 1:
                 break
 
+            candidates: list[Puzzle] = []
             for index in range(len(reduced.clues)):
                 candidate_clues = [
                     clue for clue_index, clue in enumerate(reduced.clues) if clue_index != index
@@ -63,9 +66,17 @@ class ClueReducer:
                     continue
 
                 if self._validator.has_unique_solution(candidate):
-                    reduced = candidate
-                    changed = True
-                    break
+                    candidates.append(candidate)
+
+            if candidates:
+                reduced = max(
+                    candidates,
+                    key=lambda candidate: (
+                        self._distribution_policy.score(candidate.constraints),
+                        -len(candidate.clues),
+                    ),
+                )
+                changed = True
 
         return reduced
 
@@ -113,10 +124,23 @@ class ClueReducer:
             return False
 
         current_meanings = self._clue_meanings(current.clues)
-        if len(current_meanings) < 2:
-            return False
+        if len(current_meanings) >= 2 and len(self._clue_meanings(candidate.clues)) < 2:
+            return True
 
-        return len(self._clue_meanings(candidate.clues)) < 2
+        current_relation_meanings = self._relation_clue_meanings(current.clues)
+        candidate_relation_meanings = self._relation_clue_meanings(candidate.clues)
+        return (
+            len(current_relation_meanings) >= 2
+            and len(candidate_relation_meanings) < 2
+            and len(candidate_relation_meanings) < len(current_relation_meanings)
+        )
+
+    def _relation_clue_meanings(self, clues: list[Clue]) -> set[str]:
+        return {
+            self._clue_meaning(clue)
+            for clue in clues
+            if not isinstance(clue.constraint, FixedPositionConstraint)
+        }
 
     def _clue_meanings(self, clues: list[Clue]) -> set[str]:
         return {self._clue_meaning(clue) for clue in clues}
