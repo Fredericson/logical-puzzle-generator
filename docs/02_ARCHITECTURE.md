@@ -114,10 +114,14 @@ ClueReducer
         ↓
 Validator
         ↓
+Quality selection
+        ↓
 PDF Generator
 ```
 
-During generation, `PuzzleGenerator` assembles a candidate puzzle, validates uniqueness, reduces visible clues and their matching constraints together, and validates the reduced visible puzzle again before returning it. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+
+After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. The score rewards visible clue variety, endpoint clues, adjacent clues, direct-left/direct-right clues, and balanced clue distributions. It penalizes repeated clue meanings and clue sets dominated by one meaning. The number of valid candidates considered is controlled by the internal `QUALITY_CANDIDATE_COUNT` constant, and seeded `random.Random` inputs remain deterministic because candidates are generated and scored in a stable order.
 
 ## 7. PDF package
 
@@ -156,6 +160,8 @@ ClueGenerator
 ClueReducer
         ↓
 Validator → Solver → AssignmentIterator
+        ↓
+Quality selection
         ↓
 PdfGenerator / TextRenderer
 ```
