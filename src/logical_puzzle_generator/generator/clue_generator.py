@@ -51,24 +51,28 @@ class ClueGenerator:
             return Clue(
                 clue_type=ClueType.FIXED_POSITION,
                 text=self._sentence(constraint.description),
+                constraint=constraint,
             )
 
         if isinstance(constraint, LeftOfConstraint):
             return Clue(
                 clue_type=ClueType.LEFT_OF,
                 text=self._sentence(constraint.description),
+                constraint=constraint,
             )
 
         if isinstance(constraint, RightOfConstraint):
             return Clue(
                 clue_type=ClueType.RIGHT_OF,
                 text=self._sentence(constraint.description),
+                constraint=constraint,
             )
 
         if isinstance(constraint, AdjacentConstraint):
             return Clue(
                 clue_type=ClueType.ADJACENT,
                 text=self._sentence(constraint.description),
+                constraint=constraint,
             )
 
         raise TypeError(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from logical_puzzle_generator.constraints.base import Constraint
 from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.puzzle import Puzzle
@@ -7,11 +8,11 @@ from logical_puzzle_generator.model.puzzle import Puzzle
 
 class ClueReducer:
     """
-    Removes unnecessary clues while preserving a uniquely solvable puzzle.
+    Removes unnecessary visible clues while preserving a uniquely solvable puzzle.
 
-    The reducer never changes the solution or mathematical constraints. It
-    builds replacement Puzzle instances whose clue lists are reduced only when
-    the existing Validator confirms that uniqueness is preserved.
+    Every visible clue owns exactly one mathematical constraint. Candidate
+    puzzles are validated only with constraints for their remaining visible
+    clues, so no hidden constraints can influence uniqueness.
     """
 
     def __init__(
@@ -61,6 +62,20 @@ class ClueReducer:
         if any(not isinstance(clue, Clue) for clue in puzzle.clues):
             raise TypeError("ClueReducer requires puzzle clues to be Clue instances.")
 
+        if len(puzzle.clues) != len(puzzle.constraints):
+            raise ValueError(
+                "ClueReducer requires matching clue and constraint counts."
+            )
+
+        for clue, constraint in zip(puzzle.clues, puzzle.constraints, strict=True):
+            if not isinstance(clue.constraint, Constraint):
+                raise TypeError("ClueReducer requires every clue to reference a Constraint.")
+            if clue.constraint is not constraint:
+                raise ValueError(
+                    "ClueReducer requires each clue to correspond to the constraint "
+                    "at the same index."
+                )
+
     def _copy_with_clues(
         self,
         puzzle: Puzzle,
@@ -68,7 +83,7 @@ class ClueReducer:
     ) -> Puzzle:
         return Puzzle(
             items=puzzle.items,
-            constraints=puzzle.constraints,
+            constraints=[clue.constraint for clue in clues],
             clues=clues,
             metadata=puzzle.metadata,
             solution=puzzle.solution,

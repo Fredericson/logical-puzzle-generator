@@ -9,6 +9,8 @@ from logical_puzzle_generator.constraints import (
     LeftOfConstraint,
 )
 from logical_puzzle_generator.engine.assignment import Assignment
+from logical_puzzle_generator.engine.solver import Solver
+from logical_puzzle_generator.generator import ClueGenerator
 from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.generator.puzzle_template import PuzzleTemplate
 from logical_puzzle_generator.model.category import Category
@@ -278,3 +280,31 @@ def test_generate_includes_attempt_count_in_exhaustion_message() -> None:
             clue_generator=EmptyClueGenerator(),
             max_attempts=2,
         ).generate(create_template())
+
+
+def test_four_item_left_of_single_visible_clue_is_not_unique() -> None:
+    items = [Item("Emma"), Item("Aurelia"), Item("Mia"), Item("Lara")]
+    constraint = LeftOfConstraint(items[0], items[1])
+    puzzle = Puzzle(
+        items=items,
+        constraints=[constraint],
+        clues=ClueGenerator().generate([constraint]),
+    )
+
+    result = Solver().solve(puzzle, stop_after=2)
+
+    assert not result.has_unique_solution
+    assert result.solution_count == 2
+
+
+def test_generated_reduced_puzzle_solves_to_target_solution_from_visible_constraints() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
+
+    assert puzzle.solution is not None
+    assert len(puzzle.clues) == len(puzzle.constraints)
+    assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
+
+    result = Solver().solve(puzzle, stop_after=2)
+
+    assert result.has_unique_solution
+    assert result.solutions[0] == puzzle.solution.assignment
