@@ -1,353 +1,179 @@
-# ARCHITECTURE.md
+# Logical Puzzle Generator Architecture
 
-# Logical Puzzle Generator -- Architecture Guide
+This document describes the current Version 1.0 architecture.
 
-> This document describes the intended architecture of the Logical
-> Puzzle Generator. It is intended for developers and AI coding
-> assistants.
+## 1. Version 1.0 boundary
 
-------------------------------------------------------------------------
+Version 1.0 generates ordering puzzles over one active item category. A generated `Solution` is a complete mapping from each active item to a `Position`. The public Tennis template includes multiple thematic categories, but the generator uses the first category as the active players/items category.
 
-# 1. Vision
+Out of scope for Version 1.0: multi-category relationship solving, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, and advanced difficulty modeling.
 
-The project generates Einstein-style logical puzzles completely
-automatically.
+## 2. Package structure
+
+```text
+logical_puzzle_generator/
+  model/          Domain data objects
+  constraints/    Mathematical rules over assignments
+  engine/         Brute-force solving and validation
+  generator/      Puzzle generation orchestration
+  pdf/            Presentation-only PDF rendering
+  themes/         Reusable puzzle templates
+  create_puzzle.py Tennis PDF entry point
+```
+
+Dependencies flow inward to the model and engine. The engine does not depend on generator, PDF, or themes. PDF depends on model objects only for rendering. Themes provide data only.
+
+## 3. Model package
+
+`model` contains domain objects:
+
+- `Item`: immutable named puzzle object.
+- `Position`: immutable 1-based ordered position.
+- `Category` and `CategoryType`: named item groups for templates.
+- `Clue` and `ClueType`: human-readable clue model and clue classification.
+- `Metadata`: title, theme, difficulty, author, and version information.
+- `Puzzle`: items, constraints, clues, optional metadata, and optional solution.
+- `Solution`: generated assignment plus solver iteration metadata.
+
+Model objects should remain lightweight. Solver, generator, and PDF behavior belongs outside the model package.
+
+## 4. Constraints package
+
+All constraints inherit from `Constraint` and implement `matches(assignment)`. Implemented Version 1.0 constraints are:
+
+- `FixedPositionConstraint(item, position)`
+- `LeftOfConstraint(left, right)`
+- `RightOfConstraint(right, left)`
+- `AdjacentConstraint(first, second)`
+
+Each constraint exposes a human-readable `description`. Constraint classes do not know about solving, PDF rendering, clue reduction, or other constraints.
+
+## 5. Engine package
+
+The engine is the mathematical core:
+
+- `Assignment` maps each `Item` to a `Position`.
+- `AssignmentIterator` enumerates every permutation of positions for a list of items.
+- `Solver` checks each assignment against all puzzle constraints and returns `SolverResult`.
+- `SolverResult` exposes solution count, first solution, and uniqueness helpers.
+- `SolverStatistics` records assignments checked, valid assignments, rejected assignments, and elapsed time.
+- `Validator` wraps `Solver` and exposes `is_valid()` and `has_unique_solution()`.
+- `Optimizer` is a compatibility boundary for future optimization; in Version 1.0 it returns the puzzle unchanged.
+
+The solver is intentionally brute force. For four active items this is simple, deterministic, and fast enough.
+
+## 6. Generator package
+
+### `PuzzleTemplate`
+
+Defines a title, theme, and categories. `players` returns the first category, which is the active source category in Version 1.0.
+
+### `SolutionGenerator`
+
+Creates a random one-to-one mapping from active items to positions. It accepts a `PuzzleTemplate`, `Puzzle`, or iterable of `Item` objects. A caller may inject `random.Random` for deterministic generation.
+
+### Internal constraint derivation
+
+`PuzzleGenerator` owns constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0.
+
+Current derivation sorts the generated solution by position and creates enough ordered `LeftOfConstraint` instances between neighboring ordered items to uniquely determine that order. For a one-item puzzle it creates a `FixedPositionConstraint` instead. Derived constraints are de-duplicated and verified against the generated solution.
+
+### `ClueGenerator`
+
+Converts supplied constraint instances into deterministic `Clue` objects. It supports fixed-position, left-of, right-of, and adjacent constraints. It does not create constraints, solve puzzles, reduce clues, or randomize output.
+
+### `ClueReducer`
+
+Attempts a deterministic remove-and-validate pass over human-readable clues. It never changes the puzzle's items, mathematical constraints, metadata, or solution. It stops before returning an empty clue set and only accepts removals when `Validator.has_unique_solution()` remains true.
+
+### `PuzzleGenerator`
+
+Coordinates the complete pipeline and validates every stage. It accepts optional injected `SolutionGenerator`, `ClueGenerator`, `Validator`, and `ClueReducer` instances for tests and compatibility. It retries up to `max_attempts` and raises `RuntimeError` with the last failure when generation cannot produce a valid uniquely solvable puzzle.
 
 Pipeline:
 
-``` text
-Random Solution
-      ↓
-Constraint Generation
-      ↓
-Human Readable Clues
-      ↓
-Puzzle Assembly
-      ↓
-Uniqueness Validation
-      ↓
-Clue Reduction
-      ↓
-Final Uniqueness Validation
-      ↓
-Puzzle PDF
-      ↓
-Solution PDF
+```text
+source
+  ↓
+extract and validate items
+  ↓
+generate Solution
+  ↓
+derive constraints internally
+  ↓
+generate Clue objects
+  ↓
+assemble Puzzle
+  ↓
+validate unique solution
+  ↓
+reduce clues
+  ↓
+validate reduced puzzle still has a unique solution
+  ↓
+return Puzzle
 ```
 
-Only puzzles with exactly one solution are accepted. The generator rejects
-invalid intermediate states and retries deterministically until it either
-produces a valid puzzle or raises a clear generation error.
+## 7. PDF package
 
-------------------------------------------------------------------------
+`TextRenderer` renders clues, solution rows, and item names as strings. It validates that rendered text is human-readable.
 
-# 2. Design Principles
+`PdfGenerator` writes ReportLab PDFs:
 
--   Small, focused classes
--   Single Responsibility Principle
--   Composition over inheritance
--   Immutable domain objects where appropriate
--   Clear package boundaries
--   Deterministic behaviour when seeded
--   Readability over cleverness
+- `create_puzzle_pdf(puzzle, filename)` writes the unsolved puzzle PDF.
+- `create_solution_pdf(puzzle, filename)` writes the solved PDF.
+- `create(puzzle, filename)` is a backward-compatible wrapper for `create_puzzle_pdf()`.
 
-------------------------------------------------------------------------
+PDF generation is presentation-only. It must not derive constraints, solve puzzles, or alter puzzle data.
 
-# 3. Package Overview
+## 8. Theme and entry-point flow
 
-``` text
-logical_puzzle_generator/
+`themes.tennis.create_template()` returns the built-in Tennis `PuzzleTemplate`.
 
-model/
-constraints/
-engine/
-generator/
-pdf/
-themes/
-tests/
+`create_puzzle.create_puzzle()` generates that template and writes both default PDFs:
+
+```text
+output/puzzle_3.pdf
+output/puzzle_3_solution.pdf
 ```
 
-## model
+## 9. Data flow
 
-Pure domain objects.
-
-Contains:
-
--   Puzzle
--   Solution
--   Assignment
--   Item
--   Position
--   Category
--   Metadata
--   Clue
--   ClueType
-
-Rules:
-
--   No business logic
--   Mostly dataclasses
--   Prefer immutable objects
-
-------------------------------------------------------------------------
-
-## constraints
-
-Represents logical rules.
-
-Each constraint must:
-
--   inherit Constraint
--   implement matches()
--   expose description
-
-Constraints must never know each other.
-
-------------------------------------------------------------------------
-
-## engine
-
-Mathematical core.
-
-Responsibilities:
-
--   enumerate assignments
--   validate constraints
--   determine uniqueness
--   collect statistics
-
-The engine must never know anything about PDF, themes or UI.
-
-------------------------------------------------------------------------
-
-## generator
-
-Responsible for creating puzzles.
-
-Classes:
-
-SolutionGenerator Creates random candidate solutions.
-
-ClueGenerator Converts mathematical constraints into human readable clues.
-
-ClueReducer Removes unnecessary clues while preserving a non-empty clue set
-and unique solvability.
-
-PuzzleGenerator Coordinates the complete generation pipeline and validates
-each intermediate state before returning a puzzle.
-
-Pseudo flow:
-
-``` python
-for attempt in range(max_attempts):
-    solution = SolutionGenerator().generate(source)
-    constraints = derive_constraints(solution)
-    clues = ClueGenerator().generate(constraints)
-    puzzle = Puzzle(...)
-    if not Validator().has_unique_solution(puzzle):
-        continue
-    reduced = ClueReducer().reduce(puzzle)
-    if Validator().has_unique_solution(reduced):
-        return reduced
-raise RuntimeError("clear generation failure")
-```
-
-------------------------------------------------------------------------
-
-## pdf
-
-Responsible only for rendering.
-
-Never contains puzzle logic.
-
-Outputs:
-
--   Puzzle PDF
--   Solution PDF
-
-------------------------------------------------------------------------
-
-## themes
-
-Provides reusable content.
-
-Examples:
-
--   Tennis
--   Animals
--   School
--   Space
-
-A theme supplies names and categories. It never contains solver logic.
-
-------------------------------------------------------------------------
-
-# 4. Data Flow
-
-``` text
-Theme
-   ↓
+```text
+Theme/PuzzleTemplate or Item iterable
+        ↓
 SolutionGenerator
-   ↓
-Solution
-   ↓
+        ↓
+Solution + Assignment
+        ↓
+PuzzleGenerator private constraint derivation
+        ↓
+Constraint list
+        ↓
 ClueGenerator
-   ↓
-Constraint + Clue
-   ↓
+        ↓
+Clue list
+        ↓
 Puzzle
-   ↓
-Validator
-   ↓
+        ↓
+Validator → Solver → AssignmentIterator
+        ↓
 ClueReducer
-   ↓
-Validator
-   ↓
-Solver
-   ↓
-Unique?
-   ↓
-PDF
+        ↓
+Validator → Solver
+        ↓
+PdfGenerator / TextRenderer
 ```
 
-------------------------------------------------------------------------
+## 10. Architecture preservation policy
 
-# 5. Solver Architecture
+Stable boundaries:
 
-The solver is intentionally brute force.
+- Model objects remain behavior-light.
+- Constraints remain independent `matches()` implementations.
+- Solver remains a generic brute-force engine.
+- Validator remains the uniqueness boundary.
+- Generator orchestration stays in `PuzzleGenerator`.
+- PDF remains presentation-only.
 
-Reasons:
-
--   Simple
--   Reliable
--   Easy to test
--   Sufficient for 4×4 puzzles
-
-Future optimisation must preserve the public API.
-
-------------------------------------------------------------------------
-
-# 6. Constraint Philosophy
-
-Constraints are independent.
-
-Examples:
-
--   LeftOf
--   RightOf
--   Adjacent
--   FixedPosition
--   NotAdjacent
--   NotPosition
-
-A constraint answers only:
-
-``` python
-constraint.matches(assignment)
-```
-
-Nothing else.
-
-------------------------------------------------------------------------
-
-# 7. Generator Philosophy
-
-The generator must never guess.
-
-Preferred algorithm:
-
-1.  Create random solution.
-2.  Derive valid constraints.
-3.  Convert constraints into clues.
-4.  Assemble puzzle.
-5.  Validate uniqueness.
-6.  Retry if necessary.
-
-------------------------------------------------------------------------
-
-# 8. Coding Standards
-
-Python 3.13
-
-Requirements:
-
--   type hints
--   dataclasses
--   slots=True
--   small classes
--   descriptive names
--   pytest
--   no global state
-
-------------------------------------------------------------------------
-
-# 9. Stability Rules
-
-The following components are considered stable.
-
-DO NOT redesign:
-
--   Assignment
--   Solver
--   Validator
--   Constraint hierarchy
--   Repository structure
-
-Only extend functionality.
-
-------------------------------------------------------------------------
-
-# 10. Version Roadmap
-
-## Version 1.0
-
--   4×4 puzzles
--   PDF output
--   Tennis theme
-
-## Version 2.0
-
--   5×5 puzzles
--   Better optimisation
--   Difficulty estimation
-
-## Version 3.0
-
--   Additional themes
--   JSON export
--   Batch generation
-
-------------------------------------------------------------------------
-
-# 11. Definition of Success
-
-The project is complete when:
-
-``` python
-generator = PuzzleGenerator()
-
-puzzle = generator.generate()
-```
-
-produces
-
--   one valid puzzle
--   exactly one solution
--   puzzle PDF
--   solution PDF
-
-without manual intervention.
-
-------------------------------------------------------------------------
-
-# 12. Guidance for AI Assistants
-
-Before making changes:
-
-1.  Read docs/AI_DEVELOPMENT_SPEC.md.
-2.  Read this file completely.
-3.  Read the repository.
-4.  Preserve the architecture.
-5.  Implement one commit at a time.
-6.  Return complete files only.
-7.  Avoid placeholders and TODOs.
+Significant changes to these boundaries require an ADR update.

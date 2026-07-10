@@ -1,177 +1,91 @@
-# DECISIONS.md
+# Architecture Decision Records
 
-# Architecture Decision Record (ADR)
+This document records accepted architectural decisions for Version 1.0.
 
-This document records the most important architectural decisions.
-
-------------------------------------------------------------------------
-
-## ADR-001
-
-### Decision
-
-Use Python as implementation language.
-
-### Reason
-
--   Excellent readability
--   Strong ecosystem
--   Easy contribution
--   Great testing support
+## ADR-001: Use Python
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: implement the project in Python.
 
-## ADR-002
+Reason: Python is readable, easy to test, and approachable for contributors.
 
-### Decision
-
-Keep the project package-oriented.
-
-Packages
-
--   model
--   constraints
--   engine
--   generator
--   pdf
--   themes
-
-Reason
-
-Clear separation of responsibilities.
+## ADR-002: Keep a package-oriented architecture
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: separate responsibilities into `model`, `constraints`, `engine`, `generator`, `pdf`, and `themes` packages.
 
-## ADR-003
+Reason: clear package boundaries make the repository easier to maintain and reduce accidental coupling.
 
-### Decision
-
-Use brute-force solving.
-
-Reason
-
-For 4×4 puzzles brute force is fast enough and dramatically simpler than
-complex constraint propagation.
+## ADR-003: Use brute-force solving for Version 1.0
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: keep the solver as a straightforward brute-force permutation checker with optional early exit.
 
-## ADR-004
+Reason: Version 1.0 targets four active items, where brute force is simple, deterministic, and fast enough.
 
-### Decision
-
-Represent domain concepts explicitly.
-
-Use
-
--   Item
--   Position
--   Category
--   Puzzle
-
-instead of primitive strings whenever appropriate.
-
-Reason
-
-Improves readability and maintainability.
+## ADR-004: Represent domain concepts explicitly
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: use explicit objects such as `Item`, `Position`, `Category`, `Puzzle`, `Clue`, and `Solution` rather than passing primitive strings and dictionaries everywhere.
 
-## ADR-005
+Reason: explicit domain models improve readability and make public APIs easier to understand.
 
-### Decision
-
-Keep Constraint classes independent.
-
-Reason
-
-Each constraint answers exactly one question:
-
-matches(assignment)
-
-This keeps the solver generic.
+## ADR-005: Keep constraints independent
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: each constraint implements `matches(assignment)` and exposes `description` without depending on other constraints.
 
-## ADR-006
+Reason: independent constraints keep the solver generic and make clue conversion straightforward.
 
-### Decision
-
-Separate Solver from Generator.
-
-Reason
-
-The solver validates puzzles.
-
-The generator creates puzzles.
-
-Neither component should depend on the other internally.
+## ADR-006: Separate solver, generator, and PDF rendering
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: the solver validates puzzles, the generator creates puzzles, and the PDF package renders existing puzzle data.
 
-## ADR-007
+Reason: keeping these responsibilities separate prevents presentation or generation details from leaking into mathematical verification.
 
-### Decision
-
-Preserve the current architecture.
-
-Reason
-
-Future contributors (human or AI) should extend the project instead of
-redesigning working components.
+## ADR-007: Preserve stable architecture boundaries
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: future work should extend the current boundaries instead of replacing the solver, validator, assignment model, constraint hierarchy, or generator orchestration without an explicit ADR.
 
-## ADR-008
+Reason: predictable boundaries help human and AI contributors make safe incremental changes.
 
-### Decision
-
-Prefer complete implementations over placeholders.
-
-Reason
-
-Incomplete code slows development and confuses future contributors.
+## ADR-008: Prefer complete implementations over placeholders
 
 Status: Accepted
 
-------------------------------------------------------------------------
+Decision: do not merge placeholder code, mock implementations, or TODO-driven behavior.
 
-## ADR-009
+Reason: incomplete code obscures repository status and slows future development.
 
-### Decision
-
-Harden the generator loop without changing the public API.
-
-PuzzleGenerator validates each Version 1.0 pipeline stage, retries invalid
-attempts deterministically, re-validates after clue reduction, and raises a
-clear RuntimeError when attempts are exhausted. ClueReducer preserves at
-least one human-readable clue so the generator never returns a puzzle with
-an empty reduced clue set.
-
-Reason
-
-The generator is the orchestration boundary. Keeping robustness checks there
-reuses SolutionGenerator, ClueGenerator, ClueReducer, and Validator without
-introducing new generator classes or redesigning stable subsystems.
+## ADR-009: Make `PuzzleGenerator` the Version 1.0 orchestration boundary
 
 Status: Accepted
 
-# Future ADRs
+Decision: `PuzzleGenerator` coordinates solution generation, private constraint derivation, clue generation, uniqueness validation, clue reduction, final validation, retry handling, and clear generation failure messages.
 
-Additional decisions should be recorded rather than being lost in commit
-history.
+Reason: this keeps robustness checks in one orchestration boundary while reusing `SolutionGenerator`, `ClueGenerator`, `ClueReducer`, and `Validator`.
 
-Every significant architectural change requires a new ADR.
+## ADR-010: Keep constraint derivation internal for Version 1.0
+
+Status: Accepted
+
+Decision: do not expose a public `ConstraintGenerator` in Version 1.0. Constraint derivation remains a private `PuzzleGenerator` implementation detail.
+
+Reason: the current derivation is intentionally narrow and tied to the Version 1.0 ordering-puzzle pipeline. A public abstraction would imply extension points that are not yet stable.
+
+## ADR-011: Treat PDF generation as presentation-only
+
+Status: Accepted
+
+Decision: `TextRenderer` and `PdfGenerator` render existing puzzles and must not solve, generate, or mutate puzzle logic.
+
+Reason: this preserves a clean dependency direction and keeps PDF behavior testable independently from generation.

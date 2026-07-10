@@ -2,285 +2,163 @@
 
 ## Logical Puzzle Generator v1.0
 
-> **Purpose**
->
-> This document is the authoritative specification for continuing the
-> development of the *Logical Puzzle Generator*. It is written so that
-> any capable AI coding assistant (GPT, Claude, Gemini, Cursor, Copilot,
-> etc.) can continue development without requiring the original
-> conversation.
+This document is the authoritative implementation specification for continuing development after the Version 1.0 documentation release. It describes the current repository, not an aspirational design.
 
-------------------------------------------------------------------------
+## 1. Project goal
 
-# 1. Project Goal
+Build a Python application that automatically generates printable Einstein-style logic puzzles with exactly one unique solution.
 
-Build a Python application that automatically generates printable
-Einstein-style logical puzzles with **exactly one unique solution**.
+Version 1.0 focuses on 4-item ordering puzzles. The active generated solution maps items from a single source category to ordered positions. The built-in Tennis template contains additional thematic categories, but Version 1.0 uses the first category (`players`) as the permutation source.
 
-Version 1.0 focuses on a **4×4 puzzle generator**.
+## 2. Current project status
 
-The project is intended to be open source and easy to extend.
+Version 1.0 is complete.
 
-------------------------------------------------------------------------
+Completed capabilities:
 
-# 2. Current Project Status
+- Domain model: `Item`, `Position`, `Category`, `Metadata`, `Clue`, `Puzzle`, and `Solution`.
+- Constraint model: fixed position, left-of, right-of, and adjacent constraints.
+- Brute-force engine: assignment iteration, solver result, statistics, validator, and optimizer compatibility class.
+- Generator package: `SolutionGenerator`, `ClueGenerator`, `ClueReducer`, `PuzzleGenerator`, and `PuzzleTemplate`.
+- Internal constraint derivation inside `PuzzleGenerator`.
+- PDF package: `TextRenderer` and `PdfGenerator` for puzzle and solution PDFs.
+- Tennis theme and `create_puzzle` entry point.
+- Pytest coverage for engine, generator, model, and PDF behavior.
 
-## Completed (Commits 1--9)
+## 3. Package layout
 
--   Project structure
--   Domain model
--   Assignment
--   Assignment iterator
--   Solver
--   Solver statistics
--   Solver result
--   Validator
--   Optimizer
--   Constraint hierarchy
--   Core constraint implementations
--   Tests (partial)
+```text
+src/logical_puzzle_generator/
+  model/
+  constraints/
+  engine/
+  generator/
+  pdf/
+  themes/
+  create_puzzle.py
+```
 
-## Remaining
+The architecture is stable. Extend it carefully; do not redesign it without an accepted ADR.
 
-### Commit 10
-
--   Generator
-    -   SolutionGenerator
-    -   ClueGenerator
-    -   PuzzleGenerator
-
-### Commit 11
-
--   PDF generation
--   Solution PDF
-
-### Commit 12
-
--   Tennis theme
--   Example puzzles
-
-### Commit 13
-
--   Documentation
--   Examples
--   Additional tests
--   Release preparation
-
-------------------------------------------------------------------------
-
-# 3. Architecture
-
-    src/
-        logical_puzzle_generator/
-            model/
-            constraints/
-            engine/
-            generator/
-            pdf/
-            themes/
-            tests/
-
-The architecture is considered stable.
-
-**Extend the project. Do not redesign it.**
-
-------------------------------------------------------------------------
-
-# 4. Functional Requirements
+## 4. Functional requirements
 
 The application shall:
 
--   generate a random puzzle
--   generate clues
--   guarantee exactly one solution
--   export a printable puzzle
--   export the solution
+- generate a random valid item-to-position solution;
+- derive mathematical constraints from that solution;
+- generate human-readable clues from supported constraints;
+- assemble a `Puzzle` containing items, constraints, clues, metadata, and solution;
+- validate that the puzzle has exactly one solution;
+- reduce clues without changing constraints, items, metadata, or solution;
+- export a printable puzzle PDF;
+- export a printable solution PDF.
 
-------------------------------------------------------------------------
+## 5. Generator pipeline
 
-# 5. Generator Pipeline
-
-    Generate Solution
-            ↓
-    Generate Constraints
-            ↓
-    Generate Clues
-            ↓
-    Build Puzzle
-            ↓
-    Validate uniqueness
-            ↓
-    Return Puzzle
-
-Pseudo code:
-
-``` python
-while True:
-    solution = SolutionGenerator().generate()
-    clues = ClueGenerator().generate(solution)
-    puzzle = Puzzle(...)
-    if Validator().has_unique_solution(puzzle):
-        return puzzle
+```text
+Source template, puzzle, or iterable of Item
+        ↓
+SolutionGenerator.generate(source)
+        ↓
+PuzzleGenerator._derive_constraints(solution)
+        ↓
+ClueGenerator.generate(constraints)
+        ↓
+Puzzle assembly
+        ↓
+Validator.has_unique_solution(puzzle)
+        ↓
+ClueReducer.reduce(puzzle)
+        ↓
+Validator.has_unique_solution(reduced)
+        ↓
+Return Puzzle or retry until max_attempts is exhausted
 ```
 
-------------------------------------------------------------------------
+Version 1.0 intentionally has no public `ConstraintGenerator`. Constraint derivation is a private `PuzzleGenerator` responsibility.
 
-# 6. Supported Constraint Types
+## 6. Supported constraint and clue types
 
-Version 1.0
+Implemented constraints:
 
--   Fixed Position
--   Left Of
--   Right Of
--   Adjacent
--   Not Adjacent
--   Not Position
+- `FixedPositionConstraint`
+- `LeftOfConstraint`
+- `RightOfConstraint`
+- `AdjacentConstraint`
 
-------------------------------------------------------------------------
+`ClueGenerator` supports exactly those constraint classes. `ClueType` also contains reserved values (`NOT_ADJACENT`, `BETWEEN`, and `NOT_POSITION`) for compatibility/future expansion; they are not generated by Version 1.0.
 
-# 7. Solver Rules
+## 7. Solver rules
 
--   Keep brute-force implementation
--   Support early exit
--   Keep deterministic behaviour
--   No redesign
+- Keep the brute-force implementation.
+- Preserve `stop_after` early exit behavior.
+- Preserve deterministic results for a fixed item order and fixed random seed.
+- Keep solver and validator independent of generator, PDF, themes, and UI.
 
-------------------------------------------------------------------------
+## 8. PDF requirements
 
-# 8. PDF Requirements
+Puzzle PDF:
 
-Puzzle PDF
+- title, theme, and optional difficulty metadata;
+- numbered clues;
+- empty solving grid;
+- item list.
 
--   title
--   theme
--   clues
--   empty solving grid
+Solution PDF:
 
-Solution PDF
+- title, theme, and optional difficulty metadata;
+- completed position-to-item solution table;
+- original clue list.
 
--   completed grid
+PDF generation is presentation-only and must not perform solving or generation.
 
-------------------------------------------------------------------------
+## 9. Coding standards
 
-# 9. Coding Standards
+- Python 3.11+.
+- Type hints for public interfaces and new code.
+- Dataclasses for simple domain models where appropriate.
+- Immutable/frozen domain objects where already established.
+- Small focused classes.
+- No global mutable generation state.
+- Readable code over clever code.
 
--   Python 3.13
--   dataclasses
--   slots=True
--   type hints everywhere
--   immutable model where appropriate
--   small focused classes
--   no global state
--   readable code over clever code
-
-------------------------------------------------------------------------
-
-# 10. Testing
+## 10. Testing
 
 Use pytest.
 
-Every generator component must have tests.
+Required checks for generator/PDF changes:
 
-Acceptance:
+- puzzle generation succeeds;
+- generated puzzle has exactly one solution;
+- generated clues are valid `Clue` instances with text;
+- deterministic behavior when a seeded `random.Random` is supplied;
+- PDF output files can be written for puzzle and solution PDFs.
 
--   puzzle has at least one solution
--   puzzle has exactly one solution
--   generated clues are valid
--   deterministic behaviour when seeded
+## 11. AI development rules
 
-------------------------------------------------------------------------
+Mandatory rules:
 
-# 11. AI Development Rules
+- Preserve public APIs unless a task explicitly authorizes a breaking change.
+- Implement one logical commit at a time.
+- Keep backward compatibility wrappers such as `PdfGenerator.create()` and legacy `PuzzleGenerator` dependency arguments.
+- Follow existing package boundaries.
+- Update documentation in the same change when behavior, commands, or public APIs change.
 
-These rules are mandatory.
+Do not:
 
-## DO NOT
+- redesign the architecture;
+- replace the solver, assignment model, validator, or constraint hierarchy;
+- introduce placeholder implementations;
+- add TODO-driven code;
+- invent requirements not present in the task or roadmap.
 
--   redesign the architecture
--   replace the solver
--   replace Assignment
--   replace Validator
--   replace Constraint hierarchy
--   rename packages unnecessarily
--   introduce TODO implementations
--   introduce placeholder code
--   create mock implementations
+## 12. Definition of done
 
-## ALWAYS
+A change is complete when:
 
--   preserve public APIs
--   implement one commit at a time
--   return complete files
--   keep backward compatibility
--   follow existing coding style
--   use existing domain model
-
-------------------------------------------------------------------------
-
-# 12. Definition of Done
-
-Version 1.0 is complete when the following works:
-
-``` python
-from logical_puzzle_generator.generator import PuzzleGenerator
-
-generator = PuzzleGenerator()
-
-puzzle = generator.generate()
-```
-
-and
-
--   Validator confirms exactly one solution
--   Puzzle PDF is generated
--   Solution PDF is generated
-
-without manual intervention.
-
-------------------------------------------------------------------------
-
-# 13. Long-Term Roadmap
-
-Version 2.0
-
--   5×5 puzzles
--   difficulty estimation
--   optimisation
--   JSON export
-
-Version 3.0
-
--   multiple themes
--   multilingual support
--   batch generation
--   puzzle packs
-
-------------------------------------------------------------------------
-
-# 14. Recommended AI Prompt
-
-    Read the complete repository.
-
-    Read docs/AI_DEVELOPMENT_SPEC.md first.
-
-    Do not redesign the project.
-
-    Implement exactly one commit.
-
-    Return complete files only.
-
-    No placeholders.
-    No TODOs.
-    No mock implementations.
-
-    Keep the existing architecture.
-
-------------------------------------------------------------------------
-
-# 15. Success Criteria
-
-A child should be able to receive a newly generated logical puzzle,
-solve it on paper, and verify the unique solution using the generated
-solution PDF.
-
-The project should remain clean, maintainable and easily extensible.
+- tests pass;
+- examples in documentation match the current public API;
+- architecture documentation matches the code;
+- ADRs do not contradict implementation;
+- public API compatibility is preserved or explicitly documented;
+- one focused commit and pull request are prepared.

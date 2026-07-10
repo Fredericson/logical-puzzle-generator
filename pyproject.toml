@@ -1,6 +1,6 @@
 [project]
 name="logical-puzzle-generator"
-version="0.2.0"
+version="1.0.0"
 description="Mathematically verified logical puzzle generator"
 requires-python=">=3.11"
 
