@@ -114,9 +114,10 @@ class PdfGenerator:
             Paragraph(f"{self._catalog.label('theme')}: {theme}", self._styles["BodyText"])
         )
         if metadata is not None and metadata.difficulty is not None:
+            difficulty_label = self._catalog.difficulty_label(metadata.difficulty)
             story.append(
                 Paragraph(
-                    f"{self._catalog.label('difficulty')}: {metadata.difficulty}",
+                    f"{self._catalog.label('difficulty')}: {difficulty_label}",
                     self._styles["BodyText"],
                 )
             )

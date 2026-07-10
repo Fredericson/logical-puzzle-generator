@@ -33,7 +33,7 @@ Potential next release work:
 - Multi-category puzzle relationships.
 - Additional implemented constraints such as not-adjacent, between, and not-position.
 - Richer clue generation from multiple categories.
-- Difficulty estimation and puzzle-quality scoring.
+- Difficulty estimation and puzzle-quality scoring. Current PDFs only localize existing numeric metadata into child-friendly labels; they do not calculate difficulty.
 - More sophisticated clue minimization/optimization.
 - JSON export and import.
 - Batch generation.

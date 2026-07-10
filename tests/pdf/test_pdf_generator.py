@@ -244,3 +244,84 @@ def test_generated_pdf_files_are_non_empty(tmp_path) -> None:
 def test_unsupported_pdf_language_is_rejected() -> None:
     with pytest.raises(ValueError, match="Unsupported language"):
         PdfGenerator(language="fr")
+
+
+@pytest.mark.parametrize(
+    ("language", "difficulty", "expected"),
+    [
+        ("en", 1, "Difficulty: Easy"),
+        ("en", 2, "Difficulty: Medium"),
+        ("en", 3, "Difficulty: Hard"),
+        ("en", 4, "Difficulty: Hard"),
+        ("de", 1, "Schwierigkeit: Leicht"),
+        ("de", 2, "Schwierigkeit: Mittel"),
+        ("de", 3, "Schwierigkeit: Schwierig"),
+        ("de", 4, "Schwierigkeit: Schwierig"),
+    ],
+)
+def test_pdf_uses_localized_child_facing_difficulty_labels(
+    tmp_path, language, difficulty, expected
+) -> None:
+    puzzle = sample_puzzle()
+    puzzle.metadata.difficulty = difficulty
+    path = tmp_path / f"puzzle-{language}-{difficulty}.pdf"
+
+    PdfGenerator(language=language).create_puzzle_pdf(puzzle, path)
+
+    text = pdf_text_bytes(path)
+    assert expected in text
+
+
+def test_missing_difficulty_omits_difficulty_line(tmp_path) -> None:
+    puzzle = sample_puzzle()
+    puzzle.metadata.difficulty = None
+    path = tmp_path / "puzzle.pdf"
+
+    PdfGenerator().create_puzzle_pdf(puzzle, path)
+
+    text = pdf_text_bytes(path)
+    assert "Difficulty" not in text
+
+
+def test_raw_numeric_difficulty_is_not_rendered_in_puzzle_pdf(tmp_path) -> None:
+    puzzle = sample_puzzle()
+    puzzle.metadata.difficulty = 1
+    path = tmp_path / "puzzle.pdf"
+
+    PdfGenerator().create_puzzle_pdf(puzzle, path)
+
+    text = pdf_text_bytes(path)
+    assert "Difficulty: Easy" in text
+    assert "Difficulty: 1" not in text
+
+
+def test_raw_numeric_difficulty_is_not_rendered_in_solution_pdf(tmp_path) -> None:
+    puzzle = sample_puzzle()
+    puzzle.metadata.difficulty = 1
+    path = tmp_path / "solution.pdf"
+
+    PdfGenerator().create_solution_pdf(puzzle, path)
+
+    text = pdf_text_bytes(path)
+    assert "Difficulty: Easy" in text
+    assert "Difficulty: 1" not in text
+
+
+@pytest.mark.parametrize("difficulty", [0, -1, 1.5, "1", True])
+def test_unsupported_difficulty_values_fail_clearly(tmp_path, difficulty) -> None:
+    puzzle = sample_puzzle()
+    puzzle.metadata.difficulty = difficulty
+
+    with pytest.raises(ValueError, match="Unsupported difficulty value"):
+        PdfGenerator().create_puzzle_pdf(puzzle, tmp_path / "puzzle.pdf")
+
+
+def test_pdf_generation_with_localized_difficulty_remains_one_page(tmp_path) -> None:
+    puzzle_path = tmp_path / "puzzle.pdf"
+    solution_path = tmp_path / "solution.pdf"
+
+    PdfGenerator(language="de").create_puzzle_pdf(sample_puzzle(), puzzle_path)
+    PdfGenerator(language="de").create_solution_pdf(sample_puzzle(), solution_path)
+
+    assert pdf_page_count(puzzle_path) == 1
+    assert pdf_page_count(solution_path) == 1
