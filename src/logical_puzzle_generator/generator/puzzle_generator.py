@@ -38,9 +38,9 @@ QUALITY_UNIQUE_MEANING_WEIGHT = 12
 # Endpoint anchors are intentionally not rewarded so random fixed-position slots are not biased to endpoints.
 QUALITY_ENDPOINT_WEIGHT = 0
 # Undirected adjacency clues add useful relational variety without revealing direction.
-QUALITY_ADJACENT_WEIGHT = 3
+QUALITY_ADJACENT_WEIGHT = 0
 # Direct left/right clues are strong but still relational, so they receive adjacency-level weight.
-QUALITY_DIRECT_RELATION_WEIGHT = 3
+QUALITY_DIRECT_RELATION_WEIGHT = 0
 # Duplicate meanings are allowed, but each repeat makes the clue set feel more mechanical.
 QUALITY_DUPLICATE_MEANING_PENALTY = 5
 # Dominant meanings are penalized separately to avoid clue sets made mostly from one pattern.
@@ -84,7 +84,9 @@ class PuzzleGenerator:
         )
         self._difficulty_policy = DifficultyPolicy()
         self._distribution_policy = (
-            distribution_policy if distribution_policy is not None else ConstraintDistributionPolicy()
+            distribution_policy
+            if distribution_policy is not None
+            else ConstraintDistributionPolicy()
         )
         self._fixed_position_generator = (
             fixed_position_generator
@@ -122,7 +124,13 @@ class PuzzleGenerator:
                 last_failure = f"attempt {attempt}: {exc.__class__.__name__}: {exc}"
 
         if candidates:
-            return max(candidates, key=self._quality_score)
+            best_score = max(self._quality_score(candidate) for candidate in candidates)
+            best_candidates = [
+                candidate
+                for candidate in candidates
+                if self._quality_score(candidate) == best_score
+            ]
+            return self._random.choice(best_candidates)
 
         raise RuntimeError(
             "Unable to generate a valid uniquely solvable "
@@ -138,7 +146,9 @@ class PuzzleGenerator:
         items: list[Item],
         difficulty: Difficulty,
     ) -> tuple[Puzzle, None] | tuple[None, str]:
-        fixed_position_constraints, solution = self._fixed_position_generator.generate(items, difficulty)
+        fixed_position_constraints, solution = self._fixed_position_generator.generate(
+            items, difficulty
+        )
         failure = self._solution_failure(solution, items)
         if failure is not None:
             return None, failure
@@ -204,7 +214,6 @@ class PuzzleGenerator:
 
         return reduced, None
 
-
     def _select_visible_constraints(
         self,
         fixed_position_constraints: list[FixedPositionConstraint],
@@ -235,7 +244,15 @@ class PuzzleGenerator:
         if not viable_sets:
             return [*fixed_position_constraints, *relational_constraints]
 
-        return max(viable_sets, key=self._distribution_policy.score)
+        best_score = max(
+            self._distribution_policy.score(constraints) for constraints in viable_sets
+        )
+        best_sets = [
+            constraints
+            for constraints in viable_sets
+            if self._distribution_policy.score(constraints) == best_score
+        ]
+        return self._random.choice(best_sets)
 
     def _target_relation_count(
         self,

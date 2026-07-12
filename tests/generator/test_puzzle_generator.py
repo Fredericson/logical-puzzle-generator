@@ -10,6 +10,7 @@ from logical_puzzle_generator.constraints import (
     DirectRightOfConstraint,
     FixedPositionConstraint,
     LeftOfConstraint,
+    RightOfConstraint,
 )
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.engine.solver import Solver
@@ -185,7 +186,9 @@ def test_generate_fails_after_max_attempts() -> None:
 
 
 def test_generate_supports_single_item_with_fixed_position_constraint() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty="medium").generate([Item("Solo")])
+    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty="medium").generate(
+        [Item("Solo")]
+    )
 
     assert len(puzzle.constraints) == 1
     assert isinstance(puzzle.constraints[0], FixedPositionConstraint)
@@ -468,12 +471,15 @@ class AnchorDirectClueReducer:
 
 
 def test_difficulty_metadata_is_stored_after_clue_reduction_from_visible_constraints() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(7), difficulty="medium").generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(7), difficulty="medium").generate(
+        create_template()
+    )
 
     assert puzzle.metadata is not None
     assert puzzle.metadata.difficulty == 2
     assert _fixed_position_count(puzzle) == 1
     assert [clue.constraint for clue in puzzle.clues] == puzzle.constraints
+
 
 def test_generated_puzzle_metadata_difficulty_can_report_multiple_levels() -> None:
     default_puzzle = PuzzleGenerator(random_source=random.Random(1)).generate(create_template())
@@ -525,7 +531,9 @@ def _fixed_position_count(puzzle: Puzzle) -> int:
 def test_requested_difficulty_controls_final_visible_fixed_position_count(
     difficulty: str, expected_metadata: int, expected_count: int
 ) -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty=difficulty).generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty=difficulty).generate(
+        create_template()
+    )
     result = Solver().solve(puzzle, stop_after=2)
 
     assert result.has_unique_solution
@@ -540,14 +548,18 @@ def test_requested_difficulty_controls_final_visible_fixed_position_count(
 def test_typed_requested_difficulty_is_supported() -> None:
     from logical_puzzle_generator.generator import Difficulty
 
-    puzzle = PuzzleGenerator(random_source=random.Random(2), difficulty=Difficulty.HARD).generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(2), difficulty=Difficulty.HARD).generate(
+        create_template()
+    )
 
     assert _fixed_position_count(puzzle) == 0
     assert puzzle.metadata is not None
     assert puzzle.metadata.difficulty == 3
 
 
-def test_generation_retries_until_requested_difficulty_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generation_retries_until_requested_difficulty_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls = 0
     original = PuzzleGenerator._generate_candidate
 
@@ -555,19 +567,26 @@ def test_generation_retries_until_requested_difficulty_matches(monkeypatch: pyte
         nonlocal calls
         calls += 1
         if calls == 1:
-            return None, "reduced puzzle has 2 visible FixedPositionConstraint clues, which does not match requested difficulty medium"
+            return (
+                None,
+                "reduced puzzle has 2 visible FixedPositionConstraint clues, which does not match requested difficulty medium",
+            )
         return original(self, source, items, difficulty)
 
     monkeypatch.setattr(PuzzleGenerator, "_generate_candidate", mismatching_once)
 
-    puzzle = PuzzleGenerator(random_source=random.Random(1), difficulty="medium", max_attempts=10).generate(create_template())
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(1), difficulty="medium", max_attempts=10
+    ).generate(create_template())
 
     assert calls >= 2
     assert _fixed_position_count(puzzle) == 1
 
 
 def test_generation_raises_clear_error_when_no_matching_difficulty_can_be_generated() -> None:
-    with pytest.raises(RuntimeError, match="Unable to generate a valid uniquely solvable easy puzzle"):
+    with pytest.raises(
+        RuntimeError, match="Unable to generate a valid uniquely solvable easy puzzle"
+    ):
         PuzzleGenerator(
             random_source=random.Random(1),
             difficulty="easy",
@@ -611,7 +630,9 @@ def _fixed_position_constraints(puzzle: Puzzle) -> list[FixedPositionConstraint]
 
 
 def test_easy_fixed_position_clues_use_distinct_children_and_positions() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(12), difficulty="easy").generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(12), difficulty="easy").generate(
+        create_template()
+    )
     fixed_constraints = _fixed_position_constraints(puzzle)
 
     assert len(fixed_constraints) == 2
@@ -621,7 +642,9 @@ def test_easy_fixed_position_clues_use_distinct_children_and_positions() -> None
 
 
 def test_medium_fixed_position_clue_selects_one_matching_child_position_fact() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(12), difficulty="medium").generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(12), difficulty="medium").generate(
+        create_template()
+    )
     fixed_constraints = _fixed_position_constraints(puzzle)
 
     assert len(fixed_constraints) == 1
@@ -670,18 +693,95 @@ def test_hard_fixed_position_selection_never_retains_anchors() -> None:
         assert _fixed_position_constraints(puzzle) == []
 
 
+def _ordered_solution() -> Solution:
+    items = [Item("A"), Item("B"), Item("C"), Item("D")]
+    return Solution(
+        Assignment({item: Position(index) for index, item in enumerate(items, start=1)})
+    )
+
+
+def _derived_relation_types_for_seed(seed: int) -> set[type[object]]:
+    constraints = PuzzleGenerator(random_source=random.Random(seed))._derive_relational_constraints(
+        _ordered_solution()
+    )
+    return {type(constraint) for constraint in constraints}
+
+
+@pytest.mark.parametrize(
+    "constraint_type",
+    [DirectLeftOfConstraint, DirectRightOfConstraint, AdjacentConstraint],
+)
+def test_neighbouring_pair_can_generate_each_adjacent_semantic_relation(
+    constraint_type: type[object],
+) -> None:
+    assert any(constraint_type in _derived_relation_types_for_seed(seed) for seed in range(50))
+
+
+@pytest.mark.parametrize("constraint_type", [LeftOfConstraint, RightOfConstraint])
+def test_non_neighbouring_pair_can_generate_each_ordinary_direction(
+    constraint_type: type[object],
+) -> None:
+    assert any(constraint_type in _derived_relation_types_for_seed(seed) for seed in range(50))
+
+
+def test_relational_derivation_separates_adjacent_and_non_adjacent_semantics() -> None:
+    solution = _ordered_solution()
+    constraints = PuzzleGenerator(random_source=random.Random(1))._derive_relational_constraints(
+        solution
+    )
+
+    for constraint in constraints:
+        assert constraint.matches(solution.assignment)
+        if isinstance(constraint, LeftOfConstraint):
+            distance = (
+                solution.assignment.position_of(constraint.right).index
+                - solution.assignment.position_of(constraint.left).index
+            )
+            assert distance >= 2
+        elif isinstance(constraint, RightOfConstraint):
+            distance = (
+                solution.assignment.position_of(constraint.right).index
+                - solution.assignment.position_of(constraint.left).index
+            )
+            assert distance >= 2
+        elif isinstance(constraint, DirectLeftOfConstraint):
+            distance = (
+                solution.assignment.position_of(constraint.right).index
+                - solution.assignment.position_of(constraint.left).index
+            )
+            assert distance == 1
+        elif isinstance(constraint, DirectRightOfConstraint):
+            distance = (
+                solution.assignment.position_of(constraint.right).index
+                - solution.assignment.position_of(constraint.left).index
+            )
+            assert distance == 1
+        elif isinstance(constraint, AdjacentConstraint):
+            distance = abs(
+                solution.assignment.position_of(constraint.first).index
+                - solution.assignment.position_of(constraint.second).index
+            )
+            assert distance == 1
+
+
 def test_relational_derivation_never_introduces_extra_fixed_constraints() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(4), difficulty="easy").generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(4), difficulty="easy").generate(
+        create_template()
+    )
     generator = PuzzleGenerator(random_source=random.Random(4), difficulty="easy")
 
     relational_constraints = generator._derive_relational_constraints(puzzle.solution)
 
     assert relational_constraints
-    assert not any(isinstance(constraint, FixedPositionConstraint) for constraint in relational_constraints)
+    assert not any(
+        isinstance(constraint, FixedPositionConstraint) for constraint in relational_constraints
+    )
 
 
 def test_mandatory_fixed_anchors_survive_reduction() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(5), difficulty="easy").generate(create_template())
+    puzzle = PuzzleGenerator(random_source=random.Random(5), difficulty="easy").generate(
+        create_template()
+    )
 
     assert len(_fixed_position_constraints(puzzle)) == 2
     assert all(
@@ -701,7 +801,9 @@ def _relation_type_names(puzzle: Puzzle) -> set[str]:
 
 def test_generated_medium_and_hard_clue_sets_use_multiple_relation_types_when_possible() -> None:
     for difficulty in ("medium", "hard"):
-        puzzle = PuzzleGenerator(random_source=random.Random(31), difficulty=difficulty).generate(create_template())
+        puzzle = PuzzleGenerator(random_source=random.Random(31), difficulty=difficulty).generate(
+            create_template()
+        )
         assert len(_relation_type_names(puzzle)) >= 2
 
 
@@ -712,7 +814,9 @@ def test_four_player_difficulties_generate_exactly_three_unique_visible_clues() 
 
     for difficulty in ("easy", "medium", "hard"):
         for seed in range(50):
-            puzzle = PuzzleGenerator(random_source=random.Random(seed), difficulty=difficulty).generate(create_template())
+            puzzle = PuzzleGenerator(
+                random_source=random.Random(seed), difficulty=difficulty
+            ).generate(create_template())
             fixed_count = len(_fixed_position_constraints(puzzle))
 
             assert len(puzzle.clues) == 3
@@ -723,8 +827,12 @@ def test_four_player_difficulties_generate_exactly_three_unique_visible_clues() 
 
 
 def test_identical_seeds_produce_identical_distributions() -> None:
-    first = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(create_template())
-    second = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(create_template())
+    first = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(
+        create_template()
+    )
+    second = PuzzleGenerator(random_source=random.Random(42), difficulty="medium").generate(
+        create_template()
+    )
 
     assert [type(constraint) for constraint in first.constraints] == [
         type(constraint) for constraint in second.constraints
@@ -733,9 +841,14 @@ def test_identical_seeds_produce_identical_distributions() -> None:
 
 def test_different_seeds_produce_different_distributions() -> None:
     distributions = {
-        tuple(type(constraint).__name__ for constraint in PuzzleGenerator(
-            random_source=random.Random(seed), difficulty="medium"
-        ).generate(create_template()).constraints)
+        tuple(
+            type(constraint).__name__
+            for constraint in PuzzleGenerator(
+                random_source=random.Random(seed), difficulty="medium"
+            )
+            .generate(create_template())
+            .constraints
+        )
         for seed in range(40, 46)
     }
 
@@ -751,22 +864,54 @@ def test_distribution_regression_over_100_puzzles_per_difficulty() -> None:
         "AdjacentConstraint",
     }
     seen: set[str] = set()
+    solver = Solver()
+    expected_fixed_counts = {"easy": 2, "medium": 1, "hard": 0}
+    distributions: set[tuple[str, ...]] = set()
+
     for difficulty in ("easy", "medium", "hard"):
         dominant_puzzles = 0
         for seed in range(100):
-            puzzle = PuzzleGenerator(random_source=random.Random(seed), difficulty=difficulty).generate(create_template())
+            puzzle = PuzzleGenerator(
+                random_source=random.Random(seed), difficulty=difficulty
+            ).generate(create_template())
             relation_names = [
                 type(constraint).__name__
                 for constraint in puzzle.constraints
                 if not isinstance(constraint, FixedPositionConstraint)
             ]
             seen.update(relation_names)
+            distributions.add(tuple(relation_names))
+
+            assert len(puzzle.clues) == 3
+            assert len(puzzle.constraints) == 3
+            assert _fixed_position_count(puzzle) == expected_fixed_counts[difficulty]
+            result = solver.solve(puzzle, stop_after=2)
+            assert result.has_unique_solution
+            assert result.solutions[0] == puzzle.solution.assignment
+
             if len(relation_names) > 1:
                 most_common = max(relation_names.count(name) for name in set(relation_names))
                 if most_common == len(relation_names) or most_common >= 4:
                     dominant_puzzles += 1
         assert dominant_puzzles < 10
+
     assert supported_relations <= seen
+    assert len(distributions) > 1
+
+
+def test_reported_twelve_puzzle_regression_includes_ordinary_relation() -> None:
+    ordinary_seen = False
+
+    for seed in range(12):
+        puzzle = PuzzleGenerator(random_source=random.Random(seed), difficulty="hard").generate(
+            create_template()
+        )
+        ordinary_seen = ordinary_seen or any(
+            isinstance(constraint, LeftOfConstraint | RightOfConstraint)
+            for constraint in puzzle.constraints
+        )
+
+    assert ordinary_seen
 
 
 def test_distribution_policy_receives_neutral_required_fixed_count() -> None:
@@ -779,8 +924,13 @@ def test_distribution_policy_receives_neutral_required_fixed_count() -> None:
     ).generate(create_template())
 
     assert policy.accept_calls
-    assert {required_fixed_count for _constraints, required_fixed_count, _item_count in policy.accept_calls} == {2}
-    assert {item_count for _constraints, _required_fixed_count, item_count in policy.accept_calls} == {4}
+    assert {
+        required_fixed_count
+        for _constraints, required_fixed_count, _item_count in policy.accept_calls
+    } == {2}
+    assert {
+        item_count for _constraints, _required_fixed_count, item_count in policy.accept_calls
+    } == {4}
 
 
 def test_poor_distribution_is_rejected_before_clue_generation() -> None:
@@ -810,4 +960,7 @@ def test_quality_selection_scores_only_distribution_accepted_matching_candidates
     ).generate(create_template())
 
     assert policy.score_calls
-    assert all(_fixed_position_count(Puzzle(items=puzzle.items, constraints=constraints)) == 0 for constraints in policy.score_calls)
+    assert all(
+        _fixed_position_count(Puzzle(items=puzzle.items, constraints=constraints)) == 0
+        for constraints in policy.score_calls
+    )

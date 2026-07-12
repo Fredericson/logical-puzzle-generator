@@ -156,11 +156,11 @@ Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitte
 
 ## ADR-018: Use a deterministic constraint distribution policy for clue variety
 
-Decision: `ConstraintDistributionPolicy` analyzes generated fixed and relational constraints before clue generation, rejects clearly poor type distributions with neutral context such as `required_fixed_count`, and scores acceptable distributions for quality selection and reducer tie-breaking. It uses only the existing Version 1 constraint types, deterministic rule checks, and a small tuple score based on relation-type variety, repeats, dominance, adjacency, and direct-neighbour presence.
+Decision: `ConstraintDistributionPolicy` analyzes generated fixed and relational constraints before clue generation, rejects clearly poor type distributions with neutral context such as `required_fixed_count`, and scores acceptable distributions for quality selection and reducer tie-breaking. It uses only the existing Version 1 constraint types, deterministic rule checks, and a small tuple score based on relation-type variety, repeats, and dominance without making direct-neighbour clues preferred defaults.
 
 Rationale: uniqueness and difficulty rules make puzzles correct, but balanced clue types make them more enjoyable. Keeping distribution scoring separate preserves Solver, Validator, FixedPositionGenerator, ClueGenerator, ClueReducer, DifficultyPolicy, and PdfGenerator responsibilities. The policy deliberately does not import or depend on `Difficulty` or `DifficultyPolicy`; those remain the only difficulty-classification boundary.
 
-Consequences: clue diversity can improve without changing mathematical correctness. Poor distributions are retried before expensive later stages, while final visible puzzles are still validated for unique solvability and exact requested difficulty. ADR-017 remains unchanged: difficulty is still classified only by final visible `FixedPositionConstraint` count.
+Consequences: clue diversity can improve without changing mathematical correctness. Relational generation keeps adjacent semantics separate from non-adjacent ordinary left/right semantics, and visible selection chooses among equally scored best subsets with the injected seeded random source. Poor distributions are retried before expensive later stages, while final visible puzzles are still validated for unique solvability and exact requested difficulty. ADR-017 remains unchanged: difficulty is still classified only by final visible `FixedPositionConstraint` count.
 
 ## ADR-011: Keep clue wording variation in the presentation layer
 
