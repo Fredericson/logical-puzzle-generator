@@ -13,7 +13,7 @@ Preserve the Version 1.0 architecture:
 - solver and validator remain the verification boundary;
 - PuzzleGenerator remains the orchestration boundary;
 - PDF remains presentation-only, including A4 child-friendly lineup rendering.
-- Localization remains presentation-only and must not affect solver, validator, constraints, or generation semantics.
+- Localization and wording variation remain presentation-only and must not affect solver, validator, constraints, clue counts, or generation semantics.
 
 Make the smallest safe change, update tests and documentation when needed, and keep public APIs stable unless explicitly requested otherwise. If PDF presentation changes, verify German and English output and keep puzzle and solution layout sharing free of solving logic.
 ```
@@ -82,3 +82,8 @@ For difficulty work, keep `DifficultyPolicy` and `FixedPositionGenerator` in the
 ### Commit 11.7 clue variety prompt note
 
 When changing clue variety, use `ConstraintDistributionPolicy` for deterministic rule-based analysis, rejection, and simple tuple scoring of existing constraints. Pass only neutral context such as `required_fixed_count`; do not import `Difficulty`, depend on `DifficultyPolicy`, add clue types, move validation into the policy, or treat diversity as a correctness rule. Reduction may use the policy only to choose among otherwise valid removable-clue alternatives.
+
+
+## Clue wording variation prompt
+
+Implement wording changes only in the presentation layer. Keep constraint objects language-independent; use `TemplateCatalog` for localized named-placeholder templates and `ClueTextRenderer` for deterministic selection with injected `random.Random`. Preserve solver, validator, generator, clue reduction, difficulty, PDF layout, clue counts, and constraint semantics. Verify English and German rendering, and ensure German output contains no `ß`.

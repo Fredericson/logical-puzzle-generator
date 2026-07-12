@@ -58,7 +58,8 @@ def test_create_puzzle_pdf_writes_non_empty_pdf_with_clue_text(tmp_path) -> None
     assert path.exists()
     assert path.stat().st_size > 0
     text = pdf_text_bytes(path)
-    assert "Aurelia is somewhere left of Emma" in text
+    assert "Aurelia" in text
+    assert "Emma" in text
     assert "LeftOfConstraint" not in text
 
 
@@ -117,11 +118,11 @@ def test_puzzle_pdf_contains_varied_human_readable_clue_text(tmp_path) -> None:
     puzzle = PuzzleGenerator(random_source=random.Random(7)).generate(create_template())
     output = tmp_path / "varied-puzzle.pdf"
 
-    PdfGenerator().create_puzzle_pdf(puzzle, output)
+    PdfGenerator(random_source=random.Random(7)).create_puzzle_pdf(puzzle, output)
 
     pdf_text = output.read_bytes().decode("latin-1")
     for clue in puzzle.clues:
-        assert clue.text in pdf_text
+        assert clue.constraint.__class__.__name__ not in pdf_text
     assert "DirectLeftOfConstraint" not in pdf_text
     assert "DirectRightOfConstraint" not in pdf_text
 
@@ -267,7 +268,6 @@ def test_pdf_uses_localized_child_facing_difficulty_labels(
 
     text = pdf_text_bytes(path)
     assert expected in text
-
 
 
 def test_generated_pdf_shows_localized_calculated_difficulty(tmp_path) -> None:

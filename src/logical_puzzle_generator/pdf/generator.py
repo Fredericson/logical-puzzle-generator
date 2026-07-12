@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +27,13 @@ class PdfGenerator:
         self,
         text_renderer: TextRenderer | None = None,
         language: Language | str = Language.ENGLISH,
+        random_source: random.Random | None = None,
     ) -> None:
         self.language = parse_language(language)
         self._text_renderer = (
-            text_renderer if text_renderer is not None else TextRenderer(self.language)
+            text_renderer
+            if text_renderer is not None
+            else TextRenderer(self.language, random_source=random_source)
         )
         self._catalog = TranslationCatalog(self.language)
         self._styles = getSampleStyleSheet()

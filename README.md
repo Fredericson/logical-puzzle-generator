@@ -6,7 +6,7 @@ Logical Puzzle Generator creates small, printable Einstein-style ordering puzzle
 
 - Generate a complete one-to-one assignment of puzzle items to positions.
 - Derive internal mathematical constraints from the generated solution.
-- Convert supported constraints into human-readable English clues and render localized clue text for PDFs.
+- Convert supported constraints into human-readable clues and render deterministic localized wording variations for PDFs.
 - Validate that a puzzle has exactly one solution using the brute-force solver.
 - Reduce unnecessary clues while preserving unique solvability and at least one clue.
 - Generate printable A4 puzzle and solution PDFs with ReportLab in English (`en`, default) or German (`de`).
@@ -130,3 +130,8 @@ Generated puzzles choose a random difficulty when `--difficulty` is omitted or `
 ### Clue variety policy
 
 `ConstraintDistributionPolicy` analyzes generated constraints before clue text is created. It receives only neutral distribution context, such as the required fixed-position count, and does not understand Easy, Medium, or Hard. Its rule-based acceptance rejects obviously repetitive four-item relation mixes, while its small deterministic comparison score ranks relation variety by distinct relation types, repeats, dominance, adjacency, and direct-neighbour clues. This is a quality optimization only: `DifficultyPolicy` owns difficulty, solver and validator uniqueness checks remain the correctness authority, and no new clue or constraint types are introduced. The reducer uses the same score only as a tie-breaker after difficulty preservation and uniqueness have already been checked.
+
+
+## Localized clue wording variations
+
+Visible constraints remain mathematical, language-independent objects. At render time, `ClueTextRenderer` maps each supported constraint to named placeholder values and asks `TemplateCatalog` for English or German wording templates. One equivalent template is selected per clue with the renderer's `random.Random` source, so seeded rendering is deterministic while different seeds can vary the prose naturally. German templates use Swiss spelling and must not contain `ß`.

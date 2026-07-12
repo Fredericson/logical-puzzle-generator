@@ -161,3 +161,18 @@ Decision: `ConstraintDistributionPolicy` analyzes generated fixed and relational
 Rationale: uniqueness and difficulty rules make puzzles correct, but balanced clue types make them more enjoyable. Keeping distribution scoring separate preserves Solver, Validator, FixedPositionGenerator, ClueGenerator, ClueReducer, DifficultyPolicy, and PdfGenerator responsibilities. The policy deliberately does not import or depend on `Difficulty` or `DifficultyPolicy`; those remain the only difficulty-classification boundary.
 
 Consequences: clue diversity can improve without changing mathematical correctness. Poor distributions are retried before expensive later stages, while final visible puzzles are still validated for unique solvability and exact requested difficulty. ADR-017 remains unchanged: difficulty is still classified only by final visible `FixedPositionConstraint` count.
+
+## ADR-011: Keep clue wording variation in the presentation layer
+
+Status: Accepted
+
+Decision: localized natural-language clue variations belong exclusively to the presentation layer. `ClueTextRenderer` renders a semantic `Constraint` by asking `TemplateCatalog` for localized templates and selecting one with the injected `random.Random` source.
+
+Reason: constraints define mathematical truth through `matches(assignment)`, while wording is user experience. Keeping templates out of constraints, solvers, validators, generators, difficulty policy, and PDF layout preserves identical puzzle semantics and allows wording/localization to evolve safely.
+
+Consequences:
+
+- constraint objects remain language-independent;
+- template selection is deterministic when callers inject a seeded random source;
+- English and German clue variants can change without changing generated clue counts or solver behavior;
+- localized templates must use named placeholders and Swiss German spelling without `ß`.

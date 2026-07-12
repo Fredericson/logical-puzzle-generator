@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 from collections.abc import Iterable
 
 from logical_puzzle_generator.clue_text_renderer import ClueTextRenderer
@@ -18,14 +20,21 @@ class TextRenderer:
     solving, or validation logic.
     """
 
-    def __init__(self, language: Language | str = Language.ENGLISH) -> None:
+    def __init__(
+        self,
+        language: Language | str = Language.ENGLISH,
+        random_source: random.Random | None = None,
+    ) -> None:
         self.language = parse_language(language)
+        self._random = random_source if random_source is not None else random.Random()
 
     def render(self, clues: Iterable[Clue]) -> list[str]:
         return self.render_clues(clues)
 
     def render_clues(self, clues: Iterable[Clue], item_count: int | None = None) -> list[str]:
-        clue_renderer = ClueTextRenderer(self.language, item_count=item_count)
+        clue_renderer = ClueTextRenderer(
+            self.language, item_count=item_count, random_source=self._random
+        )
         lines: list[str] = []
         for index, clue in enumerate(clues, 1):
             lines.append(f"{index}. {clue_renderer.render_clue(clue)}")

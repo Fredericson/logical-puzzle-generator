@@ -14,7 +14,7 @@ Completed milestones:
 - Constraint hierarchy with far-left/far-right fixed-position, direct-left, left-of, direct-right, right-of, and adjacent next-to constraints.
 - Brute-force solver, assignment iterator, solver result, statistics, and validator.
 - Generator pipeline: `SolutionGenerator`, varied private constraint derivation, `ClueGenerator`, `ClueReducer`, `Validator`, and PDF generation.
-- PDF output: `TextRenderer`, localized `ClueTextRenderer`, vector girl/lineup renderers, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()` on A4 portrait pages.
+- PDF output: `TextRenderer`, localized `ClueTextRenderer`, `TemplateCatalog`, vector girl/lineup renderers, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()` on A4 portrait pages.
 - Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point with `--language en` and `--language de`, including the German example `python -m logical_puzzle_generator.create_puzzle --number 3 --language de`.
 - Version 1.0 documentation synchronization.
 - Test coverage across engine, model, generator, and PDF packages.
@@ -54,3 +54,8 @@ Potential next release work:
 Completed: clue variety distribution policy with neutral fixed-count context, rule-based early rejection of repetitive generated constraints, and simple deterministic reducer tie-breaking that preserves diversity where possible.
 
 Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible FixedPositionConstraint count. Version 1 four-player puzzles now target exactly three visible clues for every difficulty.
+
+
+## Commit 11.9 status
+
+Completed: natural-language clue wording variations for all existing visible Version 1 constraint types. The implementation is presentation-only through `ClueTextRenderer` and `TemplateCatalog`; solver, validator, generator, clue reduction, difficulty, PDF layout, clue counts, and constraint semantics remain unchanged. Seeded renderers produce deterministic wording, and German templates keep Swiss spelling without `ß`.
