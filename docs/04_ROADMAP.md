@@ -59,3 +59,8 @@ Completed: selectable difficulty. The CLI and public API accept easy, medium, an
 ## Commit 11.9 status
 
 Completed: natural-language clue wording variations for all existing visible Version 1 constraint types. The implementation is presentation-only through `ClueTextRenderer` and `TemplateCatalog`; solver, validator, generator, clue reduction, difficulty, PDF layout, clue counts, and constraint semantics remain unchanged. Seeded renderers produce deterministic wording, and German templates keep Swiss spelling without `ß`.
+
+
+## Commit 12.0 status
+
+Completed: deterministic statistical CI regression coverage for visible relation distribution. The standard pytest suite samples 600 Tennis puzzles across fixed Easy/Medium/Hard seed ranges, verifies all five supported relation types occur within documented lower/upper bounds, keeps ordinary non-direct left/right clues represented, checks a 12-seed focused symptom regression, and confirms deterministic repeated counts.

@@ -87,3 +87,8 @@ When changing clue variety, use `ConstraintDistributionPolicy` for deterministic
 ## Clue wording variation prompt
 
 Implement wording changes only in the presentation layer. Keep constraint objects language-independent; use `TemplateCatalog` for localized named-placeholder templates and `ClueTextRenderer` for deterministic selection with injected `random.Random`. Preserve solver, validator, generator, clue reduction, difficulty, PDF layout, clue counts, and constraint semantics. Verify English and German rendering, and ensure German output contains no `ß`.
+
+
+## Relation-distribution regression prompt
+
+When changing relation generation, clue reduction, or distribution scoring, preserve the Commit 12.0 deterministic CI gate. Use explicit integer seeds only, keep the Tennis sample ranges documented (`10000-10199`, `20000-20199`, `30000-30199`), count only the five supported visible relation types, and keep the test as quality regression coverage rather than production balancing logic. Run `pytest tests/generator/test_relation_distribution_regression.py`, full `pytest`, and `ruff check src tests`.
