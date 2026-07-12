@@ -208,3 +208,10 @@ Constraint distribution is a soft, rule-based quality optimization. The generato
 `TemplateCatalog` is the central source for localized clue sentence templates. It stores multiple equivalent named-placeholder templates for every visible Version 1 constraint type: fixed position, direct-left, left-of, direct-right, right-of, and adjacent. `ClueTextRenderer` chooses one template per clue with the injected `random.Random` source and substitutes semantic roles such as `{A}`, `{B}`, and `{position}`. This preserves deterministic output for identical seeds without changing solver, validator, generator, clue reduction, difficulty, or PDF layout logic.
 
 Constraints remain language-independent and continue to define only mathematical semantics through `matches(assignment)`. German wording follows Swiss spelling and never uses `ß`.
+
+
+## 14. Commit 12.0 relation-distribution quality gate
+
+Generator quality now includes a deterministic statistical regression test for visible relational clues in the Tennis four-player template. The gate samples Easy seeds `10000-10199`, Medium seeds `20000-20199`, and Hard seeds `30000-30199`, for 200 puzzles per difficulty and 600 total puzzles. It counts exactly `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`; `FixedPositionConstraint` is excluded from relation totals.
+
+The regression suite defines the exact numeric quality thresholds in code. Architecturally, every supported relation type has deterministic lower and upper representation limits, and ordinary non-direct `LeftOfConstraint + RightOfConstraint` must keep a minimum combined representation. Exact measured counts are intentionally produced only by test diagnostics when a regression occurs, not recorded as documentation requirements. This gate observes public generator behavior and validates solver uniqueness; it must not be implemented as balancing logic inside the generator.

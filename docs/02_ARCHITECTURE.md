@@ -246,3 +246,8 @@ localized rendered sentence
 ```
 
 `TemplateCatalog` stores multiple English and German templates for each existing visible constraint type using named placeholders. `ClueTextRenderer` extracts semantic roles from the constraint, selects one equivalent template using its injected `random.Random` instance, and formats the sentence. This gives deterministic wording for identical seeds and natural variation across different seeds while keeping mathematical constraints, solving, validation, generation, difficulty, clue reduction, and PDF layout unchanged.
+
+
+## 12. Build-quality regression gates
+
+GitHub Actions runs the normal pytest suite on push and pull request, and that suite includes `tests/generator/test_relation_distribution_regression.py`. The test is an architectural boundary check for generator output quality: `PuzzleGenerator` still generates visible constraints, `ConstraintDistributionPolicy` scores variety, `DifficultyPolicy` owns the fixed-position difficulty rule, and `Solver`/`Validator` remain correctness authorities. The regression gate only observes generated Tennis puzzles over fixed seed ranges (`10000-10199`, `20000-20199`, `30000-30199`) and asserts deterministic relation-type distribution thresholds for the five supported visible relation classes.

@@ -107,6 +107,20 @@ docs/             Version 1.0 project documentation and AI workflow guidance
 examples/         Placeholder for generated example artifacts and future examples
 ```
 
+## Deterministic relation-distribution regression gate
+
+The normal pytest suite includes `tests/generator/test_relation_distribution_regression.py`, a deterministic statistical quality gate for visible Tennis relation clues. It generates 600 puzzles from explicit integer seed ranges: Easy `10000-10199`, Medium `20000-20199`, and Hard `30000-30199` (200 puzzles per difficulty). The gate counts only `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`; it intentionally excludes `FixedPositionConstraint`.
+
+The regression suite owns the exact numeric quality thresholds. Conceptually, every supported relation type has deterministic lower and upper representation limits, and ordinary non-direct `LeftOfConstraint` plus `RightOfConstraint` must maintain a minimum combined share. Exact measured counts are intentionally not documented as requirements; when a regression occurs, the test diagnostics print the total, per-type counts, percentages, difficulty sample sizes, and seed ranges. This is a generator quality regression test, not solver correctness logic; every sampled puzzle is still checked for exactly three visible clues, the requested difficulty mix, unique solvability, and solution equality.
+
+Run it locally with:
+
+```bash
+pytest tests/generator/test_relation_distribution_regression.py
+```
+
+It is part of the standard CI build, so `pytest` runs it automatically on push and pull request.
+
 ## Documentation
 
 Start with `docs/README.md`. The main documents are:

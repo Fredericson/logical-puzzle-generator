@@ -131,3 +131,14 @@ Keep clue-variety work in `ConstraintDistributionPolicy` and the generator/reduc
 ## Wording-template policy
 
 When changing clue text, edit `TemplateCatalog` and presentation tests only unless the task explicitly changes mathematical semantics. Do not add wording logic to constraint classes, solver, validator, generator, difficulty policy, clue reducer, or PDF layout. New or changed German templates must use Swiss spelling and must not include `ß`. Template selection must use injected `random.Random` instances for deterministic seeded rendering.
+
+
+## Relation-distribution regression guidance
+
+Any generator, reducer, difficulty, or constraint-distribution change must keep the deterministic statistical gate passing. Run:
+
+```bash
+pytest tests/generator/test_relation_distribution_regression.py
+```
+
+The test uses the Tennis template with 200 Easy, 200 Medium, and 200 Hard puzzles from fixed integer seed ranges. It counts `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`, and excludes `FixedPositionConstraint`. Do not loosen thresholds or skip the test to hide a regression; if a deliberate generation-policy change shifts the stable distribution, update the regression suite with deterministic evidence while keeping exact measured counts in test diagnostics rather than documentation. Ordinary non-direct left/right clues must remain meaningfully represented.

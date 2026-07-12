@@ -176,3 +176,14 @@ Consequences:
 - template selection is deterministic when callers inject a seeded random source;
 - English and German clue variants can change without changing generated clue counts or solver behavior;
 - localized templates must use named placeholders and Swiss German spelling without `ß`.
+
+
+## ADR-019: Gate relation-distribution quality in CI
+
+Status: Accepted
+
+Decision: treat visible relation distribution as a deterministic build-quality gate. The standard pytest suite runs a statistical regression test over the Tennis four-player template using Easy seeds `10000-10199`, Medium seeds `20000-20199`, and Hard seeds `30000-30199`. It counts only `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`. The regression suite owns the exact numeric thresholds: each supported relation type has deterministic lower and upper quality limits, and ordinary non-direct left/right clues have a minimum combined representation.
+
+Rationale: solver uniqueness and exact fixed-position difficulty rules prove correctness, but they do not protect against silent quality regressions where a supported clue meaning disappears. Fixed seed ranges make the gate reproducible and non-flaky while catching severe starvation and dominance.
+
+Consequences: generator changes must preserve relation variety or update the regression-suite thresholds with deterministic evidence. Exact measured counts are emitted by failing test diagnostics rather than documented as architectural requirements. The test remains observational; no solver, validator, difficulty, PDF, localization, or generator-balancing responsibilities move into CI.
