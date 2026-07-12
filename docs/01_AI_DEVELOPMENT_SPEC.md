@@ -22,7 +22,7 @@ Completed capabilities:
 - Generator package: `SolutionGenerator`, `ClueGenerator`, `ClueReducer`, `PuzzleGenerator`, and `PuzzleTemplate`.
 - Internal constraint derivation inside `PuzzleGenerator`.
 - PDF package: `TextRenderer`, `GirlFigureRenderer`, `PlayerLineupRenderer`, and `PdfGenerator` for child-friendly A4 puzzle and solution PDFs.
-- Localization: `Language`, `TranslationCatalog`, and `ClueTextRenderer` for English/German presentation text.
+- Localization: `Language`, `TranslationCatalog`, `TemplateCatalog`, and `ClueTextRenderer` for deterministic English/German presentation text variations.
 - Tennis theme and `create_puzzle` entry point.
 - Pytest coverage for engine, generator, model, and PDF behavior.
 
@@ -201,3 +201,10 @@ Difficulty is calculated after clue reduction from final visible constraints onl
 ## Clue diversity quality goals
 
 Constraint distribution is a soft, rule-based quality optimization. The generator should prefer varied mixes of the existing fixed-position, direct-left, left-of, direct-right, right-of, and adjacent constraints, while avoiding distributions dominated by one relation type. The comparison score is intentionally small and deterministic: it prioritizes distinct relation types, penalizes repeated/dominant relation types, and uses adjacency/direct-neighbour presence as minor tie-breakers. `DifficultyPolicy` remains the sole difficulty owner; displayed difficulty still derives from final visible fixed-position counts plus unique-solution validation.
+
+
+## 12. Presentation wording templates
+
+`TemplateCatalog` is the central source for localized clue sentence templates. It stores multiple equivalent named-placeholder templates for every visible Version 1 constraint type: fixed position, direct-left, left-of, direct-right, right-of, and adjacent. `ClueTextRenderer` chooses one template per clue with the injected `random.Random` source and substitutes semantic roles such as `{A}`, `{B}`, and `{position}`. This preserves deterministic output for identical seeds without changing solver, validator, generator, clue reduction, difficulty, or PDF layout logic.
+
+Constraints remain language-independent and continue to define only mathematical semantics through `matches(assignment)`. German wording follows Swiss spelling and never uses `ß`.

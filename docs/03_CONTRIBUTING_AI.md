@@ -44,7 +44,7 @@ Reviewers and AI assistants should verify:
 - tests pass;
 - public APIs remain compatible unless a breaking change was requested;
 - documentation examples match the actual code;
-- language/localization behavior is documented when user-facing text changes;
+- language/localization behavior is documented when user-facing text changes, including deterministic clue wording templates;
 - architecture documentation matches package responsibilities;
 - ADRs are not contradicted;
 - no placeholder implementations, dead prompts, or stale roadmap claims were introduced.
@@ -126,3 +126,8 @@ Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraint
 ## Constraint distribution policy
 
 Keep clue-variety work in `ConstraintDistributionPolicy` and the generator/reducer orchestration. The policy may analyze, reject, and score existing constraints with neutral context such as `required_fixed_count`, but must not import or depend on `Difficulty`/`DifficultyPolicy`, classify difficulty, solve, validate uniqueness, translate, render PDFs, create target solutions, or add new clue/constraint types. Treat diversity as a rule-based quality preference; never weaken validator checks or the exact fixed-position difficulty rules owned by `DifficultyPolicy`.
+
+
+## Wording-template policy
+
+When changing clue text, edit `TemplateCatalog` and presentation tests only unless the task explicitly changes mathematical semantics. Do not add wording logic to constraint classes, solver, validator, generator, difficulty policy, clue reducer, or PDF layout. New or changed German templates must use Swiss spelling and must not include `ß`. Template selection must use injected `random.Random` instances for deterministic seeded rendering.

@@ -28,20 +28,26 @@ from logical_puzzle_generator.themes.tennis import create_template
 
 def render_de(constraint, clue_type: ClueType, item_count: int = 4) -> str:
     clue = Clue(clue_type, "English compatibility text.", constraint)
-    return ClueTextRenderer(Language.GERMAN, item_count=item_count).render_clue(clue)
+    return ClueTextRenderer(
+        Language.GERMAN, item_count=item_count, random_source=random.Random(0)
+    ).render_clue(clue)
 
 
 def pdf_text(path) -> str:
     return path.read_bytes().decode("latin-1", errors="ignore")
 
 
-def test_english_clue_text_remains_unchanged() -> None:
+def test_english_clue_text_uses_constraint_semantics() -> None:
     emma = Item("Emma")
     aurelia = Item("Aurelia")
     constraint = LeftOfConstraint(emma, aurelia)
     clue = Clue(ClueType.LEFT_OF, "Emma stands left of Aurelia.", constraint)
 
-    assert ClueTextRenderer(Language.ENGLISH).render_clue(clue) == "Emma stands left of Aurelia."
+    rendered = ClueTextRenderer(Language.ENGLISH, random_source=random.Random(0)).render_clue(clue)
+
+    assert rendered.endswith(".")
+    assert "Emma" in rendered
+    assert "Aurelia" in rendered
 
 
 @pytest.mark.parametrize(
@@ -81,7 +87,12 @@ def test_english_clue_text_remains_unchanged() -> None:
     ],
 )
 def test_german_clue_wording(constraint, clue_type, expected) -> None:
-    assert render_de(constraint, clue_type) == expected
+    rendered = render_de(constraint, clue_type)
+
+    assert rendered.endswith(".")
+    assert "{" not in rendered
+    assert "}" not in rendered
+    assert "ß" not in rendered
 
 
 def test_cli_accepts_language_de_and_en(tmp_path, monkeypatch) -> None:

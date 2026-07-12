@@ -18,7 +18,8 @@ logical_puzzle_generator/
   generator/      Puzzle generation orchestration
   pdf/            Presentation-only text, vector lineup, and PDF rendering
   localization.py Language enum and translation catalog
-  clue_text_renderer.py Localized clue wording
+  clue_text_renderer.py Localized clue wording renderer
+  template_catalog.py Central localized clue wording templates
   themes/         Reusable puzzle templates
   create_puzzle.py Tennis PDF entry point
 ```
@@ -228,3 +229,20 @@ Difficulty selection -> FixedPositionGenerator -> target Solution + mandatory fi
 -> ClueReducer (clues and matching constraints together, exact fixed count preserved) -> Validator
 -> DifficultyPolicy match/classify -> quality selection among matching candidates -> PdfGenerator presentation
 ```
+
+
+## 11. Localization and wording variation
+
+Localized clue prose is a presentation concern. The flow is:
+
+```text
+Constraint
+  ↓
+ClueTextRenderer
+  ↓
+TemplateCatalog
+  ↓
+localized rendered sentence
+```
+
+`TemplateCatalog` stores multiple English and German templates for each existing visible constraint type using named placeholders. `ClueTextRenderer` extracts semantic roles from the constraint, selects one equivalent template using its injected `random.Random` instance, and formats the sentence. This gives deterministic wording for identical seeds and natural variation across different seeds while keeping mathematical constraints, solving, validation, generation, difficulty, clue reduction, and PDF layout unchanged.
