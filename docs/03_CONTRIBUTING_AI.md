@@ -128,6 +128,10 @@ Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraint
 Keep clue-variety work in `ConstraintDistributionPolicy` and the generator/reducer orchestration. The policy may analyze, reject, and score existing constraints with neutral context such as `required_fixed_count`, but must not import or depend on `Difficulty`/`DifficultyPolicy`, classify difficulty, solve, validate uniqueness, translate, render PDFs, create target solutions, or add new clue/constraint types. Keep adjacent and non-adjacent relation semantics distinct: ordinary left/right generation requires distance >= 2, while direct and adjacent generation requires distance == 1. Use injected seeded randomness for equally valid relation choices and tied best subsets. Treat diversity as a rule-based quality preference; never weaken validator checks or the exact fixed-position difficulty rules owned by `DifficultyPolicy`.
 
 
+## PDF presentation policy
+
+PDF polish belongs in `src/logical_puzzle_generator/pdf/`, presentation/localization labels, PDF tests, and documentation. Do not change solver, validator, generator, clue generation, difficulty, clue counts, relation distribution, wording templates, or localization semantics for a presentation-only worksheet task. Puzzle and solution PDFs should remain layout-identical except that solution name boxes are filled from the existing solution assignment.
+
 ## Wording-template policy
 
 When changing clue text, edit `TemplateCatalog` and presentation tests only unless the task explicitly changes mathematical semantics. Do not add wording logic to constraint classes, solver, validator, generator, difficulty policy, clue reducer, or PDF layout. New or changed German templates must use Swiss spelling and must not include `ß`. Template selection must use injected `random.Random` instances for deterministic seeded rendering.

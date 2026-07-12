@@ -16,7 +16,7 @@ logical_puzzle_generator/
   constraints/    Mathematical rules over assignments
   engine/         Brute-force solving and validation
   generator/      Puzzle generation orchestration
-  pdf/            Presentation-only text, vector lineup, and PDF rendering
+  pdf/            Presentation-only text, vector lineup, polished worksheet layout, and PDF rendering
   localization.py Language enum and translation catalog
   clue_text_renderer.py Localized clue wording renderer
   template_catalog.py Central localized clue wording templates
@@ -24,7 +24,7 @@ logical_puzzle_generator/
   create_puzzle.py Tennis PDF entry point
 ```
 
-Dependencies flow inward to the model and engine. The engine does not depend on generator, PDF, or themes. PDF depends on model objects only for rendering. Localization and clue text rendering are presentation services. Themes provide data only.
+Dependencies flow inward to the model and engine. The engine does not depend on generator, PDF, or themes. PDF depends on model objects only for rendering. Localization and clue text rendering are presentation services. Themes provide data only. Version 1 presentation polish stays inside this boundary: it changes worksheet spacing, typography, clue indentation, and vector lineup geometry without changing generated constraints, clues, difficulty, metadata, localization semantics, or solving.
 
 ## 3. Model package
 

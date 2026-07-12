@@ -187,3 +187,12 @@ Decision: treat visible relation distribution as a deterministic build-quality g
 Rationale: solver uniqueness and exact fixed-position difficulty rules prove correctness, but they do not protect against silent quality regressions where a supported clue meaning disappears. Fixed seed ranges make the gate reproducible and non-flaky while catching severe starvation and dominance.
 
 Consequences: generator changes must preserve relation variety or update the regression-suite thresholds with deterministic evidence. Exact measured counts are emitted by failing test diagnostics rather than documented as architectural requirements. The test remains observational; no solver, validator, difficulty, PDF, localization, or generator-balancing responsibilities move into CI.
+
+
+## ADR-020: Polish Version 1 PDFs without changing puzzle semantics
+
+Status: Accepted
+
+Decision: child-facing PDF polish is presentation-only. `PdfGenerator` and `PlayerLineupRenderer` may adjust margins, spacing, typography hierarchy, clue indentation, deterministic vector geometry, and solution-label filling, but they must not change generated constraints, visible clue count, clue order, clue wording templates, relation distribution, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata.
+
+Rationale: Version 1 is feature-complete, so the worksheet should feel professionally printed and pleasant to solve with a pencil while preserving the already validated puzzle semantics. Keeping puzzle and solution PDFs layout-identical except for filled solution names makes visual regression testing straightforward and preserves the existing architecture boundary that rendering consumes puzzle data rather than producing or interpreting it.

@@ -26,6 +26,7 @@ class TranslationCatalog:
         Language.ENGLISH: {
             "logical_puzzle": "Logical Puzzle",
             "general": "General",
+            "puzzle_number": "Puzzle",
             "theme": "Theme",
             "difficulty": "Difficulty",
             "clues": "Clues",
@@ -42,6 +43,7 @@ class TranslationCatalog:
         Language.GERMAN: {
             "logical_puzzle": "Logikrätsel",
             "general": "Allgemein",
+            "puzzle_number": "Rätsel",
             "theme": "Thema",
             "difficulty": "Schwierigkeit",
             "clues": "Hinweise",
