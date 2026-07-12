@@ -81,7 +81,7 @@ For difficulty work, keep `DifficultyPolicy` and `FixedPositionGenerator` in the
 
 ### Commit 11.7 clue variety prompt note
 
-When changing clue variety, use `ConstraintDistributionPolicy` for deterministic rule-based analysis, rejection, and simple tuple scoring of existing constraints. Pass only neutral context such as `required_fixed_count`; do not import `Difficulty`, depend on `DifficultyPolicy`, add clue types, move validation into the policy, or treat diversity as a correctness rule. Reduction may use the policy only to choose among otherwise valid removable-clue alternatives.
+When changing clue variety, use `ConstraintDistributionPolicy` for deterministic rule-based analysis, rejection, and simple tuple scoring of existing constraints. Pass only neutral context such as `required_fixed_count`; do not import `Difficulty`, depend on `DifficultyPolicy`, add clue types, move validation into the policy, or treat diversity as a correctness rule. Reduction may use the policy only to choose among otherwise valid removable-clue alternatives. Do not collapse ordinary left/right and direct/adjacent meanings: ordinary left/right generation requires distance >= 2, direct/adjacent generation requires distance == 1, and tied best choices should use injected seeded randomness.
 
 
 ## Clue wording variation prompt

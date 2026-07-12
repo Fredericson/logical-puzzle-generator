@@ -50,11 +50,11 @@ All constraints inherit from `Constraint` and implement `matches(assignment)`. I
 - `DirectLeftOfConstraint(left, right)`
   - means the left item is immediately left of the right item.
 - `LeftOfConstraint(left, right)`
-  - means the left item is somewhere left of the right item.
+  - means the left item is somewhere left of the right item; generated target-solution pairs must be non-adjacent (distance >= 2).
 - `DirectRightOfConstraint(right, left)`
   - means the right item is immediately right of the left item.
 - `RightOfConstraint(right, left)`
-  - means the right item is somewhere right of the left item.
+  - means the right item is somewhere right of the left item; generated target-solution pairs must be non-adjacent (distance >= 2).
 - `AdjacentConstraint(first, second)`
   - means the two items are next to each other, but the direction is unknown.
 
@@ -90,13 +90,13 @@ Constructs the selected difficulty anchors before relational constraints exist. 
 
 ### Internal relational constraint derivation
 
-`PuzzleGenerator` owns relational constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0. After `FixedPositionGenerator` returns mandatory anchors and the target solution, relational derivation sorts the solution by position and creates only non-fixed true positional constraints: direct-left/direct-right or undirected adjacent constraints for neighboring ordered items, and ordinary left-of/right-of constraints for longer-range relationships. Relational derivation must not create additional `FixedPositionConstraint` instances. Derived constraints are de-duplicated and verified against the generated solution.
+`PuzzleGenerator` owns relational constraint derivation as a private implementation detail. There is no public `ConstraintGenerator` in Version 1.0. After `FixedPositionGenerator` returns mandatory anchors and the target solution, relational derivation sorts the solution by position and creates only non-fixed true positional constraints: direct-left/direct-right or undirected adjacent constraints only for neighboring ordered items, and ordinary left-of/right-of constraints only for longer-range relationships with distance >= 2. For each eligible pair, relation category choices use the injected `random.Random` source so identical seeds are deterministic while different seeds can vary. Visible subset selection validates unique solvability, scores distribution quality, collects all tied best subsets, and chooses among those ties with the same injected random source. Relational derivation must not create additional `FixedPositionConstraint` instances. Derived constraints are de-duplicated and verified against the generated solution.
 
 ### `ConstraintDistributionPolicy`
 
 Analyzes the list of generated constraints after fixed anchors and private relational derivation, before clues are rendered. It receives only neutral context such as `required_fixed_count`, counts supported constraint classes, applies deterministic rule-based acceptance, and provides a small tuple score for quality selection and reduction tie-breaking. It does not import or depend on `Difficulty`/`DifficultyPolicy`, classify Easy/Medium/Hard, solve puzzles, generate solutions, validate uniqueness, render PDFs, translate clues, or introduce new constraint types. Diversity is a human-facing quality optimization, not a correctness rule; `DifficultyPolicy` remains authoritative for difficulty and `Validator` remains authoritative for unique solvability.
 
-Normal four-item quality rules allow one- or two-relation sets, but reject three-or-more-relation sets that contain only one relation type, contain more than two of one relation type, or consist entirely of ordinary left/right relations. The deterministic score is lexicographic and explainable: more distinct relation types rank higher, repeated and dominant types rank lower, and adjacency/direct-neighbour presence are minor comparison tie-breakers.
+Normal four-item quality rules allow one- or two-relation sets, but reject three-or-more-relation sets that contain only one relation type, contain more than two of one relation type, or consist entirely of ordinary left/right relations. The deterministic score is lexicographic and explainable: more distinct relation types rank higher, repeated and dominant types rank lower, and remaining tuple fields are neutral stable placeholders rather than direct-relation bonuses.
 
 ### `ClueGenerator`
 

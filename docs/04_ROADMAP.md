@@ -13,7 +13,7 @@ Completed milestones:
 - Domain model and package structure.
 - Constraint hierarchy with far-left/far-right fixed-position, direct-left, left-of, direct-right, right-of, and adjacent next-to constraints.
 - Brute-force solver, assignment iterator, solver result, statistics, and validator.
-- Generator pipeline: `SolutionGenerator`, varied private constraint derivation, `ClueGenerator`, `ClueReducer`, `Validator`, and PDF generation.
+- Generator pipeline: `SolutionGenerator`, varied private constraint derivation with distinct adjacent vs non-adjacent relation semantics, `ClueGenerator`, `ClueReducer`, `Validator`, and PDF generation.
 - PDF output: `TextRenderer`, localized `ClueTextRenderer`, `TemplateCatalog`, vector girl/lineup renderers, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()` on A4 portrait pages.
 - Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point with `--language en` and `--language de`, including the German example `python -m logical_puzzle_generator.create_puzzle --number 3 --language de`.
 - Version 1.0 documentation synchronization.
@@ -51,7 +51,7 @@ Potential next release work:
 
 ## Commit 11.5 status
 
-Completed: clue variety distribution policy with neutral fixed-count context, rule-based early rejection of repetitive generated constraints, and simple deterministic reducer tie-breaking that preserves diversity where possible.
+Completed: clue variety distribution policy with neutral fixed-count context, adjacent/non-adjacent relation semantic separation, rule-based early rejection of repetitive generated constraints, and seeded selection among tied best visible subsets that preserves diversity where possible.
 
 Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible FixedPositionConstraint count. Version 1 four-player puzzles now target exactly three visible clues for every difficulty.
 

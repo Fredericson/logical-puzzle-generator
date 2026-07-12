@@ -59,19 +59,13 @@ class ConstraintDistributionPolicy:
         unique_relation_types = len(relation_counts)
         duplicate_relation_count = sum(count - 1 for count in relation_counts.values() if count > 1)
         dominant_relation_count = max(relation_counts.values(), default=0)
-        has_adjacent = int(relation_counts[AdjacentConstraint] > 0)
-        has_direct_relation = int(
-            relation_counts[DirectLeftOfConstraint] > 0
-            or relation_counts[DirectRightOfConstraint] > 0
-        )
-
         return ConstraintDistribution(
             score=(
                 unique_relation_types,
                 -duplicate_relation_count,
                 -dominant_relation_count,
-                has_adjacent,
-                has_direct_relation,
+                0,
+                0,
             ),
             counts=counts,
             relation_counts=relation_counts,
@@ -112,8 +106,7 @@ class ConstraintDistributionPolicy:
             return False
 
         ordinary_left_right_count = (
-            analysis.relation_counts[LeftOfConstraint]
-            + analysis.relation_counts[RightOfConstraint]
+            analysis.relation_counts[LeftOfConstraint] + analysis.relation_counts[RightOfConstraint]
         )
         if ordinary_left_right_count == analysis.relation_count:
             return False
