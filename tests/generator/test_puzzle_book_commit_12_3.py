@@ -19,7 +19,7 @@ def test_puzzle_book_reads_available_categories_from_selected_theme() -> None:
     generator = PuzzleBookGenerator(theme="tennis_training", random_source=random.Random(0))
 
     assert generator.available_category_ids == tuple(category.id for category in theme.categories)
-    assert "tournament_wins" not in generator.available_category_ids
+    assert "tournament_wins" in generator.available_category_ids
 
 
 def test_puzzle_book_selects_without_repetition_when_enough_categories() -> None:
@@ -75,7 +75,9 @@ def test_every_theme_page_has_one_selected_category_and_one_theme() -> None:
         assert puzzle.metadata is not None
         assert puzzle.metadata.theme_id == book.theme_id
         assert puzzle.metadata.theme_category_id in registered
-        theme_categories = [category for category in puzzle.categories if category.name != "Children"]
+        theme_categories = [
+            category for category in puzzle.categories if category.name != "Children"
+        ]
         assert len(theme_categories) == 1
         assert theme_categories[0].name == puzzle.metadata.theme_category_id
 

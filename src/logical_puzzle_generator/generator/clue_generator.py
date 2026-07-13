@@ -10,6 +10,11 @@ from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfCo
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.constraints.same_position import SamePositionConstraint
+from logical_puzzle_generator.constraints.numeric import (
+    ExactNumericValueConstraint,
+    NumericDifferenceConstraint,
+    NumericMultipleConstraint,
+)
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 
@@ -100,6 +105,21 @@ class ClueGenerator:
                 clue_type=ClueType.SAME_POSITION,
                 text=self._sentence(constraint.description),
                 constraint=constraint,
+            )
+
+        if isinstance(constraint, ExactNumericValueConstraint):
+            return Clue(
+                ClueType.EXACT_NUMERIC_VALUE, self._sentence(constraint.description), constraint
+            )
+
+        if isinstance(constraint, NumericDifferenceConstraint):
+            return Clue(
+                ClueType.NUMERIC_DIFFERENCE, self._sentence(constraint.description), constraint
+            )
+
+        if isinstance(constraint, NumericMultipleConstraint):
+            return Clue(
+                ClueType.NUMERIC_MULTIPLE, self._sentence(constraint.description), constraint
             )
 
         raise TypeError(f"Unsupported constraint type: {constraint.__class__.__name__}.")

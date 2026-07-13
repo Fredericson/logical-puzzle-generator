@@ -31,9 +31,12 @@ def test_theme_registry_resolves_all_themes_and_rejects_invalid_ids() -> None:
         assert theme.title.en and theme.title.de
         for category in theme.categories:
             assert category.label.en and category.label.de
-            assert len(category.values) >= 4
-            assert len({value.id for value in category.values}) == len(category.values)
-            assert all(value.label.en and value.label.de for value in category.values)
+            if category.is_numeric:
+                assert category.values == ()
+            else:
+                assert len(category.values) >= 4
+                assert len({value.id for value in category.values}) == len(category.values)
+                assert all(value.label.en and value.label.de for value in category.values)
     with pytest.raises(ValueError, match="Unsupported theme"):
         DEFAULT_THEME_REGISTRY.resolve("space_camp")
 

@@ -17,6 +17,7 @@ from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.themes.presentation import ItemPresentationResolver
 from logical_puzzle_generator.themes.registry import (
     DEFAULT_THEME_REGISTRY,
+    ThemeCategoryDefinition,
     ThemeCategoryInstance,
     ThemeRegistry,
 )
@@ -129,7 +130,6 @@ class PdfGenerator:
             output_path, self._worksheet_story(puzzle, labels=self._solution_labels(puzzle))
         )
 
-
     def create_puzzle_book_pdf(self, puzzle_book, filename: str | Path) -> None:
         """Create the PuzzleBook puzzle PDF: position, theme pages, empty summary."""
         output_path = self._prepare_output_path(filename)
@@ -177,7 +177,6 @@ class PdfGenerator:
             )
         return story
 
-
     def _summary_table_story(self, puzzle_book, *, solved: bool) -> list[Any]:
         summary = puzzle_book.summary_table
         story: list[Any] = [
@@ -188,10 +187,13 @@ class PdfGenerator:
         table_data: list[list[str]] = [header]
         for row in summary.rows:
             category = puzzle_book.theme.category_by_id(row.theme_category_id)
+            category_instance = self._category_instance_from_ids(
+                category, row.theme_category_instance_id, row.value_ids_by_child
+            )
             category_label = category.localized_label(self.language)
             values = (
                 [
-                    category.value_by_id(value_id).display(self.language, short=True)
+                    category_instance.value_by_id(value_id).display(self.language, short=True)
                     for value_id in row.value_ids_by_child
                 ]
                 if solved
@@ -259,9 +261,33 @@ class PdfGenerator:
         metadata = self._themed_metadata(puzzle)
         theme = self._theme(puzzle)
         category = theme.category_by_id(metadata.theme_category_id)
-        selected_ids = metadata.selected_theme_value_ids
-        selected_values = tuple(category.value_by_id(value_id) for value_id in selected_ids)
-        return ThemeCategoryInstance(category, metadata.theme_category_instance_id, selected_values)
+        return self._category_instance_from_ids(
+            category, metadata.theme_category_instance_id, metadata.selected_theme_value_ids
+        )
+
+    def _category_instance_from_ids(
+        self,
+        category: ThemeCategoryDefinition,
+        instance_id: str,
+        selected_ids: tuple[str, ...],
+    ) -> ThemeCategoryInstance:
+        selected_values = tuple(
+            (
+                category.parse_generated_numeric_value_id(value_id, instance_id=instance_id)
+                if category.is_numeric
+                else category.value_by_id(value_id)
+            )
+            for value_id in selected_ids
+        )
+        if category.is_numeric:
+            if len(selected_values) != 4:
+                raise ValueError("Numeric category metadata must contain exactly four values.")
+            if len({value.id for value in selected_values}) != 4:
+                raise ValueError("Numeric category metadata contains duplicate value IDs.")
+            numeric_values = [value.numeric_value for value in selected_values]
+            if len(set(numeric_values)) != 4:
+                raise ValueError("Numeric category metadata contains duplicate numeric values.")
+        return ThemeCategoryInstance(category, instance_id, selected_values)
 
     def _is_themed(self, puzzle: Puzzle) -> bool:
         metadata = puzzle.metadata

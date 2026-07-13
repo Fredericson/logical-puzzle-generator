@@ -9,6 +9,11 @@ from logical_puzzle_generator.constraints.fixed_position import FixedPositionCon
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.constraints.same_position import SamePositionConstraint
+from logical_puzzle_generator.constraints.numeric import (
+    ExactNumericValueConstraint,
+    NumericDifferenceConstraint,
+    NumericMultipleConstraint,
+)
 from logical_puzzle_generator.localization import Language, parse_language
 from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.clue import Clue
@@ -50,7 +55,51 @@ class ClueTextRenderer:
         if isinstance(constraint, SamePositionConstraint):
             child, value = self._child_theme_pair(constraint.first, constraint.second)
             return self._resolver_required().direct_assignment_sentence(child, value)
+        if isinstance(constraint, ExactNumericValueConstraint):
+            return self._render_numeric_exact(constraint)
+        if isinstance(constraint, NumericDifferenceConstraint):
+            return self._render_numeric_difference(constraint)
+        if isinstance(constraint, NumericMultipleConstraint):
+            return self._render_numeric_multiple(constraint)
         raise TypeError(f"Unsupported constraint type: {constraint.__class__.__name__}.")
+
+    def _numeric_unit(self, value: int) -> str:
+        wording = self._resolver_required().category.wording
+        text = wording.unit_singular if value == 1 else wording.unit_plural
+        if text is None:
+            raise ValueError("Numeric category wording requires units.")
+        return text.for_language(self.language)
+
+    def _numeric_text(self, text) -> str:
+        if text is None:
+            raise ValueError("Numeric category wording is incomplete.")
+        return text.for_language(self.language)
+
+    def _render_numeric_exact(self, constraint: ExactNumericValueConstraint) -> str:
+        wording = self._resolver_required().category.wording
+        return self._numeric_text(wording.numeric_exact).format(
+            child=self._label(constraint.child),
+            value=constraint.value,
+            unit=self._numeric_unit(constraint.value),
+        )
+
+    def _render_numeric_difference(self, constraint: NumericDifferenceConstraint) -> str:
+        use_more = self._random.choice([True, False])
+        wording = self._resolver_required().category.wording
+        template = wording.numeric_more if use_more else wording.numeric_fewer
+        return self._numeric_text(template).format(
+            greater=self._label(constraint.greater_child),
+            lesser=self._label(constraint.lesser_child),
+            difference=constraint.difference,
+            unit=self._numeric_unit(constraint.difference),
+        )
+
+    def _render_numeric_multiple(self, constraint: NumericMultipleConstraint) -> str:
+        wording = self._resolver_required().category.wording
+        return self._numeric_text(wording.numeric_twice).format(
+            multiple=self._label(constraint.multiple_child),
+            base=self._label(constraint.base_child),
+        )
 
     def _render_fixed_position(self, constraint: FixedPositionConstraint) -> str:
         item = constraint.item

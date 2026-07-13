@@ -22,6 +22,12 @@ class ClueType(str, Enum):
 
     SAME_POSITION = "same_position"
 
+    EXACT_NUMERIC_VALUE = "exact_numeric_value"
+
+    NUMERIC_DIFFERENCE = "numeric_difference"
+
+    NUMERIC_MULTIPLE = "numeric_multiple"
+
     NOT_ADJACENT = "not_adjacent"
 
     BETWEEN = "between"
