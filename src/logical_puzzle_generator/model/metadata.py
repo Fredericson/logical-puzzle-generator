@@ -15,6 +15,12 @@ class Metadata:
 
     difficulty: int
 
+    theme_id: str = "tennis_training"
+
+    thematic_category_id: str = "training"
+
+    thematic_category_label: str = "Training"
+
     author: str = "Logical Puzzle Generator"
 
     version: str = "1.0.0"

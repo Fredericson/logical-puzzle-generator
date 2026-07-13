@@ -92,3 +92,7 @@ Implement wording changes only in the presentation layer. Keep constraint object
 ## Relation-distribution regression prompt
 
 When changing relation generation, clue reduction, or distribution scoring, preserve the Commit 12.0 deterministic CI gate. Use explicit integer seeds only, keep the Tennis sample ranges documented (`10000-10199`, `20000-20199`, `30000-30199`), count only the five supported visible relation types, and keep the test as quality regression coverage rather than production balancing logic. Run `pytest tests/generator/test_relation_distribution_regression.py`, full `pytest`, and `ruff check src tests`.
+
+## Commit 12.2 documentation note
+
+The current Version 1 themed puzzle uses children as protagonists, exactly one data-driven thematic category, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.

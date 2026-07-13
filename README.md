@@ -155,3 +155,9 @@ Visible constraints remain mathematical, language-independent objects. At render
 ## Version 1 presentation polish
 
 Commit 12.1 is presentation-only. It polishes the child-facing PDF worksheet with calmer spacing, a clearer typography hierarchy, larger name boxes, deterministic lineup geometry, and aligned wrapped clue numbering. It does not change generated constraints, clue wording templates, clue order, clue counts, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata.
+
+## Commit 12.2 themed puzzles
+
+Puzzles now support five data-driven child-friendly themes: `tennis_training`, `dance_studio`, `beach_day`, `athletics_training`, and `zoo_visit`.  Each generated Version 1 puzzle keeps four child protagonists and four ordered positions, and adds exactly one thematic category with four distinct values.  Select a theme with `--theme beach_day` or with the public API `create_puzzle(..., theme="beach_day")`; omitting the theme remains backward-compatible and uses `tennis_training`.  `--theme random` selects one supported theme through the generator random source.
+
+The solver is category-aware: children and the single thematic value category are permuted independently, giving a 4! × 4! space rather than an unrestricted 8! space.  Difficulty still means only the visible fixed child-position anchors: easy has 2, medium has 1, hard has 0.  The worksheet renders bordered choice boxes for available names and possible thematic values.

@@ -20,6 +20,8 @@ class ClueType(str, Enum):
 
     ADJACENT = "adjacent"
 
+    SAME_POSITION = "same_position"
+
     NOT_ADJACENT = "not_adjacent"
 
     BETWEEN = "between"

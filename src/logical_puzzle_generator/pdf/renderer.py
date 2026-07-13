@@ -9,6 +9,7 @@ from logical_puzzle_generator.localization import Language, parse_language
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.puzzle import Puzzle
+from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY
 
 
 class TextRenderer:
@@ -45,16 +46,24 @@ class TextRenderer:
             raise ValueError("Cannot render a solution PDF because the puzzle has no Solution.")
 
         assignment = puzzle.solution.assignment
-        ordered_items = sorted(
-            assignment.positions,
-            key=lambda item: assignment.position_of(item).index,
-        )
-        return [
-            (str(assignment.position_of(item).index), self.render_item_name(item))
-            for item in ordered_items
-        ]
+        children = [item for item in puzzle.items if item.category_id == "children"]
+        theme_items = [item for item in puzzle.items if item.category_id != "children"]
+        rows: list[tuple[str, str]] = []
+        for position in range(1, len(children) + 1):
+            child = next(item for item in children if assignment.position_of(item).index == position)
+            theme = next((item for item in theme_items if assignment.position_of(item).index == position), None)
+            label = self.render_item_name(child)
+            if theme is not None:
+                label = f"{label} / {self.render_item_name(theme, puzzle=puzzle, short=True)}"
+            rows.append((str(position), label))
+        return rows
 
-    def render_item_name(self, item: Item) -> str:
+    def render_item_name(self, item: Item, puzzle: Puzzle | None = None, *, short: bool = False) -> str:
         if not item.name:
             raise ValueError("Puzzle items must contain readable names.")
+        if item.category_id != "children" and puzzle is not None and puzzle.metadata is not None:
+            theme = DEFAULT_THEME_REGISTRY.resolve(puzzle.metadata.theme_id)
+            for value in theme.values:
+                if value.id == item.name:
+                    return value.display(self.language, short=short)
         return item.name

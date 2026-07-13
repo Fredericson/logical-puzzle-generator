@@ -9,10 +9,11 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
 from logical_puzzle_generator.model.puzzle import Puzzle
+from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY
 
 from .lineup import PlayerLineupRenderer
 from .renderer import TextRenderer
@@ -129,18 +130,16 @@ class PdfGenerator:
         ):
             story.append(Paragraph(rendered_clue, self._styles["ChildClue"]))
         story.append(Spacer(1, 0.08 * inch))
-        story.append(
-            Paragraph(self._catalog.label("players_items"), self._styles["SectionHeading"])
-        )
-        story.append(
-            Paragraph(", ".join(item.name for item in puzzle.items), self._styles["NameList"])
-        )
+        children = [item.name for item in puzzle.items if item.category_id == "children"]
+        story.append(self._choice_box(self._catalog.label("players_items"), children))
+        story.append(Spacer(1, 0.08 * inch))
+        story.append(self._choice_box(self._theme_category_label(puzzle), self._theme_values(puzzle)))
         return story
 
     def _header(self, puzzle: Puzzle) -> list[Any]:
         metadata = puzzle.metadata
-        title = metadata.title if metadata is not None else self._catalog.label("logical_puzzle")
-        theme = metadata.theme if metadata is not None else self._catalog.label("general")
+        title = self._theme_title(puzzle)
+        theme = self._theme_title(puzzle) if metadata is not None else self._catalog.label("general")
 
         story: list[Any] = [Paragraph(self._catalog.title(title), self._styles["WorksheetTitle"])]
         meta_parts: list[str] = []
@@ -153,9 +152,36 @@ class PdfGenerator:
         story.append(Paragraph(" &nbsp; • &nbsp; ".join(meta_parts), self._styles["WorksheetMeta"]))
         return story
 
+    def _choice_box(self, heading: str, values: list[str]) -> Table:
+        cells = [[Paragraph(f"<b>{heading}</b>", self._styles["NameList"])] + [Paragraph(value, self._styles["NameList"]) for value in values]]
+        table = Table(cells, colWidths=[1.45 * inch] + [1.3 * inch] * 4)
+        table.setStyle(TableStyle([
+            ("BOX", (0, 0), (-1, -1), 1, colors.black),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (0, 0), colors.whitesmoke),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        return table
+
+    def _theme(self, puzzle: Puzzle):
+        if puzzle.metadata is None:
+            return DEFAULT_THEME_REGISTRY.resolve()
+        return DEFAULT_THEME_REGISTRY.resolve(puzzle.metadata.theme_id)
+
+    def _theme_title(self, puzzle: Puzzle) -> str:
+        return self._theme(puzzle).localized_title(self.language)
+
+    def _theme_category_label(self, puzzle: Puzzle) -> str:
+        return self._theme(puzzle).localized_category_label(self.language)
+
+    def _theme_values(self, puzzle: Puzzle) -> list[str]:
+        return [value.display(self.language, short=True) for value in self._theme(puzzle).values]
+
     def _lineup(self, puzzle: Puzzle, labels: list[str] | None = None) -> PlayerLineupRenderer:
         return PlayerLineupRenderer(
-            item_count=len(puzzle.items),
+            item_count=len([item for item in puzzle.items if item.category_id == "children"]),
             labels=labels,
             instruction=self._catalog.label("solving_grid"),
         )

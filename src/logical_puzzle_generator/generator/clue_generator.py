@@ -9,6 +9,7 @@ from logical_puzzle_generator.constraints.direct_left_of import DirectLeftOfCons
 from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
+from logical_puzzle_generator.constraints.same_position import SamePositionConstraint
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 
@@ -90,6 +91,13 @@ class ClueGenerator:
         if isinstance(constraint, AdjacentConstraint):
             return Clue(
                 clue_type=ClueType.ADJACENT,
+                text=self._sentence(constraint.description),
+                constraint=constraint,
+            )
+
+        if isinstance(constraint, SamePositionConstraint):
+            return Clue(
+                clue_type=ClueType.SAME_POSITION,
                 text=self._sentence(constraint.description),
                 constraint=constraint,
             )

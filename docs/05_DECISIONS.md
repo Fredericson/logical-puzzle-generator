@@ -196,3 +196,11 @@ Status: Accepted
 Decision: child-facing PDF polish is presentation-only. `PdfGenerator` and `PlayerLineupRenderer` may adjust margins, spacing, typography hierarchy, clue indentation, deterministic vector geometry, and solution-label filling, but they must not change generated constraints, visible clue count, clue order, clue wording templates, relation distribution, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata.
 
 Rationale: Version 1 is feature-complete, so the worksheet should feel professionally printed and pleasant to solve with a pencil while preserving the already validated puzzle semantics. Keeping puzzle and solution PDFs layout-identical except for filled solution names makes visual regression testing straightforward and preserves the existing architecture boundary that rendering consumes puzzle data rather than producing or interpreting it.
+
+## ADR: Exactly one thematic category in Commit 12.2
+
+Commit 12.2 adds selectable data-driven themes while deliberately keeping Version 1 puzzles small: four children, four positions, and exactly one theme-specific category with four values.  This gives children one meaningful additional dimension to solve without introducing multiple categories, animal protagonists, 5×5 puzzles, or batch/PDF complexity.
+
+## ADR: Category-aware solver assignments
+
+The assignment model now treats children and thematic values as separate categories that independently occupy the same four positions.  This preserves one-to-one semantics per category and keeps the search space at 4! × 4!, avoiding an unrestricted 8! flattening.  Difficulty calibration remains isolated to fixed child-position anchors; thematic fixed-position constraints do not count toward easy/medium/hard anchors.

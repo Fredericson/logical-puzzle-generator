@@ -12,6 +12,7 @@ from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfCo
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
+from logical_puzzle_generator.constraints.same_position import SamePositionConstraint
 from logical_puzzle_generator.localization import Language, parse_language
 
 ConstraintType = type[Constraint]
@@ -60,6 +61,10 @@ class TemplateCatalog:
                 "{A} and {B} stand beside each other.",
                 "{B} stands next to {A}.",
             ),
+            SamePositionConstraint: (
+                "{A} has {B}.",
+                "{B} belongs to {A}.",
+            ),
         },
         Language.GERMAN: {
             FixedPositionConstraint: (
@@ -92,6 +97,10 @@ class TemplateCatalog:
                 "{A} und {B} stehen nebeneinander.",
                 "{B} steht neben {A}.",
             ),
+            SamePositionConstraint: (
+                "{A} hat {B}.",
+                "{B} gehört zu {A}.",
+            ),
         },
     }
 
@@ -117,6 +126,7 @@ class TemplateCatalog:
             DirectRightOfConstraint,
             RightOfConstraint,
             AdjacentConstraint,
+            SamePositionConstraint,
         )
 
     @classmethod

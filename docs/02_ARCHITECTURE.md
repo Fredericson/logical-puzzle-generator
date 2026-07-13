@@ -251,3 +251,9 @@ localized rendered sentence
 ## 12. Build-quality regression gates
 
 GitHub Actions runs the normal pytest suite on push and pull request, and that suite includes `tests/generator/test_relation_distribution_regression.py`. The test is an architectural boundary check for generator output quality: `PuzzleGenerator` still generates visible constraints, `ConstraintDistributionPolicy` scores variety, `DifficultyPolicy` owns the fixed-position difficulty rule, and `Solver`/`Validator` remain correctness authorities. The regression gate only observes generated Tennis puzzles over fixed seed ranges (`10000-10199`, `20000-20199`, `30000-30199`) and asserts deterministic relation-type distribution thresholds for the five supported visible relation classes.
+
+## Commit 12.2 theme and assignment architecture
+
+Themes are immutable data definitions resolved through a central registry.  A generated puzzle has exactly two active logical categories in this phase: four children and one four-value thematic category.  Both categories map independently and one-to-one onto positions 1-4, and a child is paired with a thematic value when both occupy the same position.  The solver enumerates category-aware permutations (4! × 4!) and rejects puzzles that leave either child positions or thematic assignments ambiguous.
+
+The PDF layer uses a reusable bordered choice-box presentation pattern for available names and possible thematic values.  This renderer is presentation-only and receives localized headings plus four display values.

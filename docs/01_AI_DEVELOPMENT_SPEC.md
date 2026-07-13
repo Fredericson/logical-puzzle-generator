@@ -215,3 +215,7 @@ Constraints remain language-independent and continue to define only mathematical
 Generator quality now includes a deterministic statistical regression test for visible relational clues in the Tennis four-player template. The gate samples Easy seeds `10000-10199`, Medium seeds `20000-20199`, and Hard seeds `30000-30199`, for 200 puzzles per difficulty and 600 total puzzles. It counts exactly `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`; `FixedPositionConstraint` is excluded from relation totals.
 
 The regression suite defines the exact numeric quality thresholds in code. Architecturally, every supported relation type has deterministic lower and upper representation limits, and ordinary non-direct `LeftOfConstraint + RightOfConstraint` must keep a minimum combined representation. Exact measured counts are intentionally produced only by test diagnostics when a regression occurs, not recorded as documentation requirements. This gate observes public generator behavior and validates solver uniqueness; it must not be implemented as balancing logic inside the generator.
+
+## Commit 12.2 documentation note
+
+The current Version 1 themed puzzle uses children as protagonists, exactly one data-driven thematic category, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.

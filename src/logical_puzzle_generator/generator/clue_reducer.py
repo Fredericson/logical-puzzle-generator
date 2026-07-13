@@ -113,6 +113,7 @@ class ClueReducer:
         return Puzzle(
             items=puzzle.items,
             constraints=[clue.constraint for clue in clues],
+            categories=puzzle.categories,
             clues=clues,
             metadata=puzzle.metadata,
             solution=puzzle.solution,

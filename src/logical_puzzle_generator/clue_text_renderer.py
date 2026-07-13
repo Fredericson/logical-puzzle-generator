@@ -8,6 +8,7 @@ from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfCo
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
+from logical_puzzle_generator.constraints.same_position import SamePositionConstraint
 from logical_puzzle_generator.localization import Language, parse_language
 from logical_puzzle_generator.template_catalog import TemplateCatalog
 from logical_puzzle_generator.model.clue import Clue
@@ -58,6 +59,12 @@ class ClueTextRenderer:
             return self._render_template(
                 AdjacentConstraint,
                 {"A": constraint.first.name, "B": constraint.second.name},
+            )
+        if isinstance(constraint, SamePositionConstraint):
+            child, value = (constraint.first, constraint.second) if constraint.first.category_id == "children" else (constraint.second, constraint.first)
+            return self._render_template(
+                SamePositionConstraint,
+                {"A": child.name, "B": value.name},
             )
         raise TypeError(f"Unsupported constraint type: {constraint.__class__.__name__}.")
 

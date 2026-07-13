@@ -71,7 +71,11 @@ class DifficultyPolicy:
             if isinstance(puzzle_or_constraints, Puzzle)
             else puzzle_or_constraints
         )
-        return sum(isinstance(constraint, FixedPositionConstraint) for constraint in constraints)
+        return sum(
+            isinstance(constraint, FixedPositionConstraint)
+            and getattr(constraint.item, "category_id", "children") == "children"
+            for constraint in constraints
+        )
 
     def required_fixed_position_count(self, difficulty: Difficulty | str) -> int:
         requested = self.normalize(difficulty)

@@ -69,3 +69,7 @@ Completed: deterministic statistical CI regression coverage for visible relation
 ## Commit 12.1 status
 
 Completed: Version 1 child-facing PDF presentation polish. The worksheet now uses a calmer layout, balanced title metadata, more generous whitespace, larger writable lineup boxes, deterministic aligned vector geometry, and clearer clue numbering/wrapping. This was presentation-only; no generator behavior, clue wording, clue counts, relation distribution, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata changed.
+
+## After Commit 12.2
+
+Comic animal protagonists, original animal illustrations, gender selection, configurable name catalogs, multiple thematic categories, batch generation, multiple puzzles per PDF, and larger 5×5 puzzles remain deferred future work.

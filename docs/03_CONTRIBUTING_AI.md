@@ -146,3 +146,7 @@ pytest tests/generator/test_relation_distribution_regression.py
 ```
 
 The test uses the Tennis template with 200 Easy, 200 Medium, and 200 Hard puzzles from fixed integer seed ranges. It counts `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`, and excludes `FixedPositionConstraint`. Do not loosen thresholds or skip the test to hide a regression; if a deliberate generation-policy change shifts the stable distribution, update the regression suite with deterministic evidence while keeping exact measured counts in test diagnostics rather than documentation. Ordinary non-direct left/right clues must remain meaningfully represented.
+
+## Commit 12.2 documentation note
+
+The current Version 1 themed puzzle uses children as protagonists, exactly one data-driven thematic category, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.

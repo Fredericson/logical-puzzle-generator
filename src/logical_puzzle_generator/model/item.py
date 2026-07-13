@@ -18,5 +18,7 @@ class Item:
 
     name: str
 
+    category_id: str = "children"
+
     def __str__(self) -> str:
         return self.name
