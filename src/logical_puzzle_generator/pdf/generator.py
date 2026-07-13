@@ -9,7 +9,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
 from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
@@ -129,6 +129,25 @@ class PdfGenerator:
             output_path, self._worksheet_story(puzzle, labels=self._solution_labels(puzzle))
         )
 
+
+    def create_puzzle_book_pdf(self, puzzle_book, filename: str | Path) -> None:
+        """Create the PuzzleBook puzzle PDF: position, theme pages, empty summary."""
+        output_path = self._prepare_output_path(filename)
+        story: list[Any] = []
+        for index, puzzle in enumerate(puzzle_book.pages):
+            self._validate_puzzle(puzzle)
+            if index:
+                story.append(PageBreak())
+            story.extend(self._worksheet_story(puzzle))
+        story.append(PageBreak())
+        story.extend(self._summary_table_story(puzzle_book, solved=False))
+        self._build(output_path, story)
+
+    def create_puzzle_book_solution_pdf(self, puzzle_book, filename: str | Path) -> None:
+        """Create the PuzzleBook solution PDF with only the completed summary table."""
+        output_path = self._prepare_output_path(filename)
+        self._build(output_path, self._summary_table_story(puzzle_book, solved=True))
+
     def _worksheet_story(
         self, puzzle: Puzzle, labels: list[str | tuple[str, str]] | None = None
     ) -> list[Any]:
@@ -156,6 +175,48 @@ class PdfGenerator:
             story.append(
                 self._choice_box(self._theme_category_label(puzzle), self._theme_values(puzzle))
             )
+        return story
+
+
+    def _summary_table_story(self, puzzle_book, *, solved: bool) -> list[Any]:
+        summary = puzzle_book.summary_table
+        story: list[Any] = [
+            Paragraph(self._catalog.title("PuzzleBook Summary"), self._styles["WorksheetTitle"]),
+            Spacer(1, 0.18 * inch),
+        ]
+        header = [self._catalog.label("theme")] + list(summary.child_ids)
+        table_data: list[list[str]] = [header]
+        for row in summary.rows:
+            category = puzzle_book.theme.category_by_id(row.theme_category_id)
+            category_label = category.localized_label(self.language)
+            values = (
+                [
+                    category.value_by_id(value_id).display(self.language, short=True)
+                    for value_id in row.value_ids_by_child
+                ]
+                if solved
+                else ["" for _ in summary.child_ids]
+            )
+            table_data.append([category_label, *values])
+        if len(table_data) == 1:
+            table_data.append(["", *("" for _ in summary.child_ids)])
+        table = Table(table_data, repeatRows=1)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("GRID", (0, 0), (-1, -1), 0.6, colors.black),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        story.append(table)
         return story
 
     def _header(self, puzzle: Puzzle) -> list[Any]:

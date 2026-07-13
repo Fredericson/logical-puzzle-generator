@@ -4,9 +4,9 @@ This document describes the current Version 1.0 architecture.
 
 ## 1. Version 1.0 boundary
 
-Version 1.0 now supports two page shapes: a position-only compatibility puzzle over one child category, and a Commit 12.2 themed puzzle page over children plus exactly one selected theme-category instance. A `ThemeDefinition` provides multiple `ThemeCategoryDefinition` objects, but one generated puzzle page selects only one category instance and exactly four values. A generated `Solution` maps every active item in the page to a `Position`; themed pages solve children and selected category values with category-aware 4! × 4! enumeration.
+Version 1.0 supports position-only puzzle pages, themed puzzle pages over children plus exactly one selected theme-category instance, and Commit 12.3 PuzzleBooks that combine one Position puzzle, multiple Theme puzzles, and a summary table. A `ThemeDefinition` provides multiple `ThemeCategoryDefinition` objects, but one generated puzzle page selects only one category instance and exactly four values. A generated `Solution` maps every active item in the page to a `Position`; themed pages solve children and selected category values with category-aware 4! × 4! enumeration.
 
-Out of scope for Version 1.0: more than one active thematic category in a single puzzle page, multi-page PuzzleBook generation, summary-table rendering, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, numeric-category arithmetic clues, and advanced difficulty modeling.
+Out of scope for Version 1.0: more than one active thematic category in a single puzzle page, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, numeric-category arithmetic clues, and advanced difficulty modeling.
 
 ## 2. Package structure
 
@@ -20,8 +20,8 @@ logical_puzzle_generator/
   localization.py Language enum and translation catalog
   clue_text_renderer.py Localized clue wording renderer
   template_catalog.py Central localized clue wording templates
-  themes/         Reusable puzzle templates
-  create_puzzle.py Tennis PDF entry point
+  themes/         Data-driven theme definitions and registry
+  create_puzzle.py Themed single-puzzle PDF entry point
 ```
 
 Dependencies flow inward to the model and engine. The engine does not depend on generator, PDF, or themes. PDF depends on model objects only for rendering. Localization and clue text rendering are presentation services. Themes provide data only. Version 1 presentation polish stays inside this boundary: it changes worksheet spacing, typography, clue indentation, and vector lineup geometry without changing generated constraints, clues, difficulty, metadata, localization semantics, or solving.
@@ -168,9 +168,7 @@ PDF generation is presentation-only. It must not derive constraints, solve puzzl
 
 ## 9. Theme and entry-point flow
 
-`themes.tennis.create_template()` returns the built-in Tennis `PuzzleTemplate`.
-
-`create_puzzle.create_puzzle()` generates that template and writes both default PDFs. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default. Difficulty may be `easy`, `medium`, `hard`, a `Difficulty` value, or `None` to choose randomly:
+`create_puzzle.create_puzzle()` resolves the requested registry theme and writes both default PDFs for a single generated puzzle. It accepts `language="en"`, `language="de"`, or a `Language` value; English is the default. Difficulty may be `easy`, `medium`, `hard`, a `Difficulty` value, or `None` to choose randomly:
 
 ```text
 output/puzzle_3.pdf
@@ -180,7 +178,7 @@ output/puzzle_3_solution.pdf
 ## 10. Data flow
 
 ```text
-Theme/PuzzleTemplate or Item iterable
+Theme registry + PuzzleTemplate or Item iterable
         ↓
 Difficulty selection
         ↓
@@ -211,7 +209,7 @@ Stable boundaries:
 - Constraints remain independent `matches()` implementations.
 - Solver remains a generic brute-force engine.
 - Validator remains the uniqueness boundary.
-- Generator orchestration stays in `PuzzleGenerator`.
+- Single-puzzle orchestration stays in `PuzzleGenerator`; multi-page book orchestration stays in `PuzzleBookGenerator`.
 - PDF remains presentation-only.
 - Localization remains presentation-only and must not change generation or solving semantics.
 
@@ -264,14 +262,10 @@ Theme item IDs are internal domain identifiers. Child-facing clue text, solution
 
 `PdfGenerator` accepts an injectable theme registry and builds a resolver for the puzzle it is rendering. The PDF layer does not decide which theme to generate. The lineup uses two deterministic answer fields per position: a child-name field and a short thematic-value field. `ChoiceBoxRenderer` owns the reusable bordered two-by-two choice box used for both available names and thematic values.
 
-### Future PuzzleBook shape prepared by Commit 12.2
+### Commit 12.3 PuzzleBook aggregate
 
-Commit 12.2 models theme data as multiple reusable `ThemeCategoryDefinition` objects. A single puzzle page selects exactly one category instance conceptually, identified in puzzle metadata by a stable instance ID and exactly four selected value IDs. Category definitions may provide larger value pools; the page metadata stores the four values selected for that page. Commit 12.2 deliberately does not add production PuzzleBook classes.
+`PuzzleBookGenerator` is the orchestration boundary for multi-page books. It resolves exactly one `ThemeDefinition` through the registry, selects child `Item` objects exactly once from the shared child source, generates a position-only first puzzle, derives the stable child order from that first puzzle solution, selects theme categories from `ThemeDefinition.categories`, generates one themed puzzle per selected category, and returns a `PuzzleBook` aggregate. It does not move book logic into `PuzzleGenerator`, and `PuzzleGenerator` continues to own single-page puzzle generation.
 
-The future PuzzleBook is intentionally deferred. Its intended shape is: one PDF belongs to one theme, the same four names are used on all pages, page 1 is the universal position puzzle, later pages each use one theme-specific category instance, category definitions may later be repeated with distinct instance IDs, and the final page will contain a summary table. Commit 12.2 only renders one themed puzzle page at a time.
+The `PuzzleBook` aggregate stores the selected theme, stable child objects, the single Position puzzle, and the Theme puzzle tuple. It derives its presentation-neutral summary table from that state instead of maintaining a second source of truth. Summary columns are child identifiers ordered by the Position puzzle. Summary rows come only from Theme pages and are identified by `theme_category_instance_id`; if a category is reused, each page produces a separate row. The Position puzzle has no theme metadata and never appears as a summary row.
 
-### PuzzleBook summary table contract
-
-The future PuzzleBook ends with exactly one summary page. This page is not another logic puzzle and has no solver step. It is a final worksheet where the child transfers results from the already solved theme-category puzzle pages.
-
-The PuzzleBook puzzle PDF will contain the position page, theme-category puzzle pages, and a final empty summary table. The PuzzleBook solution PDF does not need separately solved copies of every earlier puzzle page; the filled summary table is the only required solution presentation for the book. The summary table columns are the stable four children ordered according to the first Position puzzle. Rows are generated only from theme-category pages, one row per generated category page. The universal Position puzzle is not included as a row; its only purpose is to establish ordering and child identity. A future `PuzzleBook` therefore has one stable child roster, one Position page, multiple category pages that reference that same roster by value, and one summary table generated directly from page solutions. The current Commit 12.2 single-page API still produces its existing single-page puzzle and solution PDFs.
+`PdfGenerator.create_puzzle_book_pdf()` writes the Position page first, then all Theme puzzle pages, then one empty summary table page containing child names and category labels. `PdfGenerator.create_puzzle_book_solution_pdf()` writes only the completed summary table. It does not generate solved pages for every individual puzzle. Numeric categories such as `tournament_wins` remain out of scope.
