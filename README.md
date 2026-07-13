@@ -175,6 +175,21 @@ Themed puzzles do not have a universal three-clue count. They are reduced while 
 
 Every `PuzzleBook` exposes a derived, presentation-neutral summary table. Its columns are stable child identifiers ordered by the Position puzzle solution. Its rows come one-for-one from theme pages and use `theme_category_instance_id` as their internal identity; the Position puzzle is never a summary row. The PuzzleBook puzzle PDF contains the Position page, all Theme pages, and a final empty summary table with child and category headings. The PuzzleBook solution PDF contains only the completed summary table, not solved copies of every individual puzzle. Commit 12.4 extends this PuzzleBook flow with the generated numeric `tournament_wins` category while preserving the same summary-table contract.
 
+### Commit 12.5 racket-count numeric tennis puzzles
+
+Commit 12.5 adds `racket_count` as a second production numeric category. It is registered only for the `tennis_training` theme with the labels `Rackets in Bag` and `Schläger in der Tasche`. The category describes how many tennis rackets each child carries in her bag, using small child-friendly values in the range 1-8. The generated page still selects exactly four distinct positive integers and includes a factor-2 relationship, but the set is generated per category instance rather than hardcoded.
+
+Example English clues include `Emma has 4 rackets in her bag.`, `Mia has 1 fewer racket in her bag than Emma.`, and `Aurelia has twice as many rackets in her bag as Mia.` German clues use Swiss spelling, for example `Emma hat 4 Schläger in ihrer Tasche.`, `Mia hat 1 Schläger weniger in ihrer Tasche als Emma.`, and `Aurelia hat doppelt so viele Schläger in ihrer Tasche wie Mia.`
+
+The implementation reuses the Commit 12.4 numeric architecture: generated value IDs remain category-neutral and instance-scoped (`<theme_category_instance_id>_value_<integer>`), arithmetic clues use the existing exact, difference, and factor-2 constraints, and solving remains the category-aware `4! × 4!` child/value permutation model. Difficulty is unchanged: Easy, Medium, and Hard still mean exactly two, one, and zero visible child-position anchors.
+
+The existing single-puzzle CLI can generate a German racket-count puzzle without a new command or flag:
+
+```bash
+python -m logical_puzzle_generator.create_puzzle --theme tennis_training --category racket_count --difficulty easy --language de
+```
+
+
 ### Commit 12.4 numeric tournament wins and PuzzleBook CLI
 
 Commit 12.4 adds `tournament_wins` as the first numeric theme category. It is registered only on the `tennis_training` theme and still follows the one-category-per-theme-page model: each page has four children, four positions, and exactly four selected tournament-win value IDs. The child/value pairing is still established by shared solved position, so numeric pages preserve the existing category-aware `4! × 4!` assignment boundary instead of introducing a combined `8!` model.

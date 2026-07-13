@@ -447,6 +447,32 @@ TOURNAMENT_WINS_WORDING = ThemeWording(
     unit_plural=_text("tournaments", "Turniere"),
 )
 
+RACKET_COUNT_WORDING = ThemeWording(
+    direct_assignment=_text(
+        "{child} has {theme} in the bag.", "{child} hat {theme} in der Tasche."
+    ),
+    child_with_theme_nominative=_text("the child with {theme}", "das Kind mit {theme}"),
+    child_with_theme_dative=_text("the child with {theme}", "dem Kind mit {theme}"),
+    numeric_exact=_text(
+        "{child} has {value} {unit} in her bag.",
+        "{child} hat {value} {unit} in ihrer Tasche.",
+    ),
+    numeric_more=_text(
+        "{greater} has {difference} more {unit} in her bag than {lesser}.",
+        "{greater} hat {difference} {unit} mehr in ihrer Tasche als {lesser}.",
+    ),
+    numeric_fewer=_text(
+        "{lesser} has {difference} fewer {unit} in her bag than {greater}.",
+        "{lesser} hat {difference} {unit} weniger in ihrer Tasche als {greater}.",
+    ),
+    numeric_twice=_text(
+        "{multiple} has twice as many rackets in her bag as {base}.",
+        "{multiple} hat doppelt so viele Schläger in ihrer Tasche wie {base}.",
+    ),
+    unit_singular=_text("racket", "Schläger"),
+    unit_plural=_text("rackets", "Schläger"),
+)
+
 _THEMES: Final[tuple[ThemeDefinition, ...]] = (
     ThemeDefinition(
         id="tennis_training",
@@ -537,6 +563,16 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                 is_numeric=True,
                 numeric_minimum=2,
                 numeric_maximum=24,
+            ),
+            _category(
+                "racket_count",
+                "Rackets in Bag",
+                "Schläger in der Tasche",
+                (),
+                RACKET_COUNT_WORDING,
+                is_numeric=True,
+                numeric_minimum=1,
+                numeric_maximum=8,
             ),
         ),
     ),
