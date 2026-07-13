@@ -33,7 +33,9 @@ class ItemPresentationResolver:
         if self.is_child(item):
             raise ValueError("Expected thematic item, got child item.")
         if item.category_id != self.category.id:
-            raise ValueError(f"Expected thematic item from category '{self.category.id}', got '{item.category_id}'.")
+            raise ValueError(
+                f"Expected thematic item from category '{self.category.id}', got '{item.category_id}'."
+            )
         return self.category.value_by_id(item.name)
 
     def item_label(self, item: Item, *, short: bool = False) -> str:
@@ -57,7 +59,9 @@ class ItemPresentationResolver:
         template = (
             wording.child_with_theme_dative if dative else wording.child_with_theme_nominative
         ).for_language(self.language)
-        return template.format(theme=value.display(self.language), theme_subject=value.subject(self.language))
+        return template.format(
+            theme=value.display(self.language), theme_subject=value.subject(self.language)
+        )
 
     def direct_assignment_sentence(self, child: Item, theme_item: Item) -> str:
         template = self.category.wording.direct_assignment.for_language(self.language)

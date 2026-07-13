@@ -237,16 +237,30 @@ def test_reducer_checks_difficulty_before_distribution_scoring() -> None:
         items=[a, b, c, d],
         constraints=constraints,
         clues=ClueGenerator(item_count=4).generate(constraints),
-        solution=Solution(Assignment({a: Position(1), b: Position(2), c: Position(3), d: Position(4)})),
+        solution=Solution(
+            Assignment({a: Position(1), b: Position(2), c: Position(3), d: Position(4)})
+        ),
     )
     policy = RecordingDistributionPolicy()
 
-    reduced = ClueReducer(AlwaysUniqueValidator(), distribution_policy=policy).reduce(puzzle, difficulty="easy")
+    reduced = ClueReducer(AlwaysUniqueValidator(), distribution_policy=policy).reduce(
+        puzzle, difficulty="easy"
+    )
 
-    assert len([constraint for constraint in reduced.constraints if isinstance(constraint, FixedPositionConstraint)]) == 2
+    assert (
+        len(
+            [
+                constraint
+                for constraint in reduced.constraints
+                if isinstance(constraint, FixedPositionConstraint)
+            ]
+        )
+        == 2
+    )
     assert policy.scored
     assert all(
-        sum(isinstance(constraint, FixedPositionConstraint) for constraint in scored_constraints) == 2
+        sum(isinstance(constraint, FixedPositionConstraint) for constraint in scored_constraints)
+        == 2
         for scored_constraints in policy.scored
     )
 
@@ -263,7 +277,9 @@ def test_reducer_uses_distribution_score_only_among_valid_candidates() -> None:
         items=[a, b, c, d],
         constraints=constraints,
         clues=ClueGenerator(item_count=4).generate(constraints),
-        solution=Solution(Assignment({a: Position(1), b: Position(2), c: Position(3), d: Position(4)})),
+        solution=Solution(
+            Assignment({a: Position(1), b: Position(2), c: Position(3), d: Position(4)})
+        ),
     )
 
     reduced = ClueReducer(

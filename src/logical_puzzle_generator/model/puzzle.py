@@ -37,5 +37,3 @@ class Puzzle:
         if self.categories:
             return [item for category in self.categories for item in category.items]
         return list(self.items)
-
-

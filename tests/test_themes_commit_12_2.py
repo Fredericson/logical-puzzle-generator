@@ -45,19 +45,31 @@ def test_theme_definitions_are_immutable() -> None:
 
 
 def test_seeded_random_theme_selection_is_deterministic_and_varied() -> None:
-    assert DEFAULT_THEME_REGISTRY.resolve("random", random.Random(12)).id == DEFAULT_THEME_REGISTRY.resolve("random", random.Random(12)).id
-    assert len({DEFAULT_THEME_REGISTRY.resolve("random", random.Random(seed)).id for seed in range(20)}) > 1
+    assert (
+        DEFAULT_THEME_REGISTRY.resolve("random", random.Random(12)).id
+        == DEFAULT_THEME_REGISTRY.resolve("random", random.Random(12)).id
+    )
+    assert (
+        len(
+            {DEFAULT_THEME_REGISTRY.resolve("random", random.Random(seed)).id for seed in range(20)}
+        )
+        > 1
+    )
 
 
 def test_category_aware_assignment_space_uses_two_four_item_categories() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(3), difficulty="easy", theme="beach_day").generate(create_template())
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(3), difficulty="easy", theme="beach_day"
+    ).generate(create_template())
     assert len(puzzle.categories) == 2
     assert [len(category.items) for category in puzzle.categories] == [4, 4]
     assert len(list(AssignmentIterator().iterate(puzzle.logical_items))) == 576
 
 
 def test_generated_theme_puzzle_is_uniquely_solved_across_both_categories() -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(5), difficulty="medium", theme="zoo_visit").generate(create_template())
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(5), difficulty="medium", theme="zoo_visit"
+    ).generate(create_template())
     result = Solver().solve(puzzle, stop_after=2)
     assert result.has_unique_solution
     assert result.solutions[0] == puzzle.solution.assignment
@@ -67,8 +79,15 @@ def test_generated_theme_puzzle_is_uniquely_solved_across_both_categories() -> N
 
 @pytest.mark.parametrize(("difficulty", "anchors"), [("easy", 2), ("medium", 1), ("hard", 0)])
 def test_difficulty_counts_only_child_fixed_position_anchors(difficulty: str, anchors: int) -> None:
-    puzzle = PuzzleGenerator(random_source=random.Random(8), difficulty=difficulty, theme="athletics_training").generate(create_template())
-    child_fixed = [constraint for constraint in puzzle.constraints if isinstance(constraint, FixedPositionConstraint) and constraint.item.category_id == "children"]
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(8), difficulty=difficulty, theme="athletics_training"
+    ).generate(create_template())
+    child_fixed = [
+        constraint
+        for constraint in puzzle.constraints
+        if isinstance(constraint, FixedPositionConstraint)
+        and constraint.item.category_id == "children"
+    ]
     assert len(child_fixed) == anchors
     assert DifficultyPolicy().fixed_position_count(puzzle) == anchors
 
@@ -93,10 +112,15 @@ def test_representative_themed_generation_uses_bounded_varied_clues(theme_id: st
     assert result.solutions[0] == puzzle.solution.assignment
 
     theme_items = [item for item in puzzle.logical_items if item.category_id != "children"]
-    thematic_constraints = [constraint for constraint in puzzle.constraints if any(item in theme_items for item in getattr(constraint, "items", ()))]
+    thematic_constraints = [
+        constraint
+        for constraint in puzzle.constraints
+        if any(item in theme_items for item in getattr(constraint, "items", ()))
+    ]
     if not thematic_constraints:
         thematic_constraints = [
-            constraint for constraint in puzzle.constraints
+            constraint
+            for constraint in puzzle.constraints
             if any(
                 getattr(constraint, attr, None) in theme_items
                 for attr in ("item", "first", "second", "left", "right")
@@ -104,8 +128,22 @@ def test_representative_themed_generation_uses_bounded_varied_clues(theme_id: st
         ]
     full_pool = generator._derive_thematic_constraints(puzzle.solution, puzzle.items, theme_items)
     assert 0 < len(thematic_constraints) < len(full_pool)
-    assert sum(isinstance(constraint, SamePositionConstraint) for constraint in puzzle.constraints) < 4
-    assert any(isinstance(constraint, (AdjacentConstraint, DirectLeftOfConstraint, DirectRightOfConstraint, LeftOfConstraint, RightOfConstraint)) for constraint in thematic_constraints)
+    assert (
+        sum(isinstance(constraint, SamePositionConstraint) for constraint in puzzle.constraints) < 4
+    )
+    assert any(
+        isinstance(
+            constraint,
+            (
+                AdjacentConstraint,
+                DirectLeftOfConstraint,
+                DirectRightOfConstraint,
+                LeftOfConstraint,
+                RightOfConstraint,
+            ),
+        )
+        for constraint in thematic_constraints
+    )
 
 
 @pytest.mark.parametrize("difficulty", ["easy", "medium", "hard"])
@@ -124,12 +162,18 @@ def test_representative_seed_samples_multiple_categories_and_is_deterministic() 
     categories_by_theme: dict[str, set[str]] = {theme_id: set() for theme_id in THEME_IDS}
     for theme_id in THEME_IDS:
         for seed in (1, 2):
-            first = PuzzleGenerator(random_source=random.Random(seed), difficulty="easy", theme=theme_id).generate(create_template())
-            second = PuzzleGenerator(random_source=random.Random(seed), difficulty="easy", theme=theme_id).generate(create_template())
+            first = PuzzleGenerator(
+                random_source=random.Random(seed), difficulty="easy", theme=theme_id
+            ).generate(create_template())
+            second = PuzzleGenerator(
+                random_source=random.Random(seed), difficulty="easy", theme=theme_id
+            ).generate(create_template())
             assert first.metadata is not None
             assert second.metadata is not None
             assert first.metadata.theme_category_id == second.metadata.theme_category_id
-            assert first.metadata.selected_theme_value_ids == second.metadata.selected_theme_value_ids
+            assert (
+                first.metadata.selected_theme_value_ids == second.metadata.selected_theme_value_ids
+            )
             assert _constraint_signature(first) == _constraint_signature(second)
             assert first.solution == second.solution
             categories_by_theme[theme_id].add(first.metadata.theme_category_id)

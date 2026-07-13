@@ -20,7 +20,11 @@ def test_tennis_workflow_creates_puzzle_and_solution_pdfs(tmp_path) -> None:
 
 
 def test_create_puzzle_uses_configurable_number_paths(tmp_path) -> None:
-    puzzle = create_puzzle(number=12, puzzle_path=tmp_path / "puzzle_12.pdf", solution_path=tmp_path / "puzzle_12_solution.pdf")
+    puzzle = create_puzzle(
+        number=12,
+        puzzle_path=tmp_path / "puzzle_12.pdf",
+        solution_path=tmp_path / "puzzle_12_solution.pdf",
+    )
 
     assert isinstance(puzzle, Puzzle)
     assert (tmp_path / "puzzle_12.pdf").exists()

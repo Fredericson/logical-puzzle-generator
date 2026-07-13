@@ -30,7 +30,10 @@ class AssignmentIterator:
         per_category = []
         for category_id, category_items in groups.items():
             per_category.append(
-                [dict(zip(category_items, permutation, strict=True)) for permutation in permutations(position_cache[category_id])]
+                [
+                    dict(zip(category_items, permutation, strict=True))
+                    for permutation in permutations(position_cache[category_id])
+                ]
             )
         for combination in product(*per_category):
             merged = {}

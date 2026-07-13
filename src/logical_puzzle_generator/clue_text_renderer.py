@@ -56,10 +56,16 @@ class ClueTextRenderer:
         item = constraint.item
         position = str(constraint.position.index)
         if self._is_child(item):
-            return self._render_template(FixedPositionConstraint, {"A": self._label(item), "position": position})
+            return self._render_template(
+                FixedPositionConstraint, {"A": self._label(item), "position": position}
+            )
         if self.language is Language.GERMAN:
-            return "{subject} steht auf Position {position}.".format(subject=self._resolver_required().child_with_theme_phrase(item), position=position)
-        return "{subject} stands at position {position}.".format(subject=self._resolver_required().child_with_theme_phrase(item), position=position)
+            return "{subject} steht auf Position {position}.".format(
+                subject=self._resolver_required().child_with_theme_phrase(item), position=position
+            )
+        return "{subject} stands at position {position}.".format(
+            subject=self._resolver_required().child_with_theme_phrase(item), position=position
+        )
 
     def _render_relation(self, relation: str, first: Item, second: Item) -> str:
         if self._is_child(first) and self._is_child(second):

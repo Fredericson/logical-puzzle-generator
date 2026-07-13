@@ -46,8 +46,7 @@ class DifficultyPolicy:
         if count == 0:
             return Difficulty.HARD
         raise ValueError(
-            f"Invalid Version 1 fixed-position clue count {count}. "
-            "Expected exactly 2, 1, or 0."
+            f"Invalid Version 1 fixed-position clue count {count}. " "Expected exactly 2, 1, or 0."
         )
 
     def metadata_value(self, puzzle_or_constraints: Puzzle | Iterable[Constraint]) -> int:
@@ -74,7 +73,8 @@ class DifficultyPolicy:
         )
         return sum(
             isinstance(constraint, FixedPositionConstraint)
-            and getattr(constraint.item, "category_id", CHILDREN_CATEGORY_ID) == CHILDREN_CATEGORY_ID
+            and getattr(constraint.item, "category_id", CHILDREN_CATEGORY_ID)
+            == CHILDREN_CATEGORY_ID
             for constraint in constraints
         )
 

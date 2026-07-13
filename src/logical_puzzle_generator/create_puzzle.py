@@ -13,8 +13,11 @@ from logical_puzzle_generator.localization import (
 from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.pdf.generator import PdfGenerator
 from logical_puzzle_generator.themes.tennis import create_template
-from logical_puzzle_generator.themes.registry import DEFAULT_THEME_ID, DEFAULT_THEME_REGISTRY, RANDOM_THEME_ID
-
+from logical_puzzle_generator.themes.registry import (
+    DEFAULT_THEME_ID,
+    DEFAULT_THEME_REGISTRY,
+    RANDOM_THEME_ID,
+)
 
 DEFAULT_OUTPUT_DIR = Path("output")
 DEFAULT_PUZZLE_NUMBER = 3
@@ -47,7 +50,9 @@ def create_puzzle(
     number = _validate_number(number)
     language = parse_language(language)
     output_dir = DEFAULT_OUTPUT_DIR
-    puzzle_path = Path(puzzle_path) if puzzle_path is not None else output_dir / f"puzzle_{number}.pdf"
+    puzzle_path = (
+        Path(puzzle_path) if puzzle_path is not None else output_dir / f"puzzle_{number}.pdf"
+    )
     solution_path = (
         Path(solution_path)
         if solution_path is not None
@@ -55,7 +60,9 @@ def create_puzzle(
     )
 
     template = create_template()
-    puzzle = PuzzleGenerator(difficulty=difficulty, theme=theme or DEFAULT_THEME_ID, category=category).generate(template)
+    puzzle = PuzzleGenerator(
+        difficulty=difficulty, theme=theme or DEFAULT_THEME_ID, category=category
+    ).generate(template)
     pdf_generator = PdfGenerator(language=language, puzzle_number=number)
     pdf_generator.create_puzzle_pdf(puzzle, puzzle_path)
     pdf_generator.create_solution_pdf(puzzle, solution_path)
@@ -66,7 +73,10 @@ def _parse_difficulty_argument(value: str) -> Difficulty:
     try:
         from logical_puzzle_generator.generator import DifficultyPolicy
 
-        return DifficultyPolicy().normalize(value)
+        difficulty = DifficultyPolicy().normalize(value)
+        if difficulty is None:
+            raise argparse.ArgumentTypeError("Difficulty is required.")
+        return difficulty
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 

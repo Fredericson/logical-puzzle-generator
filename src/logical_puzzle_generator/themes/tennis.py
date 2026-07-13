@@ -8,13 +8,9 @@ from logical_puzzle_generator.model.item import Item
 def create_template() -> PuzzleTemplate:
 
     return PuzzleTemplate(
-
         title="Tennis Training",
-
         theme="Tennis",
-
         categories=[
-
             Category(
                 "Players",
                 [
@@ -24,7 +20,6 @@ def create_template() -> PuzzleTemplate:
                     Item("Mia"),
                 ],
             ),
-
             Category(
                 "Shirt Colour",
                 [
@@ -34,7 +29,6 @@ def create_template() -> PuzzleTemplate:
                     Item("Green"),
                 ],
             ),
-
             Category(
                 "Racket Colour",
                 [
@@ -44,7 +38,6 @@ def create_template() -> PuzzleTemplate:
                     Item("Orange"),
                 ],
             ),
-
             Category(
                 "Position",
                 [

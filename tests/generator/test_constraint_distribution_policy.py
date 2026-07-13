@@ -20,7 +20,9 @@ def _items() -> tuple[Item, Item, Item, Item]:
 
 
 def test_policy_source_has_no_difficulty_dependency() -> None:
-    source = Path("src/logical_puzzle_generator/generator/constraint_distribution_policy.py").read_text()
+    source = Path(
+        "src/logical_puzzle_generator/generator/constraint_distribution_policy.py"
+    ).read_text()
 
     assert "Difficulty" not in source
     assert "DifficultyPolicy" not in source

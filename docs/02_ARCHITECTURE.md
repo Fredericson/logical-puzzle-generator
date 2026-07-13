@@ -266,7 +266,7 @@ Theme item IDs are internal domain identifiers. Child-facing clue text, solution
 
 ### Future PuzzleBook shape prepared by Commit 12.2
 
-Commit 12.2 models a theme as multiple reusable `ThemeCategoryDefinition` objects. A single puzzle page selects exactly one `ThemeCategoryInstance`, identified by a stable instance ID and exactly four selected value IDs. Category definitions may provide larger value pools; the page instance stores the four values selected for that page.
+Commit 12.2 models theme data as multiple reusable `ThemeCategoryDefinition` objects. A single puzzle page selects exactly one category instance conceptually, identified in puzzle metadata by a stable instance ID and exactly four selected value IDs. Category definitions may provide larger value pools; the page metadata stores the four values selected for that page. Commit 12.2 deliberately does not add production PuzzleBook classes.
 
 The future PuzzleBook is intentionally deferred. Its intended shape is: one PDF belongs to one theme, the same four names are used on all pages, page 1 is the universal position puzzle, later pages each use one theme-specific category instance, category definitions may later be repeated with distinct instance IDs, and the final page will contain a summary table. Commit 12.2 only renders one themed puzzle page at a time.
 

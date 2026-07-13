@@ -75,6 +75,77 @@ def test_create_solution_pdf_writes_non_empty_pdf(tmp_path) -> None:
     assert "Aurelia" in text
 
 
+def test_position_only_pdf_has_no_thematic_choice_box_or_answer_field(tmp_path) -> None:
+    path = tmp_path / "position-only.pdf"
+
+    PdfGenerator().create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert "Forehand" not in text
+    assert all(
+        slot.theme_box_height == 0
+        for slot in PdfGenerator()._lineup(sample_puzzle()).layout_slots()
+    )
+
+
+def test_themed_pdf_uses_exact_selected_category_without_defaulting(tmp_path) -> None:
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(3),
+        difficulty="easy",
+        theme="tennis_training",
+        category="favourite_surface",
+    ).generate(create_template())
+    path = tmp_path / "surface.pdf"
+
+    PdfGenerator(language="en").create_puzzle_pdf(puzzle, path)
+
+    text = pdf_text_bytes(path)
+    assert "Favourite Surface" in text
+    assert "Clay" in text
+    assert "Hard Court" in text
+    assert "Forehand" not in text
+    assert "Backhand Type" not in text
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        Metadata(title="Broken", theme="Broken", difficulty=1, theme_id="tennis_training"),
+        Metadata(
+            title="Broken",
+            theme="Broken",
+            difficulty=1,
+            theme_id="tennis_training",
+            theme_category_id="training",
+        ),
+        Metadata(
+            title="Broken",
+            theme="Broken",
+            difficulty=1,
+            theme_id="tennis_training",
+            theme_category_id="training",
+            theme_category_instance_id="training_1",
+            selected_theme_value_ids=("forehand",),
+        ),
+        Metadata(
+            title="Broken",
+            theme="Broken",
+            difficulty=1,
+            theme_id="tennis_training",
+            theme_category_id="training",
+            theme_category_instance_id="training_1",
+            selected_theme_value_ids=("forehand", "backhand", "serve", "typo"),
+        ),
+    ],
+)
+def test_incomplete_or_unknown_themed_metadata_fails_clearly(tmp_path, metadata: Metadata) -> None:
+    puzzle = sample_puzzle()
+    puzzle.metadata = metadata
+
+    with pytest.raises(ValueError):
+        PdfGenerator().create_puzzle_pdf(puzzle, tmp_path / "broken.pdf")
+
+
 def test_header_can_show_puzzle_number_without_numeric_difficulty(tmp_path) -> None:
     path = tmp_path / "numbered.pdf"
 
@@ -168,7 +239,10 @@ def test_solution_lineup_geometry_matches_puzzle_lineup() -> None:
         sample_puzzle(), labels=generator._solution_labels(sample_puzzle())
     ).layout_slots()
 
-    assert [(slot.position, slot.x, slot.figure_width, slot.box_width, slot.box_height) for slot in solution_slots] == [
+    assert [
+        (slot.position, slot.x, slot.figure_width, slot.box_width, slot.box_height)
+        for slot in solution_slots
+    ] == [
         (slot.position, slot.x, slot.figure_width, slot.box_width, slot.box_height)
         for slot in puzzle_slots
     ]

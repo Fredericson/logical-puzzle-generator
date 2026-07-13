@@ -170,7 +170,7 @@ Themed puzzles do not have a universal three-clue count. They are reduced while 
 
 ### Future PuzzleBook vision
 
-Themes now define multiple available categories, while one generated Commit 12.2 puzzle page selects exactly one category instance and exactly four values. A later PuzzleBook will use one selected theme for the whole PDF, keep the same four names on every page, start with the universal position puzzle, add one-category theme pages, allow repeated category pages with distinct instance IDs, and finish with a summary table. Multi-page PDF generation remains deferred.
+Themes now define multiple available categories, while one generated Commit 12.2 puzzle page records exactly one selected category instance and exactly four values in metadata; no production PuzzleBook classes are introduced yet. A later PuzzleBook will use one selected theme for the whole PDF, keep the same four names on every page, start with the universal position puzzle, add one-category theme pages, allow repeated category pages with distinct instance IDs, and finish with a summary table. Multi-page PDF generation remains deferred.
 
 ### Future summary table
 

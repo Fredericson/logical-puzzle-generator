@@ -26,7 +26,11 @@ from logical_puzzle_generator.model.metadata import Metadata
 from logical_puzzle_generator.model.position import Position
 from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.model.solution import Solution
-from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY, DEFAULT_THEME_ID, ThemeCategoryInstance
+from logical_puzzle_generator.themes.registry import (
+    DEFAULT_THEME_REGISTRY,
+    DEFAULT_THEME_ID,
+    ThemeCategoryInstance,
+)
 
 from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
@@ -102,10 +106,11 @@ class PuzzleGenerator:
         )
         self._requested_difficulty = self._difficulty_policy.normalize(difficulty)
         self._themed_mode = theme is not None
-        self._theme = DEFAULT_THEME_REGISTRY.resolve(theme, self._random) if self._themed_mode else None
+        self._theme = (
+            DEFAULT_THEME_REGISTRY.resolve(theme, self._random) if self._themed_mode else None
+        )
         self._category_id = category
         self._max_attempts = max_attempts
-
 
     def _select_category_instance(
         self,
@@ -116,7 +121,9 @@ class PuzzleGenerator:
         if self._theme is None:
             raise ValueError("A theme is required for themed generation.")
         if isinstance(source, Puzzle) and source.categories:
-            raise ValueError("Themed generation requires raw child items or a PuzzleTemplate, not an already categorized Puzzle.")
+            raise ValueError(
+                "Themed generation requires raw child items or a PuzzleTemplate, not an already categorized Puzzle."
+            )
         return self._theme.create_category_instance(
             category_id=self._category_id,
             random_source=self._random,
@@ -133,7 +140,10 @@ class PuzzleGenerator:
         self._validate_items(items)
         category_instance = self._select_category_instance(source)
         theme_items = (
-            [Item(value.id, category_id=category_instance.category_id) for value in category_instance.selected_values]
+            [
+                Item(value.id, category_id=category_instance.category_id)
+                for value in category_instance.selected_values
+            ]
             if category_instance is not None
             else []
         )
@@ -153,9 +163,15 @@ class PuzzleGenerator:
                     last_failure = f"attempt {attempt}: {failure}"
                     continue
 
+                if candidate is None:
+                    last_failure = f"attempt {attempt}: candidate generation returned no puzzle"
+                    continue
+
                 candidates.append(candidate)
                 if len(candidates) >= QUALITY_CANDIDATE_COUNT:
                     break
+            except TypeError:
+                raise
             except Exception as exc:
                 last_failure = f"attempt {attempt}: {exc.__class__.__name__}: {exc}"
 
@@ -184,8 +200,12 @@ class PuzzleGenerator:
         theme_items: list[Item] | None = None,
         all_items: list[Item] | None = None,
     ) -> tuple[Puzzle, None] | tuple[None, str]:
-        theme_items = theme_items if theme_items is not None else getattr(self, "_current_theme_items", [])
-        all_items = all_items if all_items is not None else getattr(self, "_current_all_items", items)
+        theme_items = (
+            theme_items if theme_items is not None else getattr(self, "_current_theme_items", [])
+        )
+        all_items = (
+            all_items if all_items is not None else getattr(self, "_current_all_items", items)
+        )
         fixed_position_constraints, child_solution = self._fixed_position_generator.generate(
             items, difficulty
         )
@@ -244,7 +264,9 @@ class PuzzleGenerator:
         puzzle = Puzzle(
             items=items,
             constraints=constraints,
-            categories=self._categories(items, theme_items, getattr(self, "_current_category_instance", None)),
+            categories=self._categories(
+                items, theme_items, getattr(self, "_current_category_instance", None)
+            ),
             clues=clues,
             metadata=self._metadata_from_source(source),
             solution=solution,
@@ -253,10 +275,7 @@ class PuzzleGenerator:
         if not self._validator.has_unique_solution(puzzle):
             return None, "generated puzzle is not uniquely solvable before clue reduction"
 
-        try:
-            reduced = self._clue_reducer.reduce(puzzle, difficulty=difficulty)
-        except TypeError:
-            reduced = self._clue_reducer.reduce(puzzle)
+        reduced = self._clue_reducer.reduce(puzzle, difficulty=difficulty)
         failure = self._reduced_puzzle_failure(reduced, items, solution)
         if failure is not None:
             return None, failure
@@ -314,7 +333,6 @@ class PuzzleGenerator:
             if self._distribution_policy.score(constraints) == best_score
         ]
         return self._random.choice(best_sets)
-
 
     def _is_child_position_constraint(self, constraint: Constraint) -> bool:
         items: list[Item] = []
@@ -531,12 +549,10 @@ class PuzzleGenerator:
 
         return constraints
 
-
     def _solution_generator_for_theme(self, items: list[Item]) -> Solution:
         positions = [Position(index) for index in range(1, len(items) + 1)]
         self._random.shuffle(positions)
         return Solution(Assignment(dict(zip(items, positions, strict=True))))
-
 
     def _select_thematic_constraints(
         self,
@@ -566,7 +582,9 @@ class PuzzleGenerator:
                 puzzle = Puzzle(
                     items=children,
                     constraints=constraints,
-                    categories=self._categories(children, theme_items, getattr(self, "_current_category_instance", None)),
+                    categories=self._categories(
+                        children, theme_items, getattr(self, "_current_category_instance", None)
+                    ),
                     clues=[],
                     metadata=self._metadata_from_source(Puzzle(items=children, constraints=[])),
                     solution=solution,
@@ -590,7 +608,13 @@ class PuzzleGenerator:
         same_position_count = family_counts[SamePositionConstraint]
         relation_count = sum(
             family_counts[constraint_type]
-            for constraint_type in (DirectLeftOfConstraint, DirectRightOfConstraint, LeftOfConstraint, RightOfConstraint, AdjacentConstraint)
+            for constraint_type in (
+                DirectLeftOfConstraint,
+                DirectRightOfConstraint,
+                LeftOfConstraint,
+                RightOfConstraint,
+                AdjacentConstraint,
+            )
         )
         dominant_count = max(family_counts.values(), default=0)
         return (
@@ -600,7 +624,9 @@ class PuzzleGenerator:
             -dominant_count,
         )
 
-    def _derive_thematic_constraints(self, solution: Solution, children: list[Item], theme_items: list[Item]) -> list[Constraint]:
+    def _derive_thematic_constraints(
+        self, solution: Solution, children: list[Item], theme_items: list[Item]
+    ) -> list[Constraint]:
         if not theme_items:
             return []
         constraints: list[Constraint] = []
@@ -609,19 +635,29 @@ class PuzzleGenerator:
 
         for child in children:
             child_position = assignment.position_of(child)
-            paired = next(item for item in theme_items if assignment.position_of(item) == child_position)
+            paired = next(
+                item for item in theme_items if assignment.position_of(item) == child_position
+            )
             self._append_unique(constraints, seen, SamePositionConstraint(child, paired))
 
         for theme_item in theme_items:
-            self._append_unique(constraints, seen, FixedPositionConstraint(theme_item, assignment.position_of(theme_item)))
+            self._append_unique(
+                constraints,
+                seen,
+                FixedPositionConstraint(theme_item, assignment.position_of(theme_item)),
+            )
 
         for child in children:
             for theme_item in theme_items:
-                self._append_positional_pair_constraints(constraints, seen, child, theme_item, assignment)
+                self._append_positional_pair_constraints(
+                    constraints, seen, child, theme_item, assignment
+                )
 
         for left_index, first_theme in enumerate(theme_items):
             for second_theme in theme_items[left_index + 1 :]:
-                self._append_positional_pair_constraints(constraints, seen, first_theme, second_theme, assignment)
+                self._append_positional_pair_constraints(
+                    constraints, seen, first_theme, second_theme, assignment
+                )
 
         self._random.shuffle(constraints)
         return constraints
@@ -653,10 +689,21 @@ class PuzzleGenerator:
             self._append_unique(constraints, seen, LeftOfConstraint(first, second))
             self._append_unique(constraints, seen, RightOfConstraint(second, first))
 
-    def _categories(self, children: list[Item], theme_items: list[Item], category_instance: ThemeCategoryInstance | None) -> list[Category]:
+    def _categories(
+        self,
+        children: list[Item],
+        theme_items: list[Item],
+        category_instance: ThemeCategoryInstance | None,
+    ) -> list[Category]:
         categories = [Category(name="Children", items=children, type=CategoryType.PERSON)]
         if theme_items and category_instance is not None:
-            categories.append(Category(name=category_instance.category_id, items=theme_items, type=CategoryType.ATTRIBUTE))
+            categories.append(
+                Category(
+                    name=category_instance.category_id,
+                    items=theme_items,
+                    type=CategoryType.ATTRIBUTE,
+                )
+            )
         return categories
 
     def _append_unique(

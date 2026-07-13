@@ -36,7 +36,9 @@ class GirlFigureRenderer:
     DRESSES = (colors.pink, colors.lightblue, colors.lavender, colors.lightgreen)
     HAIR = (colors.saddlebrown, colors.black, colors.darkgoldenrod, colors.brown)
 
-    def draw(self, canvas: Canvas, x: float, y: float, width: float, height: float, variant: int) -> None:
+    def draw(
+        self, canvas: Canvas, x: float, y: float, width: float, height: float, variant: int
+    ) -> None:
         center = x + width / 2
         skin = colors.Color(0.96, 0.78, 0.62)
         dress = self.DRESSES[variant % len(self.DRESSES)]
@@ -86,9 +88,10 @@ class PlayerLineupRenderer(Flowable):
     def __init__(
         self,
         item_count: int,
-        labels: list[tuple[str, str]] | None = None,
+        labels: list[str | tuple[str, str]] | None = None,
         instruction: str = "",
         width: float = 6.65 * inch,
+        show_theme_field: bool = True,
     ) -> None:
         super().__init__()
         if item_count < 1:
@@ -100,7 +103,8 @@ class PlayerLineupRenderer(Flowable):
             raise ValueError("Lineup label count must match item count.")
         self.instruction = instruction
         self.width = width
-        self.height = 3.48 * inch
+        self.show_theme_field = show_theme_field
+        self.height = 3.48 * inch if show_theme_field else 3.16 * inch
         self._figure_renderer = GirlFigureRenderer()
 
     def layout_slots(self) -> list[LineupSlot]:
@@ -108,7 +112,7 @@ class PlayerLineupRenderer(Flowable):
         figure_width = min(1.26 * inch, slot_width * 0.7)
         box_width = min(1.48 * inch, slot_width * 0.88)
         name_box_height = 0.5 * inch
-        theme_box_height = 0.32 * inch
+        theme_box_height = 0.32 * inch if self.show_theme_field else 0
         return [
             LineupSlot(
                 position=index + 1,
@@ -134,19 +138,53 @@ class PlayerLineupRenderer(Flowable):
         figure_bottom = 1.34 * inch
         figure_height = 1.52 * inch
         theme_box_y = 0.34 * inch
-        name_box_y = theme_box_y + 0.35 * inch
+        name_box_y = theme_box_y + (0.35 * inch if self.show_theme_field else 0)
         for index, slot in enumerate(self.layout_slots()):
             center = slot.x
-            self._figure_renderer.draw(canvas, center - slot.figure_width / 2, figure_bottom, slot.figure_width, figure_height, index)
+            self._figure_renderer.draw(
+                canvas,
+                center - slot.figure_width / 2,
+                figure_bottom,
+                slot.figure_width,
+                figure_height,
+                index,
+            )
             box_x = center - slot.box_width / 2
-            self._draw_box(canvas, box_x, name_box_y, slot.box_width, slot.name_box_height, slot.name_label, bold=True)
-            self._draw_box(canvas, box_x, theme_box_y, slot.box_width, slot.theme_box_height, slot.theme_label, bold=False)
+            self._draw_box(
+                canvas,
+                box_x,
+                name_box_y,
+                slot.box_width,
+                slot.name_box_height,
+                slot.name_label,
+                bold=True,
+            )
+            if self.show_theme_field:
+                self._draw_box(
+                    canvas,
+                    box_x,
+                    theme_box_y,
+                    slot.box_width,
+                    slot.theme_box_height,
+                    slot.theme_label,
+                    bold=False,
+                )
             canvas.setFillColor(colors.black)
             canvas.setFont("Helvetica-Bold", 11)
             canvas.drawCentredString(center, 0.08 * inch, str(slot.position))
         canvas.restoreState()
 
-    def _draw_box(self, canvas: Canvas, x: float, y: float, width: float, height: float, label: str, *, bold: bool) -> None:
+    def _draw_box(
+        self,
+        canvas: Canvas,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        label: str,
+        *,
+        bold: bool,
+    ) -> None:
         canvas.setStrokeColor(colors.black)
         canvas.setLineWidth(1.2)
         canvas.setFillColor(colors.white)

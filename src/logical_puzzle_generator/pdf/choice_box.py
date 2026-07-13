@@ -23,15 +23,19 @@ class ChoiceBoxRenderer:
             [Paragraph(self.values[2], self.style), Paragraph(self.values[3], self.style)],
         ]
         table = Table(data, colWidths=[3.2 * inch, 3.2 * inch])
-        table.setStyle(TableStyle([
-            ("SPAN", (0, 0), (1, 0)),
-            ("BOX", (0, 0), (-1, -1), 1, colors.black),
-            ("INNERGRID", (0, 1), (-1, -1), 0.5, colors.black),
-            ("BACKGROUND", (0, 0), (1, 0), colors.whitesmoke),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
+        table.setStyle(
+            TableStyle(
+                [
+                    ("SPAN", (0, 0), (1, 0)),
+                    ("BOX", (0, 0), (-1, -1), 1, colors.black),
+                    ("INNERGRID", (0, 1), (-1, -1), 0.5, colors.black),
+                    ("BACKGROUND", (0, 0), (1, 0), colors.whitesmoke),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
         return table

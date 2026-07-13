@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +14,13 @@ from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY, The
 from logical_puzzle_generator.themes.tennis import create_template
 
 REQUIRED = {
-    "tennis_training": {"training", "backhand_type", "bag_colour", "playing_style", "favourite_surface"},
+    "tennis_training": {
+        "training",
+        "backhand_type",
+        "bag_colour",
+        "playing_style",
+        "favourite_surface",
+    },
     "dance_studio": {"dance_style", "costume_colour", "dance_move", "music"},
     "beach_day": {"activity", "towel_colour", "drink", "beach_toy"},
     "athletics_training": {"event", "shoe_colour", "training_focus", "equipment"},
@@ -37,12 +44,23 @@ def test_themes_expose_multiple_categories_not_single_category_fields() -> None:
             assert len({value.id for value in category.values}) == len(category.values)
 
 
+def test_model_layer_does_not_import_theme_registry_or_puzzle_book_scaffold() -> None:
+    model_dir = Path("src/logical_puzzle_generator/model")
+    assert not (model_dir / "puzzle_book.py").exists()
+    for path in model_dir.glob("*.py"):
+        assert "logical_puzzle_generator.themes" not in path.read_text()
+
+
 def test_tennis_playing_style_has_larger_seeded_value_pool() -> None:
     theme = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
     category = theme.category_by_id("playing_style")
     assert len(category.values) > 4
-    first = theme.create_category_instance(category_id="playing_style", random_source=random.Random(10))
-    second = theme.create_category_instance(category_id="playing_style", random_source=random.Random(10))
+    first = theme.create_category_instance(
+        category_id="playing_style", random_source=random.Random(10)
+    )
+    second = theme.create_category_instance(
+        category_id="playing_style", random_source=random.Random(10)
+    )
     assert first.selected_value_ids == second.selected_value_ids
     assert len(first.selected_values) == 4
     assert len(set(first.selected_value_ids)) == 4
@@ -67,9 +85,13 @@ def test_tennis_favourite_surface_is_data_only_with_natural_wording() -> None:
     clay = Item("clay", category_id="favourite_surface")
     grass = Item("grass", category_id="favourite_surface")
     assert resolver_en.direct_assignment_sentence(child, clay) == "Emma prefers clay."
-    assert resolver_de.direct_assignment_sentence(child, clay) == "Emma spielt am liebsten auf Sand."
+    assert (
+        resolver_de.direct_assignment_sentence(child, clay) == "Emma spielt am liebsten auf Sand."
+    )
     assert resolver_en.child_with_theme_phrase(grass) == "the child who prefers grass"
-    assert resolver_de.child_with_theme_phrase(grass) == "das Kind, das am liebsten auf Rasen spielt"
+    assert (
+        resolver_de.child_with_theme_phrase(grass) == "das Kind, das am liebsten auf Rasen spielt"
+    )
 
 
 def test_omitted_category_is_seeded_and_scoped_to_theme() -> None:
@@ -78,7 +100,17 @@ def test_omitted_category_is_seeded_and_scoped_to_theme() -> None:
     second = theme.create_category_instance(category_id=None, random_source=random.Random(4))
     assert first.category_id == second.category_id
     assert first.selected_value_ids == second.selected_value_ids
-    assert len({theme.create_category_instance(category_id=None, random_source=random.Random(seed)).category_id for seed in range(20)}) > 1
+    assert (
+        len(
+            {
+                theme.create_category_instance(
+                    category_id=None, random_source=random.Random(seed)
+                ).category_id
+                for seed in range(20)
+            }
+        )
+        > 1
+    )
     with pytest.raises(ValueError, match="Supported categories"):
         theme.create_category_instance(category_id="activity", random_source=random.Random(1))
 
@@ -98,6 +130,18 @@ def test_generator_stores_selected_category_instance_metadata() -> None:
     assert [category.name for category in puzzle.categories] == ["Children", "backhand_type"]
 
 
+def test_position_only_generator_stores_neutral_theme_metadata() -> None:
+    puzzle = PuzzleGenerator(
+        random_source=random.Random(3), difficulty="easy", theme=None
+    ).generate(create_template())
+
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.theme_id is None
+    assert puzzle.metadata.theme_category_id is None
+    assert puzzle.metadata.theme_category_instance_id is None
+    assert puzzle.metadata.selected_theme_value_ids == ()
+
+
 def test_metadata_keeps_canonical_category_fields_safe() -> None:
     metadata = Metadata(
         title="Title",
@@ -114,8 +158,13 @@ def test_metadata_keeps_canonical_category_fields_safe() -> None:
         metadata.thematic_category_id = "localized label"  # type: ignore[misc]
     assert not hasattr(metadata, "thematic_category_label")
 
+    neutral = Metadata(title="Title", theme="Theme", difficulty=1)
+    assert neutral.thematic_category_id is None
 
-def test_thematic_subset_search_failure_retries_instead_of_using_full_pool(monkeypatch: pytest.MonkeyPatch) -> None:
+
+def test_thematic_subset_search_failure_retries_instead_of_using_full_pool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def no_thematic_subset(self: PuzzleGenerator, *args: object, **kwargs: object) -> None:
         return None
 

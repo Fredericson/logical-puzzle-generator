@@ -141,7 +141,9 @@ def build_distribution(seed_ranges: dict[Difficulty, range]) -> RelationDistribu
         assert_puzzle_invariants(difficulty, puzzle)
     return RelationDistribution(
         counts=count_relation_types(sample),
-        difficulty_sample_sizes={difficulty: len(seeds) for difficulty, seeds in seed_ranges.items()},
+        difficulty_sample_sizes={
+            difficulty: len(seeds) for difficulty, seeds in seed_ranges.items()
+        },
         seed_ranges=seed_ranges,
     )
 
@@ -162,18 +164,18 @@ def test_relation_distribution_statistical_regression_gate() -> None:
     diagnostics = distribution_diagnostics(distribution)
 
     assert distribution.total == 1_200, diagnostics
-    assert all(distribution.counts[relation_name] > 0 for relation_name in RELATION_TYPE_NAMES), (
-        diagnostics
-    )
+    assert all(
+        distribution.counts[relation_name] > 0 for relation_name in RELATION_TYPE_NAMES
+    ), diagnostics
 
     for relation_name in RELATION_TYPE_NAMES:
         share = relation_share(distribution, relation_name)
         assert share >= MIN_RELATION_SHARE, diagnostics
         assert share <= MAX_RELATION_SHARE, diagnostics
 
-    ordinary_share = relation_share(
-        distribution, LeftOfConstraint.__name__
-    ) + relation_share(distribution, RightOfConstraint.__name__)
+    ordinary_share = relation_share(distribution, LeftOfConstraint.__name__) + relation_share(
+        distribution, RightOfConstraint.__name__
+    )
     assert ordinary_share >= MIN_ORDINARY_RELATION_SHARE, diagnostics
 
 
