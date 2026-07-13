@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from logical_puzzle_generator.localization import Language, parse_language
+from logical_puzzle_generator.themes.numeric import build_numeric_value_id, parse_numeric_value_id
 
 DEFAULT_THEME_ID: Final = "tennis_training"
 RANDOM_THEME_ID: Final = "random"
@@ -27,6 +28,7 @@ class ThemeValue:
     label: LocalizedText
     short_label: LocalizedText | None = None
     subject_phrase: LocalizedText | None = None
+    numeric_value: int | None = None
 
     def display(self, language: Language | str, *, short: bool = False) -> str:
         text = self.short_label if short and self.short_label is not None else self.label
@@ -42,6 +44,12 @@ class ThemeWording:
     direct_assignment: LocalizedText
     child_with_theme_nominative: LocalizedText
     child_with_theme_dative: LocalizedText
+    numeric_exact: LocalizedText | None = None
+    numeric_more: LocalizedText | None = None
+    numeric_fewer: LocalizedText | None = None
+    numeric_twice: LocalizedText | None = None
+    unit_singular: LocalizedText | None = None
+    unit_plural: LocalizedText | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +58,44 @@ class ThemeCategoryDefinition:
     label: LocalizedText
     values: tuple[ThemeValue, ...]
     wording: ThemeWording
+    is_numeric: bool = False
+    numeric_minimum: int = 2
+    numeric_maximum: int = 24
+
+    def __post_init__(self) -> None:
+        if self.is_numeric:
+            self._validate_numeric_definition()
+        elif len(self.values) < 4:
+            raise ValueError(f"Theme category '{self.id}' requires at least four values.")
+
+    def _validate_numeric_definition(self) -> None:
+        if not isinstance(self.numeric_minimum, int) or isinstance(self.numeric_minimum, bool):
+            raise TypeError("Numeric category minimum must be an integer.")
+        if not isinstance(self.numeric_maximum, int) or isinstance(self.numeric_maximum, bool):
+            raise TypeError("Numeric category maximum must be an integer.")
+        if self.numeric_minimum < 0:
+            raise ValueError("Numeric category minimum must be non-negative.")
+        if self.numeric_maximum <= self.numeric_minimum:
+            raise ValueError("Numeric category maximum must be greater than minimum.")
+        if self.numeric_maximum - self.numeric_minimum + 1 < 4:
+            raise ValueError("Numeric category range must contain at least four values.")
+        if not any(
+            value * 2 <= self.numeric_maximum
+            for value in range(self.numeric_minimum, self.numeric_maximum + 1)
+        ):
+            raise ValueError("Numeric category range must allow a factor-2 relationship.")
+        required = (
+            self.wording.numeric_exact,
+            self.wording.numeric_more,
+            self.wording.numeric_fewer,
+            self.wording.numeric_twice,
+            self.wording.unit_singular,
+            self.wording.unit_plural,
+        )
+        if any(text is None for text in required):
+            raise ValueError("Numeric category wording is incomplete.")
+        if self.values:
+            raise ValueError("Generated numeric categories must not define fixed values.")
 
     def localized_label(self, language: Language | str) -> str:
         return self.label.for_language(language)
@@ -60,12 +106,53 @@ class ThemeCategoryDefinition:
                 return value
         raise ValueError(f"Category '{self.id}' has no thematic value '{value_id}'.")
 
+    def parse_generated_numeric_value_id(self, value_id: str, *, instance_id: str) -> ThemeValue:
+        """Reconstruct a generated numeric value after validating ID syntax, instance, and range."""
+        if not self.is_numeric:
+            raise ValueError(f"Category '{self.id}' is not numeric.")
+        parsed = parse_numeric_value_id(
+            value_id,
+            instance_id=instance_id,
+            minimum=self.numeric_minimum,
+            maximum=self.numeric_maximum,
+        )
+        return _numeric_value(self, parsed.numeric_value, instance_id)
+
 
 @dataclass(frozen=True, slots=True)
 class ThemeCategoryInstance:
     definition: ThemeCategoryDefinition
     instance_id: str
     selected_values: tuple[ThemeValue, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.instance_id, str) or not self.instance_id:
+            raise ValueError("Theme category instance ID must be a non-empty string.")
+        value_ids = [value.id for value in self.selected_values]
+        if len(set(value_ids)) != len(value_ids):
+            raise ValueError("Theme category instances require unique selected value IDs.")
+        if self.definition.is_numeric:
+            for value in self.selected_values:
+                if not isinstance(value.numeric_value, int) or isinstance(
+                    value.numeric_value, bool
+                ):
+                    raise ValueError("Numeric category instances require integer selected values.")
+                canonical = self.definition.parse_generated_numeric_value_id(
+                    value.id, instance_id=self.instance_id
+                )
+                if canonical.numeric_value != value.numeric_value:
+                    raise ValueError("Numeric value ID does not match its numeric value.")
+                if value != canonical:
+                    raise ValueError(
+                        "Numeric category instances require canonical generated values."
+                    )
+        else:
+            for value in self.selected_values:
+                canonical = self.definition.value_by_id(value.id)
+                if value.numeric_value is not None:
+                    raise ValueError("Text category values must not carry numeric values.")
+                if value != canonical:
+                    raise ValueError("Text category instances require canonical registered values.")
 
     @property
     def category_id(self) -> str:
@@ -74,6 +161,14 @@ class ThemeCategoryInstance:
     @property
     def selected_value_ids(self) -> tuple[str, ...]:
         return tuple(value.id for value in self.selected_values)
+
+    def value_by_id(self, value_id: str) -> ThemeValue:
+        for value in self.selected_values:
+            if value.id == value_id:
+                return value
+        raise ValueError(
+            f"Category instance '{self.instance_id}' has no thematic value '{value_id}'."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,14 +206,17 @@ class ThemeDefinition:
         instance_index: int = DEFAULT_CATEGORY_INSTANCE_INDEX,
     ) -> ThemeCategoryInstance:
         category = self.select_category(category_id, random_source)
-        values = list(category.values)
-        if len(values) < 4:
-            raise ValueError(
-                f"Theme category '{self.id}.{category.id}' requires at least four values."
+        if category.is_numeric:
+            selected_values = _generate_numeric_values(category, random_source, instance_index)
+        else:
+            values = list(category.values)
+            if len(values) < 4:
+                raise ValueError(
+                    f"Theme category '{self.id}.{category.id}' requires at least four values."
+                )
+            selected_values = (
+                tuple(random_source.sample(values, k=4)) if len(values) > 4 else tuple(values)
             )
-        selected_values = (
-            tuple(random_source.sample(values, k=4)) if len(values) > 4 else tuple(values)
-        )
         return ThemeCategoryInstance(
             definition=category,
             instance_id=f"{category.id}_{instance_index}",
@@ -138,12 +236,14 @@ def _value(
     short_de: str | None = None,
     subject_en: str | None = None,
     subject_de: str | None = None,
+    numeric_value: int | None = None,
 ) -> ThemeValue:
     return ThemeValue(
         id=value_id,
         label=_text(en, de),
         short_label=_text(short_en or en, short_de or de),
         subject_phrase=_text(subject_en or en, subject_de or de),
+        numeric_value=numeric_value,
     )
 
 
@@ -168,8 +268,97 @@ def _category(
     label_de: str,
     values: tuple[ThemeValue, ...],
     wording: ThemeWording,
+    *,
+    is_numeric: bool = False,
+    numeric_minimum: int = 2,
+    numeric_maximum: int = 24,
 ) -> ThemeCategoryDefinition:
-    return ThemeCategoryDefinition(category_id, _text(label_en, label_de), values, wording)
+    return ThemeCategoryDefinition(
+        category_id,
+        _text(label_en, label_de),
+        values,
+        wording,
+        is_numeric,
+        numeric_minimum,
+        numeric_maximum,
+    )
+
+
+def _numeric_value(category: ThemeCategoryDefinition, value: int, instance_id: str) -> ThemeValue:
+    value_id = build_numeric_value_id(instance_id=instance_id, numeric_value=value)
+    text = str(value)
+    return ThemeValue(value_id, _text(text, text), _text(text, text), _text(text, text), value)
+
+
+def _generate_numeric_values(
+    category: ThemeCategoryDefinition, random_source: random.Random, instance_index: int
+) -> tuple[ThemeValue, ...]:
+    low, high = category.numeric_minimum, category.numeric_maximum
+    bases = [n for n in range(low, high // 2 + 1) if n * 2 <= high]
+    random_source.shuffle(bases)
+    for base in bases:
+        double = base * 2
+        candidates = [n for n in range(low, high + 1) if n not in {base, double}]
+        random_source.shuffle(candidates)
+        for third in candidates:
+            diffs = [abs(third - base), abs(third - double)]
+            fourths = [
+                n
+                for n in candidates
+                if n != third
+                and any(
+                    abs(n - x) in diffs or abs(n - x) in (2, 3, 4, 5, 6)
+                    for x in (base, double, third)
+                )
+            ]
+            if fourths:
+                values = [base, double, third, random_source.choice(fourths)]
+                if len(set(values)) == 4 and all(isinstance(v, int) and v >= 0 for v in values):
+                    random_source.shuffle(values)
+                    instance_id = f"{category.id}_{instance_index}"
+                    generated = tuple(_numeric_value(category, v, instance_id) for v in values)
+                    _validate_generated_numeric_values(category, generated, instance_id)
+                    return generated
+    raise ValueError(f"Unable to generate four distinct numeric values for {category.id}.")
+
+
+def _validate_generated_numeric_values(
+    category: ThemeCategoryDefinition, values: tuple[ThemeValue, ...], instance_id: str
+) -> None:
+    if len(values) != 4:
+        raise ValueError("Numeric category generation must produce exactly four values.")
+    ids = [value.id for value in values]
+    numeric_numbers: list[int] = []
+    for value in values:
+        number = value.numeric_value
+        if not isinstance(number, int) or isinstance(number, bool):
+            raise TypeError("Numeric category generation must produce integer values.")
+        if number < 0:
+            raise ValueError("Numeric category generation must produce non-negative values.")
+        if not category.numeric_minimum <= number <= category.numeric_maximum:
+            raise ValueError("Numeric category generation produced an out-of-range value.")
+        numeric_numbers.append(number)
+    if len(set(ids)) != 4:
+        raise ValueError("Numeric category generation produced duplicate value IDs.")
+    if len(set(numeric_numbers)) != 4:
+        raise ValueError("Numeric category generation produced duplicate numeric values.")
+    if not any(a == 2 * b for a in numeric_numbers for b in numeric_numbers if a != b):
+        raise ValueError("Numeric category generation must include a factor-2 relationship.")
+    for value in values:
+        assert value.numeric_value is not None
+        parsed = parse_numeric_value_id(
+            value.id,
+            instance_id=instance_id,
+            minimum=category.numeric_minimum,
+            maximum=category.numeric_maximum,
+        )
+        if parsed.instance_id != instance_id or parsed.numeric_value != value.numeric_value:
+            raise ValueError("Numeric category generated IDs must roundtrip to their values.")
+        if (
+            build_numeric_value_id(instance_id=instance_id, numeric_value=value.numeric_value)
+            != value.id
+        ):
+            raise ValueError("Numeric category generated IDs must use the canonical format.")
 
 
 TRAINING_WORDING = _wording(
@@ -235,6 +424,27 @@ AT_WORDING = _wording(
     "das Kind bei {theme}",
     "the child at {theme}",
     "dem Kind bei {theme}",
+)
+
+TOURNAMENT_WINS_WORDING = ThemeWording(
+    direct_assignment=_text("{child} won {theme}.", "{child} gewann {theme}."),
+    child_with_theme_nominative=_text("the child with {theme}", "das Kind mit {theme}"),
+    child_with_theme_dative=_text("the child with {theme}", "dem Kind mit {theme}"),
+    numeric_exact=_text("{child} won {value} {unit}.", "{child} gewann {value} {unit}."),
+    numeric_more=_text(
+        "{greater} won {difference} {unit} more than {lesser}.",
+        "{greater} gewann {difference} {unit} mehr als {lesser}.",
+    ),
+    numeric_fewer=_text(
+        "{lesser} won {difference} {unit} fewer than {greater}.",
+        "{lesser} gewann {difference} {unit} weniger als {greater}.",
+    ),
+    numeric_twice=_text(
+        "{multiple} won twice as many tournaments as {base}.",
+        "{multiple} gewann doppelt so viele Turniere wie {base}.",
+    ),
+    unit_singular=_text("tournament", "Turnier"),
+    unit_plural=_text("tournaments", "Turniere"),
 )
 
 _THEMES: Final[tuple[ThemeDefinition, ...]] = (
@@ -317,6 +527,16 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                     _value("carpet", "carpet", "Teppich", "Carpet", "Teppich"),
                 ),
                 SURFACE_WORDING,
+            ),
+            _category(
+                "tournament_wins",
+                "Tournament Wins",
+                "Turniersiege",
+                (),
+                TOURNAMENT_WINS_WORDING,
+                is_numeric=True,
+                numeric_minimum=2,
+                numeric_maximum=24,
             ),
         ),
     ),

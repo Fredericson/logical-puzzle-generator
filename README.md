@@ -173,4 +173,36 @@ Themed puzzles do not have a universal three-clue count. They are reduced while 
 
 `PuzzleBookGenerator` builds a multi-page book for exactly one selected registry theme. It selects the four children once from the shared child source, reuses those same `Item` objects on every generated page, creates a position-only first puzzle with no theme metadata, then creates the requested number of one-category theme puzzles. Theme categories are selected only from the resolved `ThemeDefinition.categories`: selection avoids repetition while enough registered categories are available and reuses registered categories only after that pool is exhausted. Reused categories keep their category ID but receive distinct `theme_category_instance_id` metadata values.
 
-Every `PuzzleBook` exposes a derived, presentation-neutral summary table. Its columns are stable child identifiers ordered by the Position puzzle solution. Its rows come one-for-one from theme pages and use `theme_category_instance_id` as their internal identity; the Position puzzle is never a summary row. The PuzzleBook puzzle PDF contains the Position page, all Theme pages, and a final empty summary table with child and category headings. The PuzzleBook solution PDF contains only the completed summary table, not solved copies of every individual puzzle. Future numeric categories such as `tournament_wins` remain deferred to a dedicated arithmetic-friendly category commit.
+Every `PuzzleBook` exposes a derived, presentation-neutral summary table. Its columns are stable child identifiers ordered by the Position puzzle solution. Its rows come one-for-one from theme pages and use `theme_category_instance_id` as their internal identity; the Position puzzle is never a summary row. The PuzzleBook puzzle PDF contains the Position page, all Theme pages, and a final empty summary table with child and category headings. The PuzzleBook solution PDF contains only the completed summary table, not solved copies of every individual puzzle. Commit 12.4 extends this PuzzleBook flow with the generated numeric `tournament_wins` category while preserving the same summary-table contract.
+
+### Commit 12.4 numeric tournament wins and PuzzleBook CLI
+
+Commit 12.4 adds `tournament_wins` as the first numeric theme category. It is registered only on the `tennis_training` theme and still follows the one-category-per-theme-page model: each page has four children, four positions, and exactly four selected tournament-win value IDs. The child/value pairing is still established by shared solved position, so numeric pages preserve the existing category-aware `4! × 4!` assignment boundary instead of introducing a combined `8!` model.
+
+Tournament-win clues are mathematical domain constraints rendered by the presentation layer. Examples include:
+
+* `Emma won 17 tournaments.`
+* `Aurelia won 4 fewer tournaments than Emma.`
+* `Emma won 4 more tournaments than Aurelia.`
+* `Mia won twice as many tournaments as Sofia.`
+
+German rendering uses Swiss spelling, for example `Mia gewann doppelt so viele Turniere wie Sofia.` Numeric values are stored as stable value IDs plus integer values and are formatted only for clues, choice boxes, solution rows, and PuzzleBook summary tables. Generated numeric value IDs use the category-neutral format `<theme_category_instance_id>_value_<integer>`, for example `tournament_wins_2_value_14`. The category-level parser validates generated ID syntax, the expected category-instance prefix, the numeric suffix, and the configured numeric range; a syntactically valid, correctly scoped, in-range ID can be reconstructed at that level. The reconstructed `ThemeCategoryInstance` then enforces selected membership through `value_by_id()`, so syntactically valid but unselected values cannot be rendered as page values. PDF and clue presentation reconstruct category instances only from `theme_category_instance_id` and `selected_theme_value_ids`, then perform later lookups through that instance. Internal IDs are never child-facing. Final tournament-win pages remain uniquely solvable, include at least one relative arithmetic clue, never consist of four exact numeric assignments, preserve the Easy/Medium/Hard fixed-position-anchor meaning, and still use one active theme category per page. The same numeric mechanism can be reused by future numeric categories through a category ID, numeric range, localized wording, and the existing arithmetic constraints without solver changes.
+
+The official PuzzleBook entry point is:
+
+```bash
+python -m logical_puzzle_generator.create_puzzle_book --theme tennis_training --pages 8 --difficulty easy --language de
+```
+
+By default it writes:
+
+```text
+output/puzzle_book.pdf
+output/puzzle_book_solution.pdf
+```
+
+`--pages` counts Theme pages only; the generated puzzle PDF also includes one Position page and one final empty summary page. Passing `--pages 0` is supported intentionally and creates only the Position page plus the empty summary page in the puzzle PDF. The solution PDF contains only the completed summary table. Use `--seed` for deterministic theme/category/value/solution generation:
+
+```bash
+python -m logical_puzzle_generator.create_puzzle_book --theme tennis_training --pages 8 --difficulty easy --language de --seed 42
+```

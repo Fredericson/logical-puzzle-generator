@@ -40,8 +40,11 @@ def test_themes_expose_multiple_categories_not_single_category_fields() -> None:
         assert required_categories <= category_ids
         assert len(category_ids) == len(theme.categories)
         for category in theme.categories:
-            assert len(category.values) >= 4
-            assert len({value.id for value in category.values}) == len(category.values)
+            if category.is_numeric:
+                assert category.values == ()
+            else:
+                assert len(category.values) >= 4
+                assert len({value.id for value in category.values}) == len(category.values)
 
 
 def test_model_layer_does_not_import_theme_registry_or_puzzle_book_scaffold() -> None:

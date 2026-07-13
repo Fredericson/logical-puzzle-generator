@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from logical_puzzle_generator.cli import parse_difficulty_argument, parse_language_argument
 from logical_puzzle_generator.generator import Difficulty
 from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.localization import (
@@ -69,25 +70,6 @@ def create_puzzle(
     return puzzle
 
 
-def _parse_difficulty_argument(value: str) -> Difficulty:
-    try:
-        from logical_puzzle_generator.generator import DifficultyPolicy
-
-        difficulty = DifficultyPolicy().normalize(value)
-        if difficulty is None:
-            raise argparse.ArgumentTypeError("Difficulty is required.")
-        return difficulty
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(str(exc)) from exc
-
-
-def _parse_language_argument(value: str) -> Language:
-    try:
-        return parse_language(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(str(exc)) from exc
-
-
 def main(argv: list[str] | None = None) -> Puzzle:
     parser = argparse.ArgumentParser(description="Generate themed logical puzzle PDFs.")
     parser.add_argument(
@@ -98,13 +80,13 @@ def main(argv: list[str] | None = None) -> Puzzle:
     )
     parser.add_argument(
         "--language",
-        type=_parse_language_argument,
+        type=parse_language_argument,
         default=Language.ENGLISH,
         help="PDF language: en (English, default) or de (German).",
     )
     parser.add_argument(
         "--difficulty",
-        type=_parse_difficulty_argument,
+        type=parse_difficulty_argument,
         default=None,
         help="Puzzle difficulty: easy, medium, or hard. Omit to choose randomly.",
     )

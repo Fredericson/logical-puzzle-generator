@@ -14,6 +14,11 @@ from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfCo
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.constraints.same_position import SamePositionConstraint
+from logical_puzzle_generator.constraints.numeric import (
+    ExactNumericValueConstraint,
+    NumericDifferenceConstraint,
+    NumericMultipleConstraint,
+)
 from logical_puzzle_generator.engine.assignment import Assignment
 from logical_puzzle_generator.engine.solver import Solver
 from logical_puzzle_generator.engine.validator import Validator
@@ -295,9 +300,31 @@ class PuzzleGenerator:
                 f"which does not match requested difficulty {difficulty.cli_value}"
             )
 
+        numeric_failure = self._numeric_quality_failure(reduced)
+        if numeric_failure is not None:
+            return None, numeric_failure
+
         reduced = self._with_estimated_difficulty(reduced, difficulty)
 
         return reduced, None
+
+    def _numeric_quality_failure(self, puzzle: Puzzle) -> str | None:
+        category_instance = getattr(self, "_current_category_instance", None)
+        if category_instance is None or not category_instance.definition.is_numeric:
+            return None
+
+        exact_count = sum(
+            isinstance(constraint, ExactNumericValueConstraint) for constraint in puzzle.constraints
+        )
+        relative_count = sum(
+            isinstance(constraint, (NumericDifferenceConstraint, NumericMultipleConstraint))
+            for constraint in puzzle.constraints
+        )
+        if relative_count < 1:
+            return "numeric puzzle must retain at least one relative arithmetic clue"
+        if exact_count > 1:
+            return "numeric puzzle must not retain more than one exact numeric clue"
+        return None
 
     def _select_visible_constraints(
         self,
@@ -638,12 +665,18 @@ class PuzzleGenerator:
         seen: set[tuple[object, ...]] = set()
         assignment = solution.assignment
 
-        for child in children:
-            child_position = assignment.position_of(child)
-            paired = next(
-                item for item in theme_items if assignment.position_of(item) == child_position
+        category_instance = getattr(self, "_current_category_instance", None)
+        if category_instance is not None and category_instance.definition.is_numeric:
+            self._append_numeric_constraints(
+                constraints, seen, children, theme_items, assignment, category_instance
             )
-            self._append_unique(constraints, seen, SamePositionConstraint(child, paired))
+        else:
+            for child in children:
+                child_position = assignment.position_of(child)
+                paired = next(
+                    item for item in theme_items if assignment.position_of(item) == child_position
+                )
+                self._append_unique(constraints, seen, SamePositionConstraint(child, paired))
 
         for theme_item in theme_items:
             self._append_unique(
@@ -666,6 +699,83 @@ class PuzzleGenerator:
 
         self._random.shuffle(constraints)
         return constraints
+
+    def _append_numeric_constraints(
+        self,
+        constraints: list[Constraint],
+        seen: set[tuple[object, ...]],
+        children: list[Item],
+        theme_items: list[Item],
+        assignment: Assignment,
+        category_instance: ThemeCategoryInstance,
+    ) -> None:
+        numeric_values_by_id: dict[str, int] = {}
+        for value in category_instance.selected_values:
+            if value.numeric_value is None:
+                raise ValueError("Numeric category instances require numeric values.")
+            numeric_values_by_id[value.id] = value.numeric_value
+        child_values: dict[Item, int] = {}
+        for child in children:
+            child_position = assignment.position_of(child)
+            paired = next(
+                item for item in theme_items if assignment.position_of(item) == child_position
+            )
+            child_values[child] = numeric_values_by_id[paired.name]
+
+        # Include one exact anchor plus relative arithmetic candidates so the final
+        # puzzle cannot degrade into a pure lookup worksheet.
+        anchor_child = self._random.choice(children)
+        self._append_unique(
+            constraints,
+            seen,
+            ExactNumericValueConstraint(
+                anchor_child,
+                child_values[anchor_child],
+                category_id=category_instance.category_id,
+                values_by_id=numeric_values_by_id,
+            ),
+        )
+
+        for first, second in combinations(children, 2):
+            first_value, second_value = child_values[first], child_values[second]
+            if first_value == second_value:
+                continue
+            greater, lesser = (first, second) if first_value > second_value else (second, first)
+            self._append_unique(
+                constraints,
+                seen,
+                NumericDifferenceConstraint(
+                    greater,
+                    lesser,
+                    abs(first_value - second_value),
+                    category_id=category_instance.category_id,
+                    values_by_id=numeric_values_by_id,
+                ),
+            )
+            if first_value == 2 * second_value:
+                self._append_unique(
+                    constraints,
+                    seen,
+                    NumericMultipleConstraint(
+                        first,
+                        second,
+                        2,
+                        category_id=category_instance.category_id,
+                        values_by_id=numeric_values_by_id,
+                    ),
+                )
+            if second_value == 2 * first_value:
+                self._append_unique(
+                    constraints,
+                    seen,
+                    NumericMultipleConstraint(
+                        second,
+                        first,
+                        2,
+                        category_id=category_instance.category_id,
+                        values_by_id=numeric_values_by_id,
+                    ),
+                )
 
     def _append_positional_pair_constraints(
         self,
@@ -770,6 +880,32 @@ class PuzzleGenerator:
             return (
                 SamePositionConstraint,
                 frozenset((constraint.first, constraint.second)),
+            )
+
+        if isinstance(constraint, ExactNumericValueConstraint):
+            return (
+                ExactNumericValueConstraint,
+                constraint.category_id,
+                constraint.child,
+                constraint.value,
+            )
+
+        if isinstance(constraint, NumericDifferenceConstraint):
+            return (
+                NumericDifferenceConstraint,
+                constraint.category_id,
+                constraint.greater_child,
+                constraint.lesser_child,
+                constraint.difference,
+            )
+
+        if isinstance(constraint, NumericMultipleConstraint):
+            return (
+                NumericMultipleConstraint,
+                constraint.category_id,
+                constraint.multiple_child,
+                constraint.base_child,
+                constraint.factor,
             )
 
         return (constraint.__class__, constraint.description)

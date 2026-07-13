@@ -36,7 +36,7 @@ class ItemPresentationResolver:
             raise ValueError(
                 f"Expected thematic item from category '{self.category.id}', got '{item.category_id}'."
             )
-        return self.category.value_by_id(item.name)
+        return self.category_instance.value_by_id(item.name)
 
     def item_label(self, item: Item, *, short: bool = False) -> str:
         if self.is_child(item):
