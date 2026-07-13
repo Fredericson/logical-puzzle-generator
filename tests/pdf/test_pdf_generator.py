@@ -175,15 +175,22 @@ def test_solution_lineup_geometry_matches_puzzle_lineup() -> None:
     assert [slot.label for slot in solution_slots] == ["Aurelia", "Emma", "Lara", "Mia"]
 
 
-def test_clue_numbering_is_sequential_in_pdfs(tmp_path) -> None:
+class FixedNumberedTextRenderer:
+    def render_clues(self, clues, item_count=None):
+        return ["1. First clue", "2. Second clue"]
+
+
+def test_pdf_uses_text_renderer_clue_numbers_exactly_once(tmp_path) -> None:
     path = tmp_path / "puzzle.pdf"
 
-    PdfGenerator().create_puzzle_pdf(sample_puzzle(), path)
+    PdfGenerator(text_renderer=FixedNumberedTextRenderer()).create_puzzle_pdf(sample_puzzle(), path)
 
     text = pdf_text_bytes(path)
-    assert "1." in text
-    assert "2." in text
-    assert text.index("1.") < text.index("2.")
+    assert text.count("1. First clue") == 1
+    assert text.count("2. Second clue") == 1
+    assert "1. 1. First clue" not in text
+    assert "2. 2. Second clue" not in text
+    assert text.index("1. First clue") < text.index("2. Second clue")
 
 
 def test_available_names_follow_clues_in_puzzle_pdf(tmp_path) -> None:
