@@ -123,18 +123,18 @@ class PdfGenerator:
         story.append(Spacer(1, 0.16 * inch))
         story.append(self._lineup(puzzle, labels=labels))
         story.append(Spacer(1, 0.18 * inch))
+        story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
+        for index, rendered_clue in enumerate(
+            self._text_renderer.render_clues(puzzle.clues, item_count=len(puzzle.items)), start=1
+        ):
+            story.append(Paragraph(f"{index}.&nbsp;&nbsp;{rendered_clue}", self._styles["ChildClue"]))
+        story.append(Spacer(1, 0.08 * inch))
         story.append(
             Paragraph(self._catalog.label("players_items"), self._styles["SectionHeading"])
         )
         story.append(
             Paragraph(", ".join(item.name for item in puzzle.items), self._styles["NameList"])
         )
-        story.append(Spacer(1, 0.1 * inch))
-        story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
-        for index, rendered_clue in enumerate(
-            self._text_renderer.render_clues(puzzle.clues, item_count=len(puzzle.items)), start=1
-        ):
-            story.append(Paragraph(f"{index}.&nbsp;&nbsp;{rendered_clue}", self._styles["ChildClue"]))
         return story
 
     def _header(self, puzzle: Puzzle) -> list[Any]:

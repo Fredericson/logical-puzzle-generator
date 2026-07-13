@@ -186,6 +186,24 @@ def test_clue_numbering_is_sequential_in_pdfs(tmp_path) -> None:
     assert text.index("1.") < text.index("2.")
 
 
+def test_available_names_follow_clues_in_puzzle_pdf(tmp_path) -> None:
+    path = tmp_path / "puzzle.pdf"
+
+    PdfGenerator().create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert text.index("Clues") < text.index("Available Names")
+
+
+def test_available_names_follow_clues_in_solution_pdf(tmp_path) -> None:
+    path = tmp_path / "solution.pdf"
+
+    PdfGenerator().create_solution_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert text.index("Clues") < text.index("Available Names")
+
+
 def test_puzzle_lineup_contains_four_visual_position_placeholders() -> None:
     lineup = PdfGenerator()._lineup(sample_puzzle())
 
