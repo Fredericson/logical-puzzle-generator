@@ -15,7 +15,7 @@ from logical_puzzle_generator.localization import Language, TranslationCatalog, 
 from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.themes.presentation import ItemPresentationResolver
-from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY, ThemeRegistry
+from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY, ThemeCategoryInstance, ThemeRegistry
 
 from .choice_box import ChoiceBoxRenderer
 from .lineup import PlayerLineupRenderer
@@ -131,12 +131,9 @@ class PdfGenerator:
         story.append(Spacer(1, 0.18 * inch))
         story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
         resolver = self._resolver(puzzle)
-        try:
-            rendered_clues = self._text_renderer.render_clues(
-                puzzle.clues, item_count=len(puzzle.items), presentation_resolver=resolver
-            )
-        except TypeError:
-            rendered_clues = self._text_renderer.render_clues(puzzle.clues, item_count=len(puzzle.items))
+        rendered_clues = self._text_renderer.render_clues(
+            puzzle.clues, item_count=len(puzzle.items), presentation_resolver=resolver
+        )
         for rendered_clue in rendered_clues:
             story.append(Paragraph(rendered_clue, self._styles["ChildClue"]))
         story.append(Spacer(1, 0.08 * inch))
@@ -173,14 +170,25 @@ class PdfGenerator:
     def _theme_title(self, puzzle: Puzzle) -> str:
         return self._theme(puzzle).localized_title(self.language)
 
+    def _category_instance(self, puzzle: Puzzle) -> ThemeCategoryInstance:
+        theme = self._theme(puzzle)
+        category_id = "training" if puzzle.metadata is None else puzzle.metadata.theme_category_id
+        category = theme.category_by_id(category_id)
+        selected_ids = () if puzzle.metadata is None else puzzle.metadata.selected_theme_value_ids
+        selected_values = tuple(
+            category.value_by_id(value_id) for value_id in selected_ids
+        ) or tuple(category.values[:4])
+        instance_id = f"{category.id}_1" if puzzle.metadata is None else puzzle.metadata.theme_category_instance_id
+        return ThemeCategoryInstance(category, instance_id, selected_values)
+
     def _theme_category_label(self, puzzle: Puzzle) -> str:
-        return self._theme(puzzle).localized_category_label(self.language)
+        return self._category_instance(puzzle).definition.localized_label(self.language)
 
     def _theme_values(self, puzzle: Puzzle) -> list[str]:
-        return [value.display(self.language, short=True) for value in self._theme(puzzle).values]
+        return [value.display(self.language, short=True) for value in self._category_instance(puzzle).selected_values]
 
     def _resolver(self, puzzle: Puzzle) -> ItemPresentationResolver:
-        return ItemPresentationResolver(self._theme(puzzle), self.language)
+        return ItemPresentationResolver(self._theme(puzzle), self._category_instance(puzzle), self.language)
 
     def _lineup(self, puzzle: Puzzle, labels: list[str] | None = None) -> PlayerLineupRenderer:
         return PlayerLineupRenderer(

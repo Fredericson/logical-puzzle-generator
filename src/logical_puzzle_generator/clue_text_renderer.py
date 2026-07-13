@@ -58,8 +58,8 @@ class ClueTextRenderer:
         if self._is_child(item):
             return self._render_template(FixedPositionConstraint, {"A": self._label(item), "position": position})
         if self.language is Language.GERMAN:
-            return f"{self._resolver_required().child_with_theme_phrase(item)} steht auf Position {position}."
-        return f"{self._resolver_required().child_with_theme_phrase(item)} stands at position {position}."
+            return "{subject} steht auf Position {position}.".format(subject=self._resolver_required().child_with_theme_phrase(item), position=position)
+        return "{subject} stands at position {position}.".format(subject=self._resolver_required().child_with_theme_phrase(item), position=position)
 
     def _render_relation(self, relation: str, first: Item, second: Item) -> str:
         if self._is_child(first) and self._is_child(second):
@@ -74,30 +74,32 @@ class ClueTextRenderer:
             values = {"A": self._label(first), "B": self._label(second)}
             return self._render_template(key, values)
 
-        first_phrase = self._standing_phrase(first)
-        second_phrase = self._standing_phrase(second)
-        if self.language is Language.GERMAN:
-            words = {
-                "direct_left": "steht direkt links von",
-                "left": "steht links von",
-                "direct_right": "steht direkt rechts von",
-                "right": "steht rechts von",
-                "adjacent": "steht neben",
-            }
-        else:
-            words = {
-                "direct_left": "stands directly left of",
-                "left": "stands left of",
-                "direct_right": "stands directly right of",
-                "right": "stands right of",
-                "adjacent": "stands next to",
-            }
-        return f"{first_phrase} {words[relation]} {second_phrase}."
+        subject = self._standing_phrase(first, dative=False)
+        target = self._standing_phrase(second, dative=self.language is Language.GERMAN)
+        templates = self._relation_templates()[relation]
+        return templates.format(subject=subject, target=target)
 
-    def _standing_phrase(self, item: Item) -> str:
+    def _relation_templates(self) -> dict[str, str]:
+        if self.language is Language.GERMAN:
+            return {
+                "direct_left": "{subject} steht direkt links von {target}.",
+                "left": "{subject} steht links von {target}.",
+                "direct_right": "{subject} steht direkt rechts von {target}.",
+                "right": "{subject} steht rechts von {target}.",
+                "adjacent": "{subject} steht neben {target}.",
+            }
+        return {
+            "direct_left": "{subject} stands directly left of {target}.",
+            "left": "{subject} stands left of {target}.",
+            "direct_right": "{subject} stands directly right of {target}.",
+            "right": "{subject} stands right of {target}.",
+            "adjacent": "{subject} stands next to {target}.",
+        }
+
+    def _standing_phrase(self, item: Item, *, dative: bool) -> str:
         if self._is_child(item):
             return self._label(item)
-        return self._resolver_required().child_with_theme_phrase(item)
+        return self._resolver_required().child_with_theme_phrase(item, dative=dative)
 
     def _child_theme_pair(self, first: Item, second: Item) -> tuple[Item, Item]:
         if self._is_child(first) and not self._is_child(second):

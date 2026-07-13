@@ -254,7 +254,7 @@ GitHub Actions runs the normal pytest suite on push and pull request, and that s
 
 ## Commit 12.2 theme and assignment architecture
 
-Themes are immutable data definitions resolved through a central registry.  A generated puzzle has exactly two active logical categories in this phase: four children and one four-value thematic category.  Both categories map independently and one-to-one onto positions 1-4, and a child is paired with a thematic value when both occupy the same position.  The solver enumerates category-aware permutations (4! × 4!) and rejects puzzles that leave either child positions or thematic assignments ambiguous.
+Themes are immutable data definitions resolved through a central registry.  A generated puzzle has exactly two active logical categories in this phase: four children and one selected four-value thematic category instance.  Both categories map independently and one-to-one onto positions 1-4, and a child is paired with a thematic value when both occupy the same position.  The solver enumerates category-aware permutations (4! × 4!) and rejects puzzles that leave either child positions or thematic assignments ambiguous.
 
 The PDF layer uses a reusable bordered choice-box presentation pattern for available names and possible thematic values.  This renderer is presentation-only and receives localized headings plus four display values.
 
@@ -263,3 +263,9 @@ The PDF layer uses a reusable bordered choice-box presentation pattern for avail
 Theme item IDs are internal domain identifiers. Child-facing clue text, solution labels, and choice boxes must go through `ItemPresentationResolver`, which maps child items to names and thematic items to localized long or short display labels from the immutable `ThemeDefinition`. Theme-specific grammar for direct assignments and child-with-theme phrases lives in theme wording data, not in mathematical constraints.
 
 `PdfGenerator` accepts an injectable theme registry and builds a resolver for the puzzle it is rendering. The PDF layer does not decide which theme to generate. The lineup uses two deterministic answer fields per position: a child-name field and a short thematic-value field. `ChoiceBoxRenderer` owns the reusable bordered two-by-two choice box used for both available names and thematic values.
+
+### Future PuzzleBook shape prepared by Commit 12.2
+
+Commit 12.2 models a theme as multiple reusable `ThemeCategoryDefinition` objects. A single puzzle page selects exactly one `ThemeCategoryInstance`, identified by a stable instance ID and exactly four selected value IDs. Category definitions may provide larger value pools; the page instance stores the four values selected for that page.
+
+The future PuzzleBook is intentionally deferred. Its intended shape is: one PDF belongs to one theme, the same four names are used on all pages, page 1 is the universal position puzzle, later pages each use one theme-specific category instance, category definitions may later be repeated with distinct instance IDs, and the final page will contain a summary table. Commit 12.2 only renders one themed puzzle page at a time.

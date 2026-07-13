@@ -176,7 +176,7 @@ def test_solution_lineup_geometry_matches_puzzle_lineup() -> None:
 
 
 class FixedNumberedTextRenderer:
-    def render_clues(self, clues, item_count=None):
+    def render_clues(self, clues, item_count=None, presentation_resolver=None):
         return ["1. First clue", "2. Second clue"]
 
 

@@ -195,7 +195,7 @@ Puzzle difficulty remains numeric internal metadata, calculated from final visib
 
 ## 13. Commit 11.5 difficulty estimation requirement
 
-Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.2 themed puzzles do not use a globally fixed clue count; they keep as many visible one-to-one clues as required to solve both child positions and the single thematic category uniquely. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
+Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.2 themed puzzles do not use a globally fixed clue count; they keep as many visible one-to-one clues as required to solve both child positions and the selected thematic category instance uniquely. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
 
 
 ## Clue diversity quality goals
@@ -218,4 +218,4 @@ The regression suite defines the exact numeric quality thresholds in code. Archi
 
 ## Commit 12.2 documentation note
 
-The current Version 1 themed puzzle uses children as protagonists, exactly one data-driven thematic category, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.
+The current Version 1 themed puzzle uses children as protagonists, exactly one selected category instance from a multi-category theme, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.

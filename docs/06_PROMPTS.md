@@ -95,4 +95,4 @@ When changing relation generation, clue reduction, or distribution scoring, pres
 
 ## Commit 12.2 documentation note
 
-The current Version 1 themed puzzle uses children as protagonists, exactly one data-driven thematic category, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.
+The current Version 1 themed puzzle uses children as protagonists, exactly one selected category instance from a multi-category theme, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.

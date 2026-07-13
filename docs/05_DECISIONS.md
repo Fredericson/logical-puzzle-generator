@@ -197,10 +197,14 @@ Decision: child-facing PDF polish is presentation-only. `PdfGenerator` and `Play
 
 Rationale: Version 1 is feature-complete, so the worksheet should feel professionally printed and pleasant to solve with a pencil while preserving the already validated puzzle semantics. Keeping puzzle and solution PDFs layout-identical except for filled solution names makes visual regression testing straightforward and preserves the existing architecture boundary that rendering consumes puzzle data rather than producing or interpreting it.
 
-## ADR-021: Exactly one thematic category in Commit 12.2
+## ADR-021: Exactly one selected category instance in Commit 12.2
 
-Commit 12.2 adds selectable data-driven themes while deliberately keeping Version 1 puzzles small: four children, four positions, and exactly one theme-specific category with four values.  This gives children one meaningful additional dimension to solve without introducing multiple categories, animal protagonists, 5×5 puzzles, or batch/PDF complexity.
+Commit 12.2 adds selectable data-driven themes while deliberately keeping Version 1 puzzles small: four children, four positions, and one selected category instance with four values from a multi-category theme.  This gives children one meaningful additional dimension to solve without introducing multiple categories, animal protagonists, 5×5 puzzles, or batch/PDF complexity.
 
 ## ADR-022: Category-aware solver assignments
 
 The assignment model now treats children and thematic values as separate categories that independently occupy the same four positions.  This preserves one-to-one semantics per category and keeps the search space at 4! × 4!, avoiding an unrestricted 8! flattening.  Difficulty calibration remains isolated to fixed child-position anchors; thematic fixed-position constraints do not count toward easy/medium/hard anchors.
+
+## ADR-023: Deferred PuzzleBook structure
+
+Decision: the data model now prepares for a future PuzzleBook without implementing multi-page generation. A future book will use exactly one theme, stable names throughout the PDF, a universal position page first, multiple later pages that each select one theme category instance, optional repeated category instances with distinct IDs, and a final summary page. Commit 12.2 remains a one-page generator and does not implement book orchestration, repetition scheduling, or summary rendering.

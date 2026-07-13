@@ -19,6 +19,12 @@ from logical_puzzle_generator.themes.presentation import ItemPresentationResolve
 from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY
 from logical_puzzle_generator.themes.tennis import create_template
 
+
+def _resolver(theme_id: str, category_id: str, language: str):
+    theme = DEFAULT_THEME_REGISTRY.resolve(theme_id)
+    instance = theme.create_category_instance(category_id=category_id, random_source=random.Random(0))
+    return ItemPresentationResolver(theme, instance, language)
+
 LANGUAGE_FORMS = (Language.ENGLISH, Language.GERMAN, "en", "de", "english", "german", "deutsch")
 INTERNAL_IDS = ("sand_castle", "deck_chair", "shot_put", "pole_vault", "water_pistol", "cha_cha_cha")
 
@@ -34,7 +40,7 @@ def test_theme_localization_uses_central_language_parser(language) -> None:
 
 
 def test_presentation_resolver_rejects_unknown_theme_value() -> None:
-    resolver = ItemPresentationResolver(DEFAULT_THEME_REGISTRY.resolve("beach_day"), "de")
+    resolver = _resolver("beach_day", "activity", "de")
     assert resolver.item_label(Item("Mia")) == "Mia"
     assert resolver.short_theme_label(Item("water_pistol", category_id="activity")) == "Wasserpistole"
     with pytest.raises(ValueError, match="no thematic value"):
@@ -57,8 +63,8 @@ def test_direct_assignment_clues_are_theme_specific_and_natural(theme_id, catego
     constraint = SamePositionConstraint(child, theme_item)
     clue = type("ClueLike", (), {"constraint": constraint})()
 
-    de_resolver = ItemPresentationResolver(DEFAULT_THEME_REGISTRY.resolve(theme_id), "de")
-    en_resolver = ItemPresentationResolver(DEFAULT_THEME_REGISTRY.resolve(theme_id), "en")
+    de_resolver = _resolver(theme_id, category_id, "de")
+    en_resolver = _resolver(theme_id, category_id, "en")
 
     assert ClueTextRenderer("de", presentation_resolver=de_resolver).render_clue(clue) == de_expected
     assert ClueTextRenderer("en", presentation_resolver=en_resolver).render_clue(clue) == en_expected
@@ -66,7 +72,7 @@ def test_direct_assignment_clues_are_theme_specific_and_natural(theme_id, catego
 
 @pytest.mark.parametrize("constraint_factory", [LeftOfConstraint, AdjacentConstraint])
 def test_theme_relation_clues_do_not_render_theme_values_as_children(constraint_factory) -> None:
-    resolver = ItemPresentationResolver(DEFAULT_THEME_REGISTRY.resolve("beach_day"), "de")
+    resolver = _resolver("beach_day", "activity", "de")
     child = Item("Lara")
     shells = Item("shells", category_id="activity")
     clue = type("ClueLike", (), {"constraint": constraint_factory(child, shells)})()
@@ -77,7 +83,7 @@ def test_theme_relation_clues_do_not_render_theme_values_as_children(constraint_
 
 
 def test_thematic_fixed_position_clue_uses_child_with_theme_phrase() -> None:
-    resolver = ItemPresentationResolver(DEFAULT_THEME_REGISTRY.resolve("zoo_visit"), "de")
+    resolver = _resolver("zoo_visit", "animal_area", "de")
     clue = type("ClueLike", (), {"constraint": FixedPositionConstraint(Item("crocodiles", category_id="animal_area"), Position(2))})()
 
     assert ClueTextRenderer("de", presentation_resolver=resolver).render_clue(clue) == "das Kind bei den Krokodilen steht auf Position 2."
