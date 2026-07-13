@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from logical_puzzle_generator.constraints.base import Constraint
 from logical_puzzle_generator.model.clue import Clue
+from logical_puzzle_generator.model.category import Category
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.metadata import Metadata
 from logical_puzzle_generator.model.solution import Solution
@@ -23,10 +24,16 @@ class Puzzle:
 
     constraints: list[Constraint]
 
+    categories: list[Category] = field(default_factory=list)
+
     clues: list[Clue] = field(default_factory=list)
 
     metadata: Metadata | None = None
 
     solution: Solution | None = None
 
-
+    @property
+    def logical_items(self) -> list[Item]:
+        if self.categories:
+            return [item for category in self.categories for item in category.items]
+        return list(self.items)

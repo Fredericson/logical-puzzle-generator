@@ -14,9 +14,7 @@ class SolverResult:
 
     solutions: list[Assignment] = field(default_factory=list)
 
-    statistics: SolverStatistics = field(
-        default_factory=SolverStatistics
-    )
+    statistics: SolverStatistics = field(default_factory=SolverStatistics)
 
     @property
     def solution_count(self) -> int:

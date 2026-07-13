@@ -17,7 +17,4 @@ class SolverStatistics:
 
     @property
     def rejected_assignments(self) -> int:
-        return (
-            self.assignments_checked
-            - self.valid_assignments
-        )
+        return self.assignments_checked - self.valid_assignments

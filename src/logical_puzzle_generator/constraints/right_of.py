@@ -24,14 +24,9 @@ class RightOfConstraint(Constraint):
         assignment,
     ) -> bool:
 
-        return (
-            assignment.position_of(self.right)
-            > assignment.position_of(self.left)
-        )
+        return assignment.position_of(self.right) > assignment.position_of(self.left)
 
     @property
     def description(self) -> str:
 
-        return (
-            f"{self.right} stands right of {self.left}"
-        )
+        return f"{self.right} stands right of {self.left}"

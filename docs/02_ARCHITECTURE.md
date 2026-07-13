@@ -4,9 +4,9 @@ This document describes the current Version 1.0 architecture.
 
 ## 1. Version 1.0 boundary
 
-Version 1.0 generates ordering puzzles over one active item category. A generated `Solution` is a complete mapping from each active item to a `Position`. The public Tennis template includes multiple thematic categories, but the generator uses the first category as the active players/items category.
+Version 1.0 now supports two page shapes: a position-only compatibility puzzle over one child category, and a Commit 12.2 themed puzzle page over children plus exactly one selected theme-category instance. A `ThemeDefinition` provides multiple `ThemeCategoryDefinition` objects, but one generated puzzle page selects only one category instance and exactly four values. A generated `Solution` maps every active item in the page to a `Position`; themed pages solve children and selected category values with category-aware 4! × 4! enumeration.
 
-Out of scope for Version 1.0: multi-category relationship solving, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, and advanced difficulty modeling.
+Out of scope for Version 1.0: more than one active thematic category in a single puzzle page, multi-page PuzzleBook generation, summary-table rendering, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, numeric-category arithmetic clues, and advanced difficulty modeling.
 
 ## 2. Package structure
 
@@ -136,7 +136,7 @@ Quality selection
 PDF Generator
 ```
 
-During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. For Version 1 four-player puzzles, it selects the required number of relational clues up front (one for Easy, two for Medium, three for Hard) so all difficulties have exactly three visible clues before reduction. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. For position-only compatibility puzzles, it can select the original number of relational clues up front. For themed puzzles, child-position relation selection remains active while thematic clues are reduced without a global three-clue rule. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
 
 After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
 
@@ -219,7 +219,7 @@ Significant changes to these boundaries require an ADR update.
 
 ### `DifficultyPolicy`
 
-`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count. Version 1 four-player puzzles always expose exactly three visible clues: Easy has one relational clue, Medium has two, and Hard has three.
+`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count. Position-only compatibility puzzles may expose exactly three visible clues. Commit 12.2 themed puzzles expose enough reduced visible clues to solve both child positions and thematic values uniquely.
 
 Updated generation order:
 
@@ -251,3 +251,27 @@ localized rendered sentence
 ## 12. Build-quality regression gates
 
 GitHub Actions runs the normal pytest suite on push and pull request, and that suite includes `tests/generator/test_relation_distribution_regression.py`. The test is an architectural boundary check for generator output quality: `PuzzleGenerator` still generates visible constraints, `ConstraintDistributionPolicy` scores variety, `DifficultyPolicy` owns the fixed-position difficulty rule, and `Solver`/`Validator` remain correctness authorities. The regression gate only observes generated Tennis puzzles over fixed seed ranges (`10000-10199`, `20000-20199`, `30000-30199`) and asserts deterministic relation-type distribution thresholds for the five supported visible relation classes.
+
+## Commit 12.2 theme and assignment architecture
+
+Themes are immutable data definitions resolved through a central registry.  A generated puzzle has exactly two active logical categories in this phase: four children and one selected four-value thematic category instance.  Both categories map independently and one-to-one onto positions 1-4, and a child is paired with a thematic value when both occupy the same position.  The solver enumerates category-aware permutations (4! × 4!) and rejects puzzles that leave either child positions or thematic assignments ambiguous.
+
+The PDF layer uses a reusable bordered choice-box presentation pattern for available names and possible thematic values.  This renderer is presentation-only and receives localized headings plus four display values.
+
+### Commit 12.2 presentation boundaries
+
+Theme item IDs are internal domain identifiers. Child-facing clue text, solution labels, and choice boxes must go through `ItemPresentationResolver`, which maps child items to names and thematic items to localized long or short display labels from the immutable `ThemeDefinition`. Theme-specific grammar for direct assignments and child-with-theme phrases lives in theme wording data, not in mathematical constraints.
+
+`PdfGenerator` accepts an injectable theme registry and builds a resolver for the puzzle it is rendering. The PDF layer does not decide which theme to generate. The lineup uses two deterministic answer fields per position: a child-name field and a short thematic-value field. `ChoiceBoxRenderer` owns the reusable bordered two-by-two choice box used for both available names and thematic values.
+
+### Future PuzzleBook shape prepared by Commit 12.2
+
+Commit 12.2 models theme data as multiple reusable `ThemeCategoryDefinition` objects. A single puzzle page selects exactly one category instance conceptually, identified in puzzle metadata by a stable instance ID and exactly four selected value IDs. Category definitions may provide larger value pools; the page metadata stores the four values selected for that page. Commit 12.2 deliberately does not add production PuzzleBook classes.
+
+The future PuzzleBook is intentionally deferred. Its intended shape is: one PDF belongs to one theme, the same four names are used on all pages, page 1 is the universal position puzzle, later pages each use one theme-specific category instance, category definitions may later be repeated with distinct instance IDs, and the final page will contain a summary table. Commit 12.2 only renders one themed puzzle page at a time.
+
+### PuzzleBook summary table contract
+
+The future PuzzleBook ends with exactly one summary page. This page is not another logic puzzle and has no solver step. It is a final worksheet where the child transfers results from the already solved theme-category puzzle pages.
+
+The PuzzleBook puzzle PDF will contain the position page, theme-category puzzle pages, and a final empty summary table. The PuzzleBook solution PDF does not need separately solved copies of every earlier puzzle page; the filled summary table is the only required solution presentation for the book. The summary table columns are the stable four children ordered according to the first Position puzzle. Rows are generated only from theme-category pages, one row per generated category page. The universal Position puzzle is not included as a row; its only purpose is to establish ordering and child identity. A future `PuzzleBook` therefore has one stable child roster, one Position page, multiple category pages that reference that same roster by value, and one summary table generated directly from page solutions. The current Commit 12.2 single-page API still produces its existing single-page puzzle and solution PDFs.

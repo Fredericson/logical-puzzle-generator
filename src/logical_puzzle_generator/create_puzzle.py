@@ -13,7 +13,11 @@ from logical_puzzle_generator.localization import (
 from logical_puzzle_generator.model.puzzle import Puzzle
 from logical_puzzle_generator.pdf.generator import PdfGenerator
 from logical_puzzle_generator.themes.tennis import create_template
-
+from logical_puzzle_generator.themes.registry import (
+    DEFAULT_THEME_ID,
+    DEFAULT_THEME_REGISTRY,
+    RANDOM_THEME_ID,
+)
 
 DEFAULT_OUTPUT_DIR = Path("output")
 DEFAULT_PUZZLE_NUMBER = 3
@@ -33,9 +37,11 @@ def create_puzzle(
     solution_path: str | Path | None = None,
     language: Language | str = Language.ENGLISH,
     difficulty: Difficulty | str | None = None,
+    theme: str | None = None,
+    category: str | None = None,
 ) -> Puzzle:
     """
-    Generate Aurelia's Tennis puzzle and write puzzle and solution PDFs.
+    Generate a themed logical puzzle and write puzzle and solution PDFs.
 
     If difficulty is None, Easy, Medium, or Hard is selected randomly.
     Otherwise difficulty is selected with "easy", "medium", "hard", or the
@@ -44,7 +50,9 @@ def create_puzzle(
     number = _validate_number(number)
     language = parse_language(language)
     output_dir = DEFAULT_OUTPUT_DIR
-    puzzle_path = Path(puzzle_path) if puzzle_path is not None else output_dir / f"puzzle_{number}.pdf"
+    puzzle_path = (
+        Path(puzzle_path) if puzzle_path is not None else output_dir / f"puzzle_{number}.pdf"
+    )
     solution_path = (
         Path(solution_path)
         if solution_path is not None
@@ -52,7 +60,9 @@ def create_puzzle(
     )
 
     template = create_template()
-    puzzle = PuzzleGenerator(difficulty=difficulty).generate(template)
+    puzzle = PuzzleGenerator(
+        difficulty=difficulty, theme=theme or DEFAULT_THEME_ID, category=category
+    ).generate(template)
     pdf_generator = PdfGenerator(language=language, puzzle_number=number)
     pdf_generator.create_puzzle_pdf(puzzle, puzzle_path)
     pdf_generator.create_solution_pdf(puzzle, solution_path)
@@ -63,7 +73,10 @@ def _parse_difficulty_argument(value: str) -> Difficulty:
     try:
         from logical_puzzle_generator.generator import DifficultyPolicy
 
-        return DifficultyPolicy().normalize(value)
+        difficulty = DifficultyPolicy().normalize(value)
+        if difficulty is None:
+            raise argparse.ArgumentTypeError("Difficulty is required.")
+        return difficulty
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
@@ -76,7 +89,7 @@ def _parse_language_argument(value: str) -> Language:
 
 
 def main(argv: list[str] | None = None) -> Puzzle:
-    parser = argparse.ArgumentParser(description="Generate Aurelia's Tennis puzzle PDFs.")
+    parser = argparse.ArgumentParser(description="Generate themed logical puzzle PDFs.")
     parser.add_argument(
         "--number",
         type=int,
@@ -95,6 +108,17 @@ def main(argv: list[str] | None = None) -> Puzzle:
         default=None,
         help="Puzzle difficulty: easy, medium, or hard. Omit to choose randomly.",
     )
+    parser.add_argument(
+        "--theme",
+        default=None,
+        choices=(*DEFAULT_THEME_REGISTRY.supported_theme_ids(), RANDOM_THEME_ID),
+        help="Puzzle theme. Omit for tennis_training; use random for seeded random selection.",
+    )
+    parser.add_argument(
+        "--category",
+        default=None,
+        help="Theme category ID scoped to the selected theme. Omit for seeded random selection.",
+    )
     args = parser.parse_args(argv)
     number = _validate_number(args.number)
     language = parse_language(args.language)
@@ -107,6 +131,8 @@ def main(argv: list[str] | None = None) -> Puzzle:
         solution_path=solution_path,
         language=language,
         difficulty=difficulty,
+        theme=args.theme,
+        category=args.category,
     )
     catalog = TranslationCatalog(language)
     print(f"{catalog.label('puzzle_written')}: {puzzle_path}")

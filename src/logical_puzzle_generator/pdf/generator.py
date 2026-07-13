@@ -12,8 +12,16 @@ from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
+from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.puzzle import Puzzle
+from logical_puzzle_generator.themes.presentation import ItemPresentationResolver
+from logical_puzzle_generator.themes.registry import (
+    DEFAULT_THEME_REGISTRY,
+    ThemeCategoryInstance,
+    ThemeRegistry,
+)
 
+from .choice_box import ChoiceBoxRenderer
 from .lineup import PlayerLineupRenderer
 from .renderer import TextRenderer
 
@@ -29,9 +37,11 @@ class PdfGenerator:
         language: Language | str = Language.ENGLISH,
         random_source: random.Random | None = None,
         puzzle_number: int | None = None,
+        theme_registry: ThemeRegistry = DEFAULT_THEME_REGISTRY,
     ) -> None:
         self.language = parse_language(language)
         self.puzzle_number = puzzle_number
+        self._theme_registry = theme_registry
         self._text_renderer = (
             text_renderer
             if text_renderer is not None
@@ -115,32 +125,47 @@ class PdfGenerator:
         if puzzle.solution is None:
             raise ValueError("Cannot create a solution PDF because the puzzle has no Solution.")
         output_path = self._prepare_output_path(filename)
-        self._build(output_path, self._worksheet_story(puzzle, labels=self._solution_labels(puzzle)))
+        self._build(
+            output_path, self._worksheet_story(puzzle, labels=self._solution_labels(puzzle))
+        )
 
-    def _worksheet_story(self, puzzle: Puzzle, labels: list[str] | None = None) -> list[Any]:
+    def _worksheet_story(
+        self, puzzle: Puzzle, labels: list[str | tuple[str, str]] | None = None
+    ) -> list[Any]:
         story: list[Any] = []
         story.extend(self._header(puzzle))
         story.append(Spacer(1, 0.16 * inch))
         story.append(self._lineup(puzzle, labels=labels))
         story.append(Spacer(1, 0.18 * inch))
         story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
-        for rendered_clue in self._text_renderer.render_clues(
-            puzzle.clues, item_count=len(puzzle.items)
-        ):
+        resolver = self._resolver(puzzle)
+        rendered_clues = self._text_renderer.render_clues(
+            puzzle.clues, item_count=len(puzzle.items), presentation_resolver=resolver
+        )
+        for rendered_clue in rendered_clues:
             story.append(Paragraph(rendered_clue, self._styles["ChildClue"]))
         story.append(Spacer(1, 0.08 * inch))
-        story.append(
-            Paragraph(self._catalog.label("players_items"), self._styles["SectionHeading"])
-        )
-        story.append(
-            Paragraph(", ".join(item.name for item in puzzle.items), self._styles["NameList"])
-        )
+        children = [
+            resolver.item_label(item, short=True) if resolver is not None else item.name
+            for item in puzzle.items
+            if item.category_id == CHILDREN_CATEGORY_ID
+        ]
+        story.append(self._choice_box(self._catalog.label("players_items"), children))
+        if self._is_themed(puzzle):
+            story.append(Spacer(1, 0.08 * inch))
+            story.append(
+                self._choice_box(self._theme_category_label(puzzle), self._theme_values(puzzle))
+            )
         return story
 
     def _header(self, puzzle: Puzzle) -> list[Any]:
         metadata = puzzle.metadata
-        title = metadata.title if metadata is not None else self._catalog.label("logical_puzzle")
-        theme = metadata.theme if metadata is not None else self._catalog.label("general")
+        title = self._theme_title(puzzle)
+        theme = (
+            self._theme_title(puzzle)
+            if self._is_themed(puzzle)
+            else (metadata.theme if metadata is not None else self._catalog.label("general"))
+        )
 
         story: list[Any] = [Paragraph(self._catalog.title(title), self._styles["WorksheetTitle"])]
         meta_parts: list[str] = []
@@ -153,15 +178,116 @@ class PdfGenerator:
         story.append(Paragraph(" &nbsp; • &nbsp; ".join(meta_parts), self._styles["WorksheetMeta"]))
         return story
 
-    def _lineup(self, puzzle: Puzzle, labels: list[str] | None = None) -> PlayerLineupRenderer:
-        return PlayerLineupRenderer(
-            item_count=len(puzzle.items),
-            labels=labels,
-            instruction=self._catalog.label("solving_grid"),
+    def _choice_box(self, heading: str, values: list[str]):
+        return ChoiceBoxRenderer(heading, values, self._styles["NameList"]).flowable()
+
+    def _theme(self, puzzle: Puzzle):
+        metadata = self._themed_metadata(puzzle)
+        return self._theme_registry.resolve(metadata.theme_id)
+
+    def _theme_title(self, puzzle: Puzzle) -> str:
+        if not self._is_themed(puzzle):
+            return (
+                puzzle.metadata.title
+                if puzzle.metadata is not None
+                else self._catalog.label("general")
+            )
+        return self._theme(puzzle).localized_title(self.language)
+
+    def _category_instance(self, puzzle: Puzzle) -> ThemeCategoryInstance:
+        metadata = self._themed_metadata(puzzle)
+        theme = self._theme(puzzle)
+        category = theme.category_by_id(metadata.theme_category_id)
+        selected_ids = metadata.selected_theme_value_ids
+        selected_values = tuple(category.value_by_id(value_id) for value_id in selected_ids)
+        return ThemeCategoryInstance(category, metadata.theme_category_instance_id, selected_values)
+
+    def _is_themed(self, puzzle: Puzzle) -> bool:
+        metadata = puzzle.metadata
+        if metadata is None:
+            return False
+        fields = (
+            metadata.theme_id,
+            metadata.theme_category_id,
+            metadata.theme_category_instance_id,
+        )
+        has_identity = any(value is not None for value in fields) or bool(
+            metadata.selected_theme_value_ids
+        )
+        if not has_identity:
+            return False
+        self._validate_themed_metadata(puzzle)
+        return True
+
+    def _themed_metadata(self, puzzle: Puzzle):
+        self._validate_themed_metadata(puzzle)
+        if puzzle.metadata is None:
+            raise ValueError("Themed puzzle metadata is required for themed PDF rendering.")
+        assert puzzle.metadata.theme_id is not None
+        assert puzzle.metadata.theme_category_id is not None
+        assert puzzle.metadata.theme_category_instance_id is not None
+        return puzzle.metadata
+
+    def _validate_themed_metadata(self, puzzle: Puzzle) -> None:
+        metadata = puzzle.metadata
+        if metadata is None:
+            raise ValueError("Themed puzzle metadata is required for themed PDF rendering.")
+        missing = [
+            name
+            for name, value in (
+                ("theme_id", metadata.theme_id),
+                ("theme_category_id", metadata.theme_category_id),
+                ("theme_category_instance_id", metadata.theme_category_instance_id),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError(f"Incomplete themed puzzle metadata: missing {', '.join(missing)}.")
+        if len(metadata.selected_theme_value_ids) != 4:
+            raise ValueError(
+                "Incomplete themed puzzle metadata: exactly four selected theme value IDs are required."
+            )
+
+    def _theme_category_label(self, puzzle: Puzzle) -> str:
+        return self._category_instance(puzzle).definition.localized_label(self.language)
+
+    def _theme_values(self, puzzle: Puzzle) -> list[str]:
+        return [
+            value.display(self.language, short=True)
+            for value in self._category_instance(puzzle).selected_values
+        ]
+
+    def _resolver(self, puzzle: Puzzle) -> ItemPresentationResolver | None:
+        if not self._is_themed(puzzle):
+            return None
+        return ItemPresentationResolver(
+            self._theme(puzzle), self._category_instance(puzzle), self.language
         )
 
-    def _solution_labels(self, puzzle: Puzzle) -> list[str]:
-        return [name for _, name in self._text_renderer.render_solution_rows(puzzle)]
+    def _lineup(
+        self,
+        puzzle: Puzzle,
+        labels: list[str | tuple[str, str]] | None = None,
+    ) -> PlayerLineupRenderer:
+        return PlayerLineupRenderer(
+            item_count=len(
+                [item for item in puzzle.items if item.category_id == CHILDREN_CATEGORY_ID]
+            ),
+            labels=labels,
+            instruction=self._catalog.label("solving_grid"),
+            show_theme_field=self._is_themed(puzzle),
+        )
+
+    def _solution_labels(self, puzzle: Puzzle):
+        rows = self._text_renderer.render_solution_rows(puzzle, self._resolver(puzzle))
+        if all(len(row) == 2 for row in rows):
+            return [row[1] for row in rows]
+        labels: list[tuple[str, str]] = []
+        for row in rows:
+            if len(row) != 3:
+                raise ValueError("Themed solution rows must include a thematic value.")
+            labels.append((row[1], row[2]))
+        return labels
 
     def _validate_puzzle(self, puzzle: Puzzle) -> None:
         if not isinstance(puzzle, Puzzle):

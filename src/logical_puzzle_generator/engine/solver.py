@@ -31,9 +31,7 @@ class Solver:
 
         stats = SolverStatistics()
 
-        for assignment in self._iterator.iterate(
-            puzzle.items
-        ):
+        for assignment in self._iterator.iterate(puzzle.logical_items):
 
             stats.assignments_checked += 1
 
@@ -56,8 +54,6 @@ class Solver:
                     break
 
         result.statistics = stats
-        result.statistics.elapsed_time_ms = (
-            time.perf_counter() - start
-        ) * 1000
+        result.statistics.elapsed_time_ms = (time.perf_counter() - start) * 1000
 
         return result

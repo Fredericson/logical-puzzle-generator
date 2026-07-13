@@ -147,7 +147,7 @@ Consequences: future generated clue/constraint types must define their difficult
 
 ## ADR-017: Select difficulty by visible fixed-position clue count
 
-Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only the final reduced puzzle constraints that correspond one-to-one with visible clues. Easy means exactly two visible `FixedPositionConstraint` clues, Medium means exactly one, and Hard means zero. Direct-left, direct-right, adjacent, left-of, and right-of constraints are not fixed-position clues and never count as anchors. For four-player puzzles, Version 1 always exposes exactly three visible clues: Easy adds one relational clue, Medium adds two, and Hard adds three.
+Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only the final reduced puzzle constraints that correspond one-to-one with visible clues. Easy means exactly two visible `FixedPositionConstraint` clues, Medium means exactly one, and Hard means zero. Direct-left, direct-right, adjacent, left-of, and right-of constraints are not fixed-position clues and never count as anchors. Position-only compatibility puzzles may expose exactly three visible clues; Commit 12.2 themed puzzles are reduced without a fixed global clue count so both categories remain uniquely solvable.
 
 Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child. A fixed-position-count rule is predictable, testable, independent of language/PDF text, and based on the puzzle the child actually sees.
 
@@ -196,3 +196,19 @@ Status: Accepted
 Decision: child-facing PDF polish is presentation-only. `PdfGenerator` and `PlayerLineupRenderer` may adjust margins, spacing, typography hierarchy, clue indentation, deterministic vector geometry, and solution-label filling, but they must not change generated constraints, visible clue count, clue order, clue wording templates, relation distribution, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata.
 
 Rationale: Version 1 is feature-complete, so the worksheet should feel professionally printed and pleasant to solve with a pencil while preserving the already validated puzzle semantics. Keeping puzzle and solution PDFs layout-identical except for filled solution names makes visual regression testing straightforward and preserves the existing architecture boundary that rendering consumes puzzle data rather than producing or interpreting it.
+
+## ADR-021: Exactly one selected category instance in Commit 12.2
+
+Commit 12.2 adds selectable data-driven themes while deliberately keeping Version 1 puzzles small: four children, four positions, and one selected category instance with four values from a multi-category theme.  This gives children one meaningful additional dimension to solve without introducing multiple categories, animal protagonists, 5×5 puzzles, or batch/PDF complexity.
+
+## ADR-022: Category-aware solver assignments
+
+The assignment model now treats children and thematic values as separate categories that independently occupy the same four positions.  This preserves one-to-one semantics per category and keeps the search space at 4! × 4!, avoiding an unrestricted 8! flattening.  Difficulty calibration remains isolated to fixed child-position anchors; thematic fixed-position constraints do not count toward easy/medium/hard anchors.
+
+## ADR-023: Deferred PuzzleBook structure
+
+Decision: documentation now records the future PuzzleBook shape without adding production PuzzleBook classes or multi-page generation. A future book will use exactly one theme, stable names throughout the PDF, a universal position page first, multiple later pages that each select one theme category instance, optional repeated category instances with distinct IDs, and a final summary page. Commit 12.2 remains a one-page generator and does not implement book orchestration, repetition scheduling, or summary rendering.
+
+The future PuzzleBook puzzle PDF will contain the Position page, theme-category puzzle pages, and the final empty summary table. The PuzzleBook solution PDF does not need separately solved copies of every previous puzzle page; the filled summary table is the only required solution presentation for the book. Summary columns are the stable child names ordered by the first Position puzzle. Summary rows come only from theme-category pages; the Position page is not a row. No additional solver run is performed for the summary table because cells are derived from already generated page solutions. The current Commit 12.2 single-page API continues to emit its normal single-page puzzle and solution PDFs.
+
+Future numeric categories such as `tournament_wins` are deferred to a dedicated numeric-category commit. They may use positive distinct integer values and child-friendly addition/subtraction comparison clues, but Commit 12.2 adds no numeric constraints, arithmetic generators, placeholders, multiplication, or division.

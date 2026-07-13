@@ -8,7 +8,9 @@ from logical_puzzle_generator.constraints.fixed_position import FixedPositionCon
 from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
 from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.engine.validator import Validator
-from logical_puzzle_generator.generator.constraint_distribution_policy import ConstraintDistributionPolicy
+from logical_puzzle_generator.generator.constraint_distribution_policy import (
+    ConstraintDistributionPolicy,
+)
 from logical_puzzle_generator.generator.difficulty import Difficulty, DifficultyPolicy
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.puzzle import Puzzle
@@ -30,7 +32,9 @@ class ClueReducer:
     ) -> None:
         self._validator = validator if validator is not None else Validator()
         self._distribution_policy = (
-            distribution_policy if distribution_policy is not None else ConstraintDistributionPolicy()
+            distribution_policy
+            if distribution_policy is not None
+            else ConstraintDistributionPolicy()
         )
 
     def reduce(
@@ -62,9 +66,8 @@ class ClueReducer:
                 if self._would_remove_required_variation(reduced, candidate):
                     continue
 
-                if (
-                    difficulty is not None
-                    and not DifficultyPolicy().can_remove_to_match(candidate, difficulty)
+                if difficulty is not None and not DifficultyPolicy().can_remove_to_match(
+                    candidate, difficulty
                 ):
                     continue
 
@@ -113,6 +116,7 @@ class ClueReducer:
         return Puzzle(
             items=puzzle.items,
             constraints=[clue.constraint for clue in clues],
+            categories=puzzle.categories,
             clues=clues,
             metadata=puzzle.metadata,
             solution=puzzle.solution,

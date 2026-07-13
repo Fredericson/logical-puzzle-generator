@@ -41,10 +41,7 @@ class SolutionGenerator:
         items = self._items_from_source(source)
         self._validate_items(items)
 
-        positions = [
-            Position(index)
-            for index in range(1, len(items) + 1)
-        ]
+        positions = [Position(index) for index in range(1, len(items) + 1)]
         self._random.shuffle(positions)
 
         return Solution(

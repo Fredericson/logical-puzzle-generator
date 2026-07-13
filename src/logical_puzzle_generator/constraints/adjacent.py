@@ -38,6 +38,4 @@ class AdjacentConstraint(Constraint):
     @property
     def description(self) -> str:
 
-        return (
-            f"{self.first} stands next to {self.second}"
-        )
+        return f"{self.first} stands next to {self.second}"

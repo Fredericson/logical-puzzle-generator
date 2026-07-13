@@ -37,8 +37,13 @@ class RejectThenAcceptValidator:
 
 
 class IdentityClueReducer:
-    def reduce(self, puzzle: Puzzle) -> Puzzle:
+    def reduce(self, puzzle: Puzzle, difficulty=None) -> Puzzle:
         return puzzle
+
+
+class ExplodingClueReducer:
+    def reduce(self, puzzle: Puzzle, difficulty=None) -> Puzzle:
+        raise TypeError("real reducer bug")
 
 
 class RecordingValidator:
@@ -116,6 +121,16 @@ def test_generate_validates_uniqueness() -> None:
         validator.puzzles[index] == validator.puzzles[index + 1]
         for index in range(0, len(validator.puzzles), 2)
     )
+
+
+def test_injected_reducer_type_error_propagates() -> None:
+    with pytest.raises(TypeError, match="real reducer bug"):
+        PuzzleGenerator(
+            random_source=random.Random(11),
+            clue_reducer=ExplodingClueReducer(),
+            difficulty="easy",
+            max_attempts=1,
+        ).generate(create_template())
 
 
 def test_generate_retries_when_puzzle_is_not_unique() -> None:
@@ -218,7 +233,7 @@ class InvalidSolutionGenerator:
 
 
 class EmptyClueReducer:
-    def reduce(self, puzzle: Puzzle) -> Puzzle:
+    def reduce(self, puzzle: Puzzle, difficulty=None) -> Puzzle:
         return Puzzle(
             items=puzzle.items,
             constraints=puzzle.constraints,
@@ -452,7 +467,7 @@ def _visible_clue_meaning(clue: Clue) -> str:
 
 
 class AnchorDirectClueReducer:
-    def reduce(self, puzzle: Puzzle) -> Puzzle:
+    def reduce(self, puzzle: Puzzle, difficulty=None) -> Puzzle:
         selected = [
             clue
             for clue in puzzle.clues

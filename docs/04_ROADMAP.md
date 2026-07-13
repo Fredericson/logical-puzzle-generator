@@ -53,7 +53,7 @@ Potential next release work:
 
 Completed: clue variety distribution policy with neutral fixed-count context, adjacent/non-adjacent relation semantic separation, rule-based early rejection of repetitive generated constraints, and seeded selection among tied best visible subsets that preserves diversity where possible.
 
-Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible FixedPositionConstraint count. Version 1 four-player puzzles now target exactly three visible clues for every difficulty.
+Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible FixedPositionConstraint count. Position-only compatibility puzzles retain their established difficulty behavior; themed puzzles preserve child-anchor difficulty while allowing the clue count needed for two-category solving.
 
 
 ## Commit 11.9 status
@@ -69,3 +69,7 @@ Completed: deterministic statistical CI regression coverage for visible relation
 ## Commit 12.1 status
 
 Completed: Version 1 child-facing PDF presentation polish. The worksheet now uses a calmer layout, balanced title metadata, more generous whitespace, larger writable lineup boxes, deterministic aligned vector geometry, and clearer clue numbering/wrapping. This was presentation-only; no generator behavior, clue wording, clue counts, relation distribution, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata changed.
+
+## After Commit 12.2
+
+Commit 12.2 implements multiple available category definitions per theme and one selected category instance per generated puzzle page. Still deferred: multiple category pages in one generated PDF, more than one active thematic category in a single puzzle page, PuzzleBook orchestration, summary rendering, configurable/random names, gender selection, comic animal protagonists, category repetition scheduling, batch generation, numeric categories such as future tournament wins, and larger 5×5 puzzles.

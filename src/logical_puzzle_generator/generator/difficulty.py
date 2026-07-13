@@ -5,6 +5,7 @@ from enum import Enum
 
 from logical_puzzle_generator.constraints.base import Constraint
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
+from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.puzzle import Puzzle
 
 
@@ -45,8 +46,7 @@ class DifficultyPolicy:
         if count == 0:
             return Difficulty.HARD
         raise ValueError(
-            f"Invalid Version 1 fixed-position clue count {count}. "
-            "Expected exactly 2, 1, or 0."
+            f"Invalid Version 1 fixed-position clue count {count}. " "Expected exactly 2, 1, or 0."
         )
 
     def metadata_value(self, puzzle_or_constraints: Puzzle | Iterable[Constraint]) -> int:
@@ -71,7 +71,12 @@ class DifficultyPolicy:
             if isinstance(puzzle_or_constraints, Puzzle)
             else puzzle_or_constraints
         )
-        return sum(isinstance(constraint, FixedPositionConstraint) for constraint in constraints)
+        return sum(
+            isinstance(constraint, FixedPositionConstraint)
+            and getattr(constraint.item, "category_id", CHILDREN_CATEGORY_ID)
+            == CHILDREN_CATEGORY_ID
+            for constraint in constraints
+        )
 
     def required_fixed_position_count(self, difficulty: Difficulty | str) -> int:
         requested = self.normalize(difficulty)

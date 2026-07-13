@@ -195,7 +195,7 @@ Puzzle difficulty remains numeric internal metadata, calculated from final visib
 
 ## 13. Commit 11.5 difficulty estimation requirement
 
-Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. Version 1 four-player puzzles always contain exactly three visible clues: Easy has two fixed-position clues plus one relational clue, Medium has one fixed-position clue plus two relational clues, and Hard has three relational clues. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
+Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.2 themed puzzles do not use a globally fixed clue count; they keep as many visible one-to-one clues as required to solve both child positions and the selected thematic category instance uniquely. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
 
 
 ## Clue diversity quality goals
@@ -215,3 +215,7 @@ Constraints remain language-independent and continue to define only mathematical
 Generator quality now includes a deterministic statistical regression test for visible relational clues in the Tennis four-player template. The gate samples Easy seeds `10000-10199`, Medium seeds `20000-20199`, and Hard seeds `30000-30199`, for 200 puzzles per difficulty and 600 total puzzles. It counts exactly `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`; `FixedPositionConstraint` is excluded from relation totals.
 
 The regression suite defines the exact numeric quality thresholds in code. Architecturally, every supported relation type has deterministic lower and upper representation limits, and ordinary non-direct `LeftOfConstraint + RightOfConstraint` must keep a minimum combined representation. Exact measured counts are intentionally produced only by test diagnostics when a regression occurs, not recorded as documentation requirements. This gate observes public generator behavior and validates solver uniqueness; it must not be implemented as balancing logic inside the generator.
+
+## Commit 12.2 documentation note
+
+The current Version 1 themed puzzle uses children as protagonists, exactly one selected category instance from a multi-category theme, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.

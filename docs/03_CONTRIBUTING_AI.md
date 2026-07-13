@@ -120,7 +120,7 @@ mypy src
 
 ### Difficulty-policy guidance
 
-Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraints after clue reduction and count `FixedPositionConstraint` clues. Easy is exactly 2, Medium is exactly 1, Hard is 0. Version 1 four-player puzzles must always have exactly three visible clues: Easy has one relational clue, Medium has two, and Hard has three. `FixedPositionGenerator` constructs mandatory anchors and the target solution before relational constraints. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog.
+Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraints after clue reduction and count `FixedPositionConstraint` clues. Easy is exactly 2, Medium is exactly 1, Hard is 0. Position-only compatibility puzzles may retain exactly three visible clues. Commit 12.2 themed puzzles are reduced without a fixed global clue count because the thematic category must also be solved. `FixedPositionGenerator` constructs mandatory anchors and the target solution before relational constraints. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog.
 
 
 ## Constraint distribution policy
@@ -146,3 +146,7 @@ pytest tests/generator/test_relation_distribution_regression.py
 ```
 
 The test uses the Tennis template with 200 Easy, 200 Medium, and 200 Hard puzzles from fixed integer seed ranges. It counts `DirectLeftOfConstraint`, `LeftOfConstraint`, `DirectRightOfConstraint`, `RightOfConstraint`, and `AdjacentConstraint`, and excludes `FixedPositionConstraint`. Do not loosen thresholds or skip the test to hide a regression; if a deliberate generation-policy change shifts the stable distribution, update the regression suite with deterministic evidence while keeping exact measured counts in test diagnostics rather than documentation. Ordinary non-direct left/right clues must remain meaningfully represented.
+
+## Commit 12.2 documentation note
+
+The current Version 1 themed puzzle uses children as protagonists, exactly one selected category instance from a multi-category theme, and category-aware solving across child positions and thematic values.  Theme selection is available through `--theme` and the public `create_puzzle(..., theme=...)` API; omitted themes default to `tennis_training`.
