@@ -147,7 +147,7 @@ Consequences: future generated clue/constraint types must define their difficult
 
 ## ADR-017: Select difficulty by visible fixed-position clue count
 
-Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only the final reduced puzzle constraints that correspond one-to-one with visible clues. Easy means exactly two visible `FixedPositionConstraint` clues, Medium means exactly one, and Hard means zero. Direct-left, direct-right, adjacent, left-of, and right-of constraints are not fixed-position clues and never count as anchors. For four-player puzzles, Version 1 always exposes exactly three visible clues: Easy adds one relational clue, Medium adds two, and Hard adds three.
+Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only the final reduced puzzle constraints that correspond one-to-one with visible clues. Easy means exactly two visible `FixedPositionConstraint` clues, Medium means exactly one, and Hard means zero. Direct-left, direct-right, adjacent, left-of, and right-of constraints are not fixed-position clues and never count as anchors. Position-only compatibility puzzles may expose exactly three visible clues; Commit 12.2 themed puzzles are reduced without a fixed global clue count so both categories remain uniquely solvable.
 
 Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child. A fixed-position-count rule is predictable, testable, independent of language/PDF text, and based on the puzzle the child actually sees.
 
@@ -197,10 +197,10 @@ Decision: child-facing PDF polish is presentation-only. `PdfGenerator` and `Play
 
 Rationale: Version 1 is feature-complete, so the worksheet should feel professionally printed and pleasant to solve with a pencil while preserving the already validated puzzle semantics. Keeping puzzle and solution PDFs layout-identical except for filled solution names makes visual regression testing straightforward and preserves the existing architecture boundary that rendering consumes puzzle data rather than producing or interpreting it.
 
-## ADR: Exactly one thematic category in Commit 12.2
+## ADR-021: Exactly one thematic category in Commit 12.2
 
 Commit 12.2 adds selectable data-driven themes while deliberately keeping Version 1 puzzles small: four children, four positions, and exactly one theme-specific category with four values.  This gives children one meaningful additional dimension to solve without introducing multiple categories, animal protagonists, 5×5 puzzles, or batch/PDF complexity.
 
-## ADR: Category-aware solver assignments
+## ADR-022: Category-aware solver assignments
 
 The assignment model now treats children and thematic values as separate categories that independently occupy the same four positions.  This preserves one-to-one semantics per category and keeps the search space at 4! × 4!, avoiding an unrestricted 8! flattening.  Difficulty calibration remains isolated to fixed child-position anchors; thematic fixed-position constraints do not count toward easy/medium/hard anchors.

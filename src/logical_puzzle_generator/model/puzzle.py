@@ -32,4 +32,10 @@ class Puzzle:
 
     solution: Solution | None = None
 
+    @property
+    def logical_items(self) -> list[Item]:
+        if self.categories:
+            return [item for category in self.categories for item in category.items]
+        return list(self.items)
+
 

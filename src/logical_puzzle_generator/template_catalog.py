@@ -126,7 +126,6 @@ class TemplateCatalog:
             DirectRightOfConstraint,
             RightOfConstraint,
             AdjacentConstraint,
-            SamePositionConstraint,
         )
 
     @classmethod

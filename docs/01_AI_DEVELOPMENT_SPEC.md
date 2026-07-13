@@ -195,7 +195,7 @@ Puzzle difficulty remains numeric internal metadata, calculated from final visib
 
 ## 13. Commit 11.5 difficulty estimation requirement
 
-Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. Version 1 four-player puzzles always contain exactly three visible clues: Easy has two fixed-position clues plus one relational clue, Medium has one fixed-position clue plus two relational clues, and Hard has three relational clues. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
+Difficulty is calculated after clue reduction from final visible constraints only by counting `FixedPositionConstraint` clues: Easy has exactly two, Medium exactly one, and Hard zero. Direct left/right, adjacent, left-of, and right-of constraints do not count. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.2 themed puzzles do not use a globally fixed clue count; they keep as many visible one-to-one clues as required to solve both child positions and the single thematic category uniquely. PDF localization remains presentation-only and maps stored numeric difficulty values to localized labels.
 
 
 ## Clue diversity quality goals

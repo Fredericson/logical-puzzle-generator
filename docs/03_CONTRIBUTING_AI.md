@@ -120,7 +120,7 @@ mypy src
 
 ### Difficulty-policy guidance
 
-Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraints after clue reduction and count `FixedPositionConstraint` clues. Easy is exactly 2, Medium is exactly 1, Hard is 0. Version 1 four-player puzzles must always have exactly three visible clues: Easy has one relational clue, Medium has two, and Hard has three. `FixedPositionGenerator` constructs mandatory anchors and the target solution before relational constraints. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog.
+Difficulty is owned by `DifficultyPolicy`: inspect only final visible constraints after clue reduction and count `FixedPositionConstraint` clues. Easy is exactly 2, Medium is exactly 1, Hard is 0. Position-only compatibility puzzles may retain exactly three visible clues. Commit 12.2 themed puzzles are reduced without a fixed global clue count because the thematic category must also be solved. `FixedPositionGenerator` constructs mandatory anchors and the target solution before relational constraints. Do not put difficulty logic in the solver, validator, clue renderer, PDF generator, or translation catalog.
 
 
 ## Constraint distribution policy

@@ -136,7 +136,7 @@ Quality selection
 PDF Generator
 ```
 
-During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. For Version 1 four-player puzzles, it selects the required number of relational clues up front (one for Easy, two for Medium, three for Hard) so all difficulties have exactly three visible clues before reduction. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
+During generation, `PuzzleGenerator` assembles multiple valid candidate puzzles when possible. For position-only compatibility puzzles, it can select the original number of relational clues up front. For themed puzzles, child-position relation selection remains active while thematic clues are reduced without a global three-clue rule. Each candidate is validated for uniqueness before clue reduction, reduced with visible clues and matching constraints removed together, and validated again after reduction. Uniqueness is always validated against the constraints that correspond to visible clues; hidden constraints are forbidden.
 
 After collecting valid candidates, `PuzzleGenerator` scores each candidate with a deterministic internal quality heuristic and returns the highest-scoring puzzle. Multiple candidates are generated because the first uniquely solvable clue set can be mathematically valid but repetitive for a human player; comparing several valid reduced alternatives lets the generator prefer a more varied visible clue set without changing solver, reducer, or public API behavior.
 
@@ -219,7 +219,7 @@ Significant changes to these boundaries require an ADR update.
 
 ### `DifficultyPolicy`
 
-`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count. Version 1 four-player puzzles always expose exactly three visible clues: Easy has one relational clue, Medium has two, and Hard has three.
+`DifficultyPolicy` runs after `ClueReducer` and final uniqueness validation. It accepts the final `Puzzle` (or final visible constraints), counts only visible `FixedPositionConstraint` instances, and stores `1`, `2`, or `3` in copied puzzle metadata. Easy means exactly two fixed-position clues, Medium means exactly one, and Hard means zero. Other relation constraints do not count. Position-only compatibility puzzles may expose exactly three visible clues. Commit 12.2 themed puzzles expose enough reduced visible clues to solve both child positions and thematic values uniquely.
 
 Updated generation order:
 
@@ -257,3 +257,9 @@ GitHub Actions runs the normal pytest suite on push and pull request, and that s
 Themes are immutable data definitions resolved through a central registry.  A generated puzzle has exactly two active logical categories in this phase: four children and one four-value thematic category.  Both categories map independently and one-to-one onto positions 1-4, and a child is paired with a thematic value when both occupy the same position.  The solver enumerates category-aware permutations (4! × 4!) and rejects puzzles that leave either child positions or thematic assignments ambiguous.
 
 The PDF layer uses a reusable bordered choice-box presentation pattern for available names and possible thematic values.  This renderer is presentation-only and receives localized headings plus four display values.
+
+### Commit 12.2 presentation boundaries
+
+Theme item IDs are internal domain identifiers. Child-facing clue text, solution labels, and choice boxes must go through `ItemPresentationResolver`, which maps child items to names and thematic items to localized long or short display labels from the immutable `ThemeDefinition`. Theme-specific grammar for direct assignments and child-with-theme phrases lives in theme wording data, not in mathematical constraints.
+
+`PdfGenerator` accepts an injectable theme registry and builds a resolver for the puzzle it is rendering. The PDF layer does not decide which theme to generate. The lineup uses two deterministic answer fields per position: a child-name field and a short thematic-value field. `ChoiceBoxRenderer` owns the reusable bordered two-by-two choice box used for both available names and thematic values.

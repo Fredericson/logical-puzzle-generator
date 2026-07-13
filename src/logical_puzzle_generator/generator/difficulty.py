@@ -5,6 +5,7 @@ from enum import Enum
 
 from logical_puzzle_generator.constraints.base import Constraint
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
+from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.puzzle import Puzzle
 
 
@@ -73,7 +74,7 @@ class DifficultyPolicy:
         )
         return sum(
             isinstance(constraint, FixedPositionConstraint)
-            and getattr(constraint.item, "category_id", "children") == "children"
+            and getattr(constraint.item, "category_id", CHILDREN_CATEGORY_ID) == CHILDREN_CATEGORY_ID
             for constraint in constraints
         )
 

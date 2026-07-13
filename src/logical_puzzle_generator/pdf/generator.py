@@ -9,12 +9,15 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
+from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.puzzle import Puzzle
-from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY
+from logical_puzzle_generator.themes.presentation import ItemPresentationResolver
+from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY, ThemeRegistry
 
+from .choice_box import ChoiceBoxRenderer
 from .lineup import PlayerLineupRenderer
 from .renderer import TextRenderer
 
@@ -30,9 +33,11 @@ class PdfGenerator:
         language: Language | str = Language.ENGLISH,
         random_source: random.Random | None = None,
         puzzle_number: int | None = None,
+        theme_registry: ThemeRegistry = DEFAULT_THEME_REGISTRY,
     ) -> None:
         self.language = parse_language(language)
         self.puzzle_number = puzzle_number
+        self._theme_registry = theme_registry
         self._text_renderer = (
             text_renderer
             if text_renderer is not None
@@ -125,12 +130,17 @@ class PdfGenerator:
         story.append(self._lineup(puzzle, labels=labels))
         story.append(Spacer(1, 0.18 * inch))
         story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
-        for rendered_clue in self._text_renderer.render_clues(
-            puzzle.clues, item_count=len(puzzle.items)
-        ):
+        resolver = self._resolver(puzzle)
+        try:
+            rendered_clues = self._text_renderer.render_clues(
+                puzzle.clues, item_count=len(puzzle.items), presentation_resolver=resolver
+            )
+        except TypeError:
+            rendered_clues = self._text_renderer.render_clues(puzzle.clues, item_count=len(puzzle.items))
+        for rendered_clue in rendered_clues:
             story.append(Paragraph(rendered_clue, self._styles["ChildClue"]))
         story.append(Spacer(1, 0.08 * inch))
-        children = [item.name for item in puzzle.items if item.category_id == "children"]
+        children = [resolver.item_label(item, short=True) for item in puzzle.items if item.category_id == CHILDREN_CATEGORY_ID]
         story.append(self._choice_box(self._catalog.label("players_items"), children))
         story.append(Spacer(1, 0.08 * inch))
         story.append(self._choice_box(self._theme_category_label(puzzle), self._theme_values(puzzle)))
@@ -152,23 +162,13 @@ class PdfGenerator:
         story.append(Paragraph(" &nbsp; • &nbsp; ".join(meta_parts), self._styles["WorksheetMeta"]))
         return story
 
-    def _choice_box(self, heading: str, values: list[str]) -> Table:
-        cells = [[Paragraph(f"<b>{heading}</b>", self._styles["NameList"])] + [Paragraph(value, self._styles["NameList"]) for value in values]]
-        table = Table(cells, colWidths=[1.45 * inch] + [1.3 * inch] * 4)
-        table.setStyle(TableStyle([
-            ("BOX", (0, 0), (-1, -1), 1, colors.black),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BACKGROUND", (0, 0), (0, 0), colors.whitesmoke),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ]))
-        return table
+    def _choice_box(self, heading: str, values: list[str]):
+        return ChoiceBoxRenderer(heading, values, self._styles["NameList"]).flowable()
 
     def _theme(self, puzzle: Puzzle):
         if puzzle.metadata is None:
-            return DEFAULT_THEME_REGISTRY.resolve()
-        return DEFAULT_THEME_REGISTRY.resolve(puzzle.metadata.theme_id)
+            return self._theme_registry.resolve()
+        return self._theme_registry.resolve(puzzle.metadata.theme_id)
 
     def _theme_title(self, puzzle: Puzzle) -> str:
         return self._theme(puzzle).localized_title(self.language)
@@ -179,15 +179,21 @@ class PdfGenerator:
     def _theme_values(self, puzzle: Puzzle) -> list[str]:
         return [value.display(self.language, short=True) for value in self._theme(puzzle).values]
 
+    def _resolver(self, puzzle: Puzzle) -> ItemPresentationResolver:
+        return ItemPresentationResolver(self._theme(puzzle), self.language)
+
     def _lineup(self, puzzle: Puzzle, labels: list[str] | None = None) -> PlayerLineupRenderer:
         return PlayerLineupRenderer(
-            item_count=len([item for item in puzzle.items if item.category_id == "children"]),
+            item_count=len([item for item in puzzle.items if item.category_id == CHILDREN_CATEGORY_ID]),
             labels=labels,
             instruction=self._catalog.label("solving_grid"),
         )
 
-    def _solution_labels(self, puzzle: Puzzle) -> list[str]:
-        return [name for _, name in self._text_renderer.render_solution_rows(puzzle)]
+    def _solution_labels(self, puzzle: Puzzle):
+        rows = self._text_renderer.render_solution_rows(puzzle, self._resolver(puzzle))
+        if all(len(row) == 2 for row in rows):
+            return [row[1] for row in rows]
+        return [(row[1], row[2]) for row in rows]
 
     def _validate_puzzle(self, puzzle: Puzzle) -> None:
         if not isinstance(puzzle, Puzzle):

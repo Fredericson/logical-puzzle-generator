@@ -44,7 +44,7 @@ def test_category_aware_assignment_space_uses_two_four_item_categories() -> None
     puzzle = PuzzleGenerator(random_source=random.Random(3), difficulty="easy", theme="beach_day").generate(create_template())
     assert len(puzzle.categories) == 2
     assert [len(category.items) for category in puzzle.categories] == [4, 4]
-    assert len(list(AssignmentIterator().iterate(puzzle.items))) == 576
+    assert len(list(AssignmentIterator().iterate(puzzle.logical_items))) == 576
 
 
 def test_generated_theme_puzzle_is_uniquely_solved_across_both_categories() -> None:
@@ -52,7 +52,7 @@ def test_generated_theme_puzzle_is_uniquely_solved_across_both_categories() -> N
     result = Solver().solve(puzzle, stop_after=2)
     assert result.has_unique_solution
     assert result.solutions[0] == puzzle.solution.assignment
-    theme_items = [item for item in puzzle.items if item.category_id != "children"]
+    theme_items = [item for item in puzzle.logical_items if item.category_id != "children"]
     assert {result.solutions[0].position_of(item).index for item in theme_items} == {1, 2, 3, 4}
 
 

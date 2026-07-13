@@ -4,6 +4,7 @@ from collections import defaultdict
 from itertools import permutations, product
 
 from logical_puzzle_generator.engine.assignment import Assignment
+from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.model.item import Item
 from logical_puzzle_generator.model.position import Position
 
@@ -14,7 +15,7 @@ class AssignmentIterator:
     def iterate(self, items: list[Item]):
         groups: dict[str, list[Item]] = defaultdict(list)
         for item in items:
-            groups[getattr(item, "category_id", "children")].append(item)
+            groups[getattr(item, "category_id", CHILDREN_CATEGORY_ID)].append(item)
 
         if len(groups) <= 1:
             positions = [Position(i + 1) for i in range(len(items))]
