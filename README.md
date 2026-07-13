@@ -171,3 +171,7 @@ Themed puzzles do not have a universal three-clue count. They are reduced while 
 ### Future PuzzleBook vision
 
 Themes now define multiple available categories, while one generated Commit 12.2 puzzle page selects exactly one category instance and exactly four values. A later PuzzleBook will use one selected theme for the whole PDF, keep the same four names on every page, start with the universal position puzzle, add one-category theme pages, allow repeated category pages with distinct instance IDs, and finish with a summary table. Multi-page PDF generation remains deferred.
+
+### Future summary table
+
+The deferred PuzzleBook will end with one summary table page. It is not a puzzle and does not invoke the solver. Its columns are the same four children used throughout the book, and its rows come from solved theme-category pages. The universal Position puzzle is never a row; it only establishes the child order and identity used by later pages.

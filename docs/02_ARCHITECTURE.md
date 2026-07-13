@@ -269,3 +269,9 @@ Theme item IDs are internal domain identifiers. Child-facing clue text, solution
 Commit 12.2 models a theme as multiple reusable `ThemeCategoryDefinition` objects. A single puzzle page selects exactly one `ThemeCategoryInstance`, identified by a stable instance ID and exactly four selected value IDs. Category definitions may provide larger value pools; the page instance stores the four values selected for that page.
 
 The future PuzzleBook is intentionally deferred. Its intended shape is: one PDF belongs to one theme, the same four names are used on all pages, page 1 is the universal position puzzle, later pages each use one theme-specific category instance, category definitions may later be repeated with distinct instance IDs, and the final page will contain a summary table. Commit 12.2 only renders one themed puzzle page at a time.
+
+### PuzzleBook summary table contract
+
+The future PuzzleBook ends with exactly one summary page. This page is not another logic puzzle and has no solver step. It is a final worksheet where the child transfers results from the already solved theme-category puzzle pages.
+
+The summary table columns are the stable four children used throughout the whole book. Rows are generated only from theme-category pages, one row per generated category page. The universal Position puzzle is not included as a row; its only purpose is to establish the ordering and identities of the children. A future `PuzzleBook` therefore has one stable child roster, one Position page, multiple category pages that reference that same roster, and one summary table generated directly from page solutions.
