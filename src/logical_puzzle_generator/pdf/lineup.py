@@ -98,7 +98,7 @@ class PlayerLineupRenderer(Flowable):
         item_count: int,
         labels: list[str] | None = None,
         instruction: str = "",
-        width: float = 6.9 * inch,
+        width: float = 6.65 * inch,
     ) -> None:
         super().__init__()
         if item_count < 1:
@@ -109,14 +109,14 @@ class PlayerLineupRenderer(Flowable):
             raise ValueError("Lineup label count must match item count.")
         self.instruction = instruction
         self.width = width
-        self.height = 2.95 * inch
+        self.height = 3.28 * inch
         self._figure_renderer = GirlFigureRenderer()
 
     def layout_slots(self) -> list[LineupSlot]:
         slot_width = self.width / self.item_count
-        figure_width = min(1.25 * inch, slot_width * 0.76)
-        box_width = min(1.35 * inch, slot_width * 0.86)
-        box_height = 0.42 * inch
+        figure_width = min(1.26 * inch, slot_width * 0.7)
+        box_width = min(1.48 * inch, slot_width * 0.88)
+        box_height = 0.5 * inch
         return [
             LineupSlot(
                 position=index + 1,
@@ -133,13 +133,13 @@ class PlayerLineupRenderer(Flowable):
         canvas = self.canv
         canvas.saveState()
         if self.instruction:
-            canvas.setFont("Helvetica-Bold", 12)
-            canvas.setFillColor(colors.darkblue)
+            canvas.setFont("Helvetica-Bold", 12.5)
+            canvas.setFillColor(colors.black)
             canvas.drawString(0, self.height - 12, self.instruction)
 
-        figure_bottom = 0.98 * inch
+        figure_bottom = 1.14 * inch
         figure_height = 1.6 * inch
-        box_y = 0.34 * inch
+        box_y = 0.4 * inch
         for index, slot in enumerate(self.layout_slots()):
             center = slot.x
             self._figure_renderer.draw(
@@ -157,8 +157,8 @@ class PlayerLineupRenderer(Flowable):
             canvas.rect(box_x, box_y, slot.box_width, slot.box_height, fill=1, stroke=1)
             if slot.label:
                 canvas.setFillColor(colors.black)
-                canvas.setFont("Helvetica-Bold", 12)
-                canvas.drawCentredString(center, box_y + slot.box_height / 2 - 4, slot.label)
+                canvas.setFont("Helvetica-Bold", 12.5)
+                canvas.drawCentredString(center, box_y + slot.box_height / 2 - 4.5, slot.label)
             canvas.setFillColor(colors.black)
             canvas.setFont("Helvetica-Bold", 11)
             canvas.drawCentredString(center, 0.08 * inch, str(slot.position))

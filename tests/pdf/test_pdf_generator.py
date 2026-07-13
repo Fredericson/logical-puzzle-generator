@@ -71,8 +71,19 @@ def test_create_solution_pdf_writes_non_empty_pdf(tmp_path) -> None:
     assert path.exists()
     assert path.stat().st_size > 0
     text = pdf_text_bytes(path)
-    assert "Solution" in text
+    assert "Clues" in text
     assert "Aurelia" in text
+
+
+def test_header_can_show_puzzle_number_without_numeric_difficulty(tmp_path) -> None:
+    path = tmp_path / "numbered.pdf"
+
+    PdfGenerator(puzzle_number=12).create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert "Puzzle: 12" in text
+    assert "Difficulty: Easy" in text
+    assert "Difficulty: 1" not in text
 
 
 def test_solution_rows_follow_position_order() -> None:
@@ -130,6 +141,74 @@ def test_puzzle_pdf_contains_varied_human_readable_clue_text(tmp_path) -> None:
 def pdf_page_count(path) -> int:
     text = pdf_text_bytes(path)
     return text.count("/Type /Page") - text.count("/Type /Pages")
+
+
+def test_lineup_geometry_is_deterministic_and_evenly_spaced() -> None:
+    slots = PdfGenerator()._lineup(sample_puzzle()).layout_slots()
+
+    assert [
+        (round(slot.x, 3), round(slot.figure_width, 3), round(slot.box_width, 3), slot.box_height)
+        for slot in slots
+    ] == [
+        (59.85, 83.79, 105.336, 36.0),
+        (179.55, 83.79, 105.336, 36.0),
+        (299.25, 83.79, 105.336, 36.0),
+        (418.95, 83.79, 105.336, 36.0),
+    ]
+    spacings = [right.x - left.x for left, right in zip(slots, slots[1:])]
+    assert [round(spacing, 3) for spacing in spacings] == [119.7, 119.7, 119.7]
+    assert len({slot.box_width for slot in slots}) == 1
+    assert len({slot.box_height for slot in slots}) == 1
+
+
+def test_solution_lineup_geometry_matches_puzzle_lineup() -> None:
+    generator = PdfGenerator()
+    puzzle_slots = generator._lineup(sample_puzzle()).layout_slots()
+    solution_slots = generator._lineup(
+        sample_puzzle(), labels=generator._solution_labels(sample_puzzle())
+    ).layout_slots()
+
+    assert [(slot.position, slot.x, slot.figure_width, slot.box_width, slot.box_height) for slot in solution_slots] == [
+        (slot.position, slot.x, slot.figure_width, slot.box_width, slot.box_height)
+        for slot in puzzle_slots
+    ]
+    assert [slot.label for slot in solution_slots] == ["Aurelia", "Emma", "Lara", "Mia"]
+
+
+class FixedNumberedTextRenderer:
+    def render_clues(self, clues, item_count=None):
+        return ["1. First clue", "2. Second clue"]
+
+
+def test_pdf_uses_text_renderer_clue_numbers_exactly_once(tmp_path) -> None:
+    path = tmp_path / "puzzle.pdf"
+
+    PdfGenerator(text_renderer=FixedNumberedTextRenderer()).create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert text.count("1. First clue") == 1
+    assert text.count("2. Second clue") == 1
+    assert "1. 1. First clue" not in text
+    assert "2. 2. Second clue" not in text
+    assert text.index("1. First clue") < text.index("2. Second clue")
+
+
+def test_available_names_follow_clues_in_puzzle_pdf(tmp_path) -> None:
+    path = tmp_path / "puzzle.pdf"
+
+    PdfGenerator().create_puzzle_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert text.index("Clues") < text.index("Available Names")
+
+
+def test_available_names_follow_clues_in_solution_pdf(tmp_path) -> None:
+    path = tmp_path / "solution.pdf"
+
+    PdfGenerator().create_solution_pdf(sample_puzzle(), path)
+
+    text = pdf_text_bytes(path)
+    assert text.index("Clues") < text.index("Available Names")
 
 
 def test_puzzle_lineup_contains_four_visual_position_placeholders() -> None:

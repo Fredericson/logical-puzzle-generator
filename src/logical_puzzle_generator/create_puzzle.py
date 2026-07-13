@@ -53,7 +53,7 @@ def create_puzzle(
 
     template = create_template()
     puzzle = PuzzleGenerator(difficulty=difficulty).generate(template)
-    pdf_generator = PdfGenerator(language=language)
+    pdf_generator = PdfGenerator(language=language, puzzle_number=number)
     pdf_generator.create_puzzle_pdf(puzzle, puzzle_path)
     pdf_generator.create_solution_pdf(puzzle, solution_path)
     return puzzle

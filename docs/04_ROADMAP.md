@@ -14,7 +14,7 @@ Completed milestones:
 - Constraint hierarchy with far-left/far-right fixed-position, direct-left, left-of, direct-right, right-of, and adjacent next-to constraints.
 - Brute-force solver, assignment iterator, solver result, statistics, and validator.
 - Generator pipeline: `SolutionGenerator`, varied private constraint derivation with distinct adjacent vs non-adjacent relation semantics, `ClueGenerator`, `ClueReducer`, `Validator`, and PDF generation.
-- PDF output: `TextRenderer`, localized `ClueTextRenderer`, `TemplateCatalog`, vector girl/lineup renderers, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()` on A4 portrait pages.
+- PDF output: `TextRenderer`, localized `ClueTextRenderer`, `TemplateCatalog`, vector girl/lineup renderers, polished child-facing worksheet layout, `PdfGenerator.create_puzzle_pdf()`, and `PdfGenerator.create_solution_pdf()` on A4 portrait pages.
 - Tennis theme and `python -m logical_puzzle_generator.create_puzzle` entry point with `--language en` and `--language de`, including the German example `python -m logical_puzzle_generator.create_puzzle --number 3 --language de`.
 - Version 1.0 documentation synchronization.
 - Test coverage across engine, model, generator, and PDF packages.
@@ -64,3 +64,8 @@ Completed: natural-language clue wording variations for all existing visible Ver
 ## Commit 12.0 status
 
 Completed: deterministic statistical CI regression coverage for visible relation distribution. The standard pytest suite samples 600 Tennis puzzles across fixed Easy/Medium/Hard seed ranges, verifies all five supported relation types occur within documented lower/upper bounds, keeps ordinary non-direct left/right clues represented, checks a 12-seed focused symptom regression, and confirms deterministic repeated counts.
+
+
+## Commit 12.1 status
+
+Completed: Version 1 child-facing PDF presentation polish. The worksheet now uses a calmer layout, balanced title metadata, more generous whitespace, larger writable lineup boxes, deterministic aligned vector geometry, and clearer clue numbering/wrapping. This was presentation-only; no generator behavior, clue wording, clue counts, relation distribution, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata changed.

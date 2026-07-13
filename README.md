@@ -10,7 +10,8 @@ Logical Puzzle Generator creates small, printable Einstein-style ordering puzzle
 - Validate that a puzzle has exactly one solution using the brute-force solver.
 - Reduce unnecessary clues while preserving unique solvability and at least one clue.
 - Generate printable A4 puzzle and solution PDFs with ReportLab in English (`en`, default) or German (`de`).
-- Render the Tennis puzzle as a horizontal child-friendly lineup of four anonymous vector girls, empty handwriting boxes, and left-to-right position numbers.
+- Render a polished Version 1 worksheet layout with a balanced title/metadata area, generous whitespace, readable clue wrapping, and identical puzzle/solution alignment.
+- Render the Tennis puzzle as a horizontal child-friendly lineup of four anonymous vector girls, larger writable handwriting boxes, and left-to-right position numbers.
 - Provide a Tennis theme and a convenience entry point that writes PDFs to `output/`.
 
 Version 1.0 is intentionally limited to ordering puzzles over one active category of items. Additional category relationships, richer clue types, JSON export, batch generation, GUI/web interfaces, and larger puzzle sizes are Version 2+ work.
@@ -76,7 +77,7 @@ puzzle = PuzzleGenerator().generate(create_template())
 print([clue.text for clue in puzzle.clues])
 ```
 
-The puzzle PDF uses A4 portrait output. Its Tennis layout shows four anonymous vector girls from left to right, one empty writable name box per position, position numbers 1-4, localized clues, and a separate available-names list. The solution PDF reuses the same lineup and fills the boxes from `puzzle.solution.assignment` without solving again.
+The puzzle PDF uses A4 portrait output. Its Tennis layout shows four anonymous vector girls from left to right, one larger empty writable name box per position, position numbers 1-4, localized clues with hanging indentation, and a separate available-names list. The title area can show the puzzle number supplied by the creation entry point, the localized difficulty label, and the theme without exposing numeric difficulty metadata. The solution PDF reuses the same layout grid and only fills the boxes from `puzzle.solution.assignment` without solving again.
 
 To render PDFs for an existing puzzle:
 
@@ -149,3 +150,8 @@ Generated puzzles choose a random difficulty when `--difficulty` is omitted or `
 ## Localized clue wording variations
 
 Visible constraints remain mathematical, language-independent objects. At render time, `ClueTextRenderer` maps each supported constraint to named placeholder values and asks `TemplateCatalog` for English or German wording templates. One equivalent template is selected per clue with the renderer's `random.Random` source, so seeded rendering is deterministic while different seeds can vary the prose naturally. German templates use Swiss spelling and must not contain `ß`.
+
+
+## Version 1 presentation polish
+
+Commit 12.1 is presentation-only. It polishes the child-facing PDF worksheet with calmer spacing, a clearer typography hierarchy, larger name boxes, deterministic lineup geometry, and aligned wrapped clue numbering. It does not change generated constraints, clue wording templates, clue order, clue counts, difficulty classification, localization semantics, solver behavior, validator behavior, puzzle numbering semantics, or metadata.
