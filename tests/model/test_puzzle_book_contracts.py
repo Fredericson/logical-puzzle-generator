@@ -23,30 +23,65 @@ def _puzzle(children: tuple[Item, ...]) -> Puzzle:
     return Puzzle(items=list(children), constraints=[], solution=Solution(assignment))
 
 
-def test_future_puzzle_book_pages_share_one_child_roster_reference() -> None:
+def test_future_puzzle_book_pages_share_one_child_roster_by_value() -> None:
     children = (Item("Emma"), Item("Mia"), Item("Noah"), Item("Tim"))
+    same_children = tuple(Item(child.name) for child in children)
     theme = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
     category_instance = theme.create_category_instance(category_id="bag_colour", random_source=random.Random(1))
-    position_page = PuzzlePage(kind="position", children=children, puzzle=_puzzle(children), solution=_puzzle(children).solution)
+    position_page = PuzzlePage(kind="position", children=same_children, puzzle=_puzzle(same_children), solution=_puzzle(same_children).solution)
     category_page = PuzzlePage(
         kind="category",
-        children=children,
-        puzzle=_puzzle(children),
-        solution=_puzzle(children).solution,
+        children=same_children,
+        puzzle=_puzzle(same_children),
+        solution=_puzzle(same_children).solution,
         category_instance=category_instance,
     )
     summary = SummaryTable(
-        children=children,
+        children=same_children,
         rows=(SummaryTableRow(category_instance.instance_id, "Bag colour", (("Emma", "Red"),)),),
     )
 
     plan = PuzzleBookPlan(children, theme, position_page, (category_page,), summary)
 
-    assert plan.position_page.children is children
-    assert plan.category_pages[0].children is children
+    assert plan.position_page.children == children
+    assert plan.position_page.children is not children
+    assert plan.category_pages[0].children == children
     assert plan.summary_table is not None
-    assert plan.summary_table.children is children
+    assert plan.summary_table.children == children
     assert [row.category_instance_id for row in plan.summary_table.rows] == ["bag_colour_1"]
+
+
+def test_future_puzzle_book_rejects_different_child_or_order() -> None:
+    children = (Item("Emma"), Item("Mia"), Item("Noah"), Item("Tim"))
+    theme = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
+    position_page = PuzzlePage(kind="position", children=children, puzzle=_puzzle(children), solution=_puzzle(children).solution)
+
+    reordered = (Item("Mia"), Item("Emma"), Item("Noah"), Item("Tim"))
+    with pytest.raises(ValueError, match="stable PuzzleBook child roster"):
+        PuzzleBookPlan(
+            children,
+            theme,
+            PuzzlePage(kind="position", children=reordered, puzzle=_puzzle(reordered), solution=_puzzle(reordered).solution),
+            (),
+        )
+
+    different = (Item("Emma"), Item("Mia"), Item("Noah"), Item("Lara"))
+    category_instance = theme.create_category_instance(category_id="bag_colour", random_source=random.Random(1))
+    with pytest.raises(ValueError, match="stable PuzzleBook child roster"):
+        PuzzleBookPlan(
+            children,
+            theme,
+            position_page,
+            (
+                PuzzlePage(
+                    kind="category",
+                    children=different,
+                    puzzle=_puzzle(different),
+                    solution=_puzzle(different).solution,
+                    category_instance=category_instance,
+                ),
+            ),
+        )
 
 
 def test_position_page_is_not_a_summary_row_or_category_page() -> None:

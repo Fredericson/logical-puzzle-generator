@@ -21,16 +21,5 @@ class Metadata:
 
     @property
     def thematic_category_id(self) -> str:
+        """Deprecated alias for the canonical theme_category_id field."""
         return self.theme_category_id
-
-    @thematic_category_id.setter
-    def thematic_category_id(self, value: str) -> None:
-        self.theme_category_id = value
-
-    @property
-    def thematic_category_label(self) -> str:
-        return self.theme_category_id
-
-    @thematic_category_label.setter
-    def thematic_category_label(self, value: str) -> None:
-        self.theme_category_id = value

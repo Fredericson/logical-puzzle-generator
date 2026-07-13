@@ -72,4 +72,4 @@ Completed: Version 1 child-facing PDF presentation polish. The worksheet now use
 
 ## After Commit 12.2
 
-Comic animal protagonists, original animal illustrations, gender selection, configurable name catalogs, multiple thematic categories, batch generation, multiple puzzles per PDF, and larger 5×5 puzzles remain deferred future work.
+Commit 12.2 implements multiple available category definitions per theme and one selected category instance per generated puzzle page. Still deferred: multiple category pages in one generated PDF, more than one active thematic category in a single puzzle page, PuzzleBook orchestration, summary rendering, configurable/random names, gender selection, comic animal protagonists, category repetition scheduling, batch generation, numeric categories such as future tournament wins, and larger 5×5 puzzles.

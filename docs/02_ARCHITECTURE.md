@@ -4,9 +4,9 @@ This document describes the current Version 1.0 architecture.
 
 ## 1. Version 1.0 boundary
 
-Version 1.0 generates ordering puzzles over one active item category. A generated `Solution` is a complete mapping from each active item to a `Position`. The public Tennis template includes multiple thematic categories, but the generator uses the first category as the active players/items category.
+Version 1.0 now supports two page shapes: a position-only compatibility puzzle over one child category, and a Commit 12.2 themed puzzle page over children plus exactly one selected theme-category instance. A `ThemeDefinition` provides multiple `ThemeCategoryDefinition` objects, but one generated puzzle page selects only one category instance and exactly four values. A generated `Solution` maps every active item in the page to a `Position`; themed pages solve children and selected category values with category-aware 4! × 4! enumeration.
 
-Out of scope for Version 1.0: multi-category relationship solving, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, and advanced difficulty modeling.
+Out of scope for Version 1.0: more than one active thematic category in a single puzzle page, multi-page PuzzleBook generation, summary-table rendering, larger grids, JSON export, batch generation, GUI/web apps, REST APIs, numeric-category arithmetic clues, and advanced difficulty modeling.
 
 ## 2. Package structure
 
@@ -274,4 +274,4 @@ The future PuzzleBook is intentionally deferred. Its intended shape is: one PDF 
 
 The future PuzzleBook ends with exactly one summary page. This page is not another logic puzzle and has no solver step. It is a final worksheet where the child transfers results from the already solved theme-category puzzle pages.
 
-The summary table columns are the stable four children used throughout the whole book. Rows are generated only from theme-category pages, one row per generated category page. The universal Position puzzle is not included as a row; its only purpose is to establish the ordering and identities of the children. A future `PuzzleBook` therefore has one stable child roster, one Position page, multiple category pages that reference that same roster, and one summary table generated directly from page solutions.
+The PuzzleBook puzzle PDF will contain the position page, theme-category puzzle pages, and a final empty summary table. The PuzzleBook solution PDF does not need separately solved copies of every earlier puzzle page; the filled summary table is the only required solution presentation for the book. The summary table columns are the stable four children ordered according to the first Position puzzle. Rows are generated only from theme-category pages, one row per generated category page. The universal Position puzzle is not included as a row; its only purpose is to establish ordering and child identity. A future `PuzzleBook` therefore has one stable child roster, one Position page, multiple category pages that reference that same roster by value, and one summary table generated directly from page solutions. The current Commit 12.2 single-page API still produces its existing single-page puzzle and solution PDFs.

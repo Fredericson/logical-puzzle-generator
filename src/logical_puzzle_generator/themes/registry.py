@@ -195,6 +195,14 @@ WITH_WORDING = _wording(
     "the child with {theme}",
     "dem Kind mit {theme}",
 )
+SURFACE_WORDING = _wording(
+    "{child} prefers {theme}.",
+    "{child} spielt am liebsten auf {theme}.",
+    "the child who prefers {theme}",
+    "das Kind, das am liebsten auf {theme} spielt",
+    "the child who prefers {theme}",
+    "dem Kind, das am liebsten auf {theme} spielt",
+)
 AT_WORDING = _wording(
     "{child} has {theme}.",
     "{child} hat {theme}.",
@@ -235,6 +243,12 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                 _value("flat", "flat shots", "Flach", "Flat", "Flach"),
                 _value("high_balls", "high balls", "Hohe Bälle", "High balls", "Hohe Bälle"),
             ), TRAINING_WORDING),
+            _category("favourite_surface", "Favourite Surface", "Lieblingsunterlage", (
+                _value("clay", "clay", "Sand", "Clay", "Sand"),
+                _value("hard_court", "hard court", "Hartplatz", "Hard Court", "Hartplatz"),
+                _value("grass", "grass", "Rasen", "Grass", "Rasen"),
+                _value("carpet", "carpet", "Teppich", "Carpet", "Teppich"),
+            ), SURFACE_WORDING),
         ),
     ),
     ThemeDefinition(

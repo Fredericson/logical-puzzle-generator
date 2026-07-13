@@ -174,4 +174,4 @@ Themes now define multiple available categories, while one generated Commit 12.2
 
 ### Future summary table
 
-The deferred PuzzleBook will end with one summary table page. It is not a puzzle and does not invoke the solver. Its columns are the same four children used throughout the book, and its rows come from solved theme-category pages. The universal Position puzzle is never a row; it only establishes the child order and identity used by later pages.
+The deferred PuzzleBook will end with one summary table page. It is not a puzzle and does not invoke the solver. The PuzzleBook puzzle PDF will contain the position page, theme-category puzzle pages, and an empty final summary table; the PuzzleBook solution PDF only needs the filled summary table rather than solved copies of every earlier page. Its columns are the same four children ordered by the first Position puzzle, and its rows come only from solved theme-category pages. The universal Position puzzle is never a row; it only establishes the child order and identity used by later pages. Future numeric categories such as `tournament_wins` are deferred to a dedicated arithmetic-friendly category commit.

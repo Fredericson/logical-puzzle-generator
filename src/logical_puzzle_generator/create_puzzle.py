@@ -11,6 +11,7 @@ from logical_puzzle_generator.localization import (
     parse_language,
 )
 from logical_puzzle_generator.model.puzzle import Puzzle
+from logical_puzzle_generator.pdf.generator import PdfGenerator
 from logical_puzzle_generator.themes.tennis import create_template
 from logical_puzzle_generator.themes.registry import DEFAULT_THEME_ID, DEFAULT_THEME_REGISTRY, RANDOM_THEME_ID
 
@@ -55,8 +56,6 @@ def create_puzzle(
 
     template = create_template()
     puzzle = PuzzleGenerator(difficulty=difficulty, theme=theme or DEFAULT_THEME_ID, category=category).generate(template)
-    from logical_puzzle_generator.pdf.generator import PdfGenerator
-
     pdf_generator = PdfGenerator(language=language, puzzle_number=number)
     pdf_generator.create_puzzle_pdf(puzzle, puzzle_path)
     pdf_generator.create_solution_pdf(puzzle, solution_path)

@@ -78,7 +78,8 @@ def test_theme_relation_clues_do_not_render_theme_values_as_children(constraint_
     clue = type("ClueLike", (), {"constraint": constraint_factory(child, shells)})()
     rendered = ClueTextRenderer("de", presentation_resolver=resolver).render_clue(clue)
 
-    assert "das Kind" in rendered
+    assert "Kind" in rendered
+    assert "dem Kind, das Muscheln sucht" in rendered
     assert "shells" not in rendered
 
 

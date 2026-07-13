@@ -68,12 +68,12 @@ class PuzzleBookPlan:
     def __post_init__(self) -> None:
         if self.position_page.kind != "position":
             raise ValueError("PuzzleBookPlan requires a universal position page first.")
-        if self.position_page.children is not self.children:
+        if self.position_page.children != self.children:
             raise ValueError("The position page must reference the stable PuzzleBook child roster.")
         for page in self.category_pages:
             if page.kind != "category":
                 raise ValueError("PuzzleBookPlan category_pages may contain only category pages.")
-            if page.children is not self.children:
+            if page.children != self.children:
                 raise ValueError("Every category page must reference the stable PuzzleBook child roster.")
-        if self.summary_table is not None and self.summary_table.children is not self.children:
+        if self.summary_table is not None and self.summary_table.children != self.children:
             raise ValueError("The summary table must use the stable PuzzleBook child roster.")

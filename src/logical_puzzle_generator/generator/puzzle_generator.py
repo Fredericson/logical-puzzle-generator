@@ -218,6 +218,9 @@ class PuzzleGenerator:
             theme_items=theme_items,
             solution=solution,
         )
+        if thematic_constraints is None:
+            return None, "no bounded uniquely solvable thematic clue subset was found"
+
         constraints = [*child_constraints, *thematic_constraints]
         failure = self._constraints_failure(constraints, solution)
         if failure is not None:
@@ -543,7 +546,7 @@ class PuzzleGenerator:
         children: list[Item],
         theme_items: list[Item],
         solution: Solution,
-    ) -> list[Constraint]:
+    ) -> list[Constraint] | None:
         if not candidates:
             return []
 
@@ -579,7 +582,7 @@ class PuzzleGenerator:
                 break
 
         if not best_subsets:
-            return candidates
+            return None
         return list(self._random.choice(best_subsets)[1])
 
     def _thematic_quality_score(self, constraints: list[Constraint]) -> tuple[int, int, int, int]:
