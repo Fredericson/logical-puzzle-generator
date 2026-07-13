@@ -71,13 +71,14 @@ To generate a puzzle without writing PDFs:
 
 ```python
 from logical_puzzle_generator.generator import PuzzleGenerator
-from logical_puzzle_generator.themes.tennis import create_template
+from logical_puzzle_generator.model.item import Item
 
-puzzle = PuzzleGenerator().generate(create_template())
+children = [Item("Aurelia"), Item("Emma"), Item("Lara"), Item("Mia")]
+puzzle = PuzzleGenerator().generate(children)
 print([clue.text for clue in puzzle.clues])
 ```
 
-The puzzle PDF uses A4 portrait output. Its Tennis layout shows four anonymous vector girls from left to right, one larger empty writable name box per position, position numbers 1-4, localized clues with hanging indentation, and a separate available-names list. The title area can show the puzzle number supplied by the creation entry point, the localized difficulty label, and the theme without exposing numeric difficulty metadata. The solution PDF reuses the same layout grid and only fills the boxes from `puzzle.solution.assignment` without solving again.
+The puzzle PDF uses A4 portrait output. Its child-friendly layout shows four anonymous vector girls from left to right, one larger empty writable name box per position, position numbers 1-4, localized clues with hanging indentation, and a separate available-names list. The title area can show the puzzle number supplied by the creation entry point, the localized difficulty label, and the theme without exposing numeric difficulty metadata. The solution PDF reuses the same layout grid and only fills the boxes from `puzzle.solution.assignment` without solving again.
 
 To render PDFs for an existing puzzle:
 
@@ -96,12 +97,12 @@ src/logical_puzzle_generator/
   model/          Domain models: Item, Position, Puzzle, Solution, Clue, Metadata, Category
   constraints/    Constraint classes used by the solver and clue generator
   engine/         Assignment iteration, brute-force solver, statistics, validation, optimizer stub
-  generator/      SolutionGenerator, FixedPositionGenerator, ConstraintDistributionPolicy, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleTemplate
+  generator/      SolutionGenerator, FixedPositionGenerator, ConstraintDistributionPolicy, ClueGenerator, ClueReducer, PuzzleGenerator, PuzzleBookGenerator, PuzzleTemplate
   pdf/            TextRenderer, vector lineup renderers, and PdfGenerator presentation layer
   localization.py Language enum and translation catalog
   clue_text_renderer.py Localized clue wording for presentation
-  themes/         Built-in puzzle templates, currently Tennis
-  create_puzzle.py Convenience script for generating the Tennis PDFs
+  themes/         Built-in data-driven theme definitions and registry
+  create_puzzle.py Convenience script for generating themed PDFs
 
 tests/            Pytest coverage for model, engine, generator, and PDF behavior
 docs/             Version 1.0 project documentation and AI workflow guidance
@@ -168,10 +169,8 @@ Theme values have internal IDs and localized display labels. Internal IDs are ne
 
 Themed puzzles do not have a universal three-clue count. They are reduced while preserving unique solvability across child positions and the selected thematic category instance, exact child-position anchor difficulty, one visible clue per mathematical constraint, and no hidden constraints. Position-only compatibility paths may still retain the original three-clue behavior.
 
-### Future PuzzleBook vision
+### Commit 12.3 PuzzleBooks
 
-Themes now define multiple available categories, while one generated Commit 12.2 puzzle page records exactly one selected category instance and exactly four values in metadata; no production PuzzleBook classes are introduced yet. A later PuzzleBook will use one selected theme for the whole PDF, keep the same four names on every page, start with the universal position puzzle, add one-category theme pages, allow repeated category pages with distinct instance IDs, and finish with a summary table. Multi-page PDF generation remains deferred.
+`PuzzleBookGenerator` builds a multi-page book for exactly one selected registry theme. It selects the four children once from the shared child source, reuses those same `Item` objects on every generated page, creates a position-only first puzzle with no theme metadata, then creates the requested number of one-category theme puzzles. Theme categories are selected only from the resolved `ThemeDefinition.categories`: selection avoids repetition while enough registered categories are available and reuses registered categories only after that pool is exhausted. Reused categories keep their category ID but receive distinct `theme_category_instance_id` metadata values.
 
-### Future summary table
-
-The deferred PuzzleBook will end with one summary table page. It is not a puzzle and does not invoke the solver. The PuzzleBook puzzle PDF will contain the position page, theme-category puzzle pages, and an empty final summary table; the PuzzleBook solution PDF only needs the filled summary table rather than solved copies of every earlier page. Its columns are the same four children ordered by the first Position puzzle, and its rows come only from solved theme-category pages. The universal Position puzzle is never a row; it only establishes the child order and identity used by later pages. Future numeric categories such as `tournament_wins` are deferred to a dedicated arithmetic-friendly category commit.
+Every `PuzzleBook` exposes a derived, presentation-neutral summary table. Its columns are stable child identifiers ordered by the Position puzzle solution. Its rows come one-for-one from theme pages and use `theme_category_instance_id` as their internal identity; the Position puzzle is never a summary row. The PuzzleBook puzzle PDF contains the Position page, all Theme pages, and a final empty summary table with child and category headings. The PuzzleBook solution PDF contains only the completed summary table, not solved copies of every individual puzzle. Future numeric categories such as `tournament_wins` remain deferred to a dedicated arithmetic-friendly category commit.

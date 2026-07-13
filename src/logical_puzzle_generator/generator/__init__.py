@@ -6,6 +6,7 @@ from .constraint_distribution_policy import ConstraintDistributionPolicy
 from .difficulty import Difficulty, DifficultyPolicy
 from .fixed_position_generator import FixedPositionGenerator
 from .puzzle_generator import PuzzleGenerator
+from .puzzle_book import PuzzleBook, PuzzleBookGenerator
 from .solution_generator import SolutionGenerator
 
 __all__ = [
@@ -15,6 +16,8 @@ __all__ = [
     "Difficulty",
     "DifficultyPolicy",
     "FixedPositionGenerator",
+    "PuzzleBook",
+    "PuzzleBookGenerator",
     "PuzzleGenerator",
     "SolutionGenerator",
 ]

@@ -3,6 +3,7 @@ from __future__ import annotations
 from logical_puzzle_generator.generator.puzzle_template import PuzzleTemplate
 from logical_puzzle_generator.model.category import Category
 from logical_puzzle_generator.model.item import Item
+from logical_puzzle_generator.themes.children import DEFAULT_CHILD_NAME_POOL
 
 
 def create_template() -> PuzzleTemplate:
@@ -13,12 +14,7 @@ def create_template() -> PuzzleTemplate:
         categories=[
             Category(
                 "Players",
-                [
-                    Item("Aurelia"),
-                    Item("Emma"),
-                    Item("Lara"),
-                    Item("Mia"),
-                ],
+                [Item(name) for name in DEFAULT_CHILD_NAME_POOL],
             ),
             Category(
                 "Shirt Colour",

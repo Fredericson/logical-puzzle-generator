@@ -81,6 +81,7 @@ class PuzzleGenerator:
         difficulty: Difficulty | str | None = None,
         theme: str | None = None,
         category: str | None = None,
+        category_instance_index: int = 1,
         max_attempts: int = 100,
     ) -> None:
         if max_attempts < 1:
@@ -109,7 +110,10 @@ class PuzzleGenerator:
         self._theme = (
             DEFAULT_THEME_REGISTRY.resolve(theme, self._random) if self._themed_mode else None
         )
+        if category_instance_index < 1:
+            raise ValueError("Category instance index must be a positive integer.")
         self._category_id = category
+        self._category_instance_index = category_instance_index
         self._max_attempts = max_attempts
 
     def _select_category_instance(
@@ -127,6 +131,7 @@ class PuzzleGenerator:
         return self._theme.create_category_instance(
             category_id=self._category_id,
             random_source=self._random,
+            instance_index=self._category_instance_index,
         )
 
     def generate(
