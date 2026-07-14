@@ -76,7 +76,7 @@ When changing PDF difficulty presentation, keep numeric difficulty metadata sema
 
 ### Difficulty policy prompts
 
-For difficulty work, keep `DifficultyPolicy` and `FixedPositionGenerator` in the generator layer. Fixed assignments are created before relational constraints, final difficulty is classified from visible constraints after reduction, and generation retries until the requested exact fixed-position-count rule matches. Do not add PDF scoring logic or translation-layer estimation.
+For difficulty work, keep `DifficultyPolicy` and `FixedPositionGenerator` in the generator layer. Fixed assignments are created before relational constraints, final difficulty is classified from visible direct assignments after reduction, and generation retries until the requested exact direct-assignment rule for the active page task matches. Do not add PDF scoring logic or translation-layer estimation.
 
 
 ### Commit 11.7 clue variety prompt note

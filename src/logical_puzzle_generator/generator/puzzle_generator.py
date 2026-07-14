@@ -824,7 +824,7 @@ class PuzzleGenerator:
     def _fixed_child_theme_duplicate_direct_assignment_failure(
         self, constraints: list[Constraint]
     ) -> str | None:
-        raw_count = self._difficulty_policy.theme_direct_assignment_count(constraints)
+        raw_count = self._difficulty_policy.raw_theme_direct_constraint_count(constraints)
         identity_count = self._fixed_child_theme_direct_assignment_count(constraints)
         if raw_count != identity_count:
             return "fixed-child Theme page contains duplicate direct assignment identities"

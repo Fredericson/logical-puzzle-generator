@@ -1,5 +1,7 @@
 import random
 
+import pytest
+
 from logical_puzzle_generator.constraints.adjacent import AdjacentConstraint
 from logical_puzzle_generator.constraints.direct_left_of import DirectLeftOfConstraint
 from logical_puzzle_generator.constraints.direct_right_of import DirectRightOfConstraint
@@ -159,7 +161,7 @@ def test_numeric_direct_forms_normalize_to_canonical_identities() -> None:
     instance = ThemeCategoryInstance(category, instance_id, selected_values)
     theme_items = [Item(value.id, category_id="racket_count") for value in selected_values]
     value_item = next(item for item in theme_items if item.name.endswith("_value_4"))
-    values_by_id = {value.id: value.numeric_value for value in selected_values}
+    values_by_id = {value.id: value.numeric_value or 0 for value in selected_values}
 
     exact = ExactNumericValueConstraint(
         child, 4, category_id="racket_count", values_by_id=values_by_id
@@ -253,4 +255,85 @@ def test_duplicate_direct_anchor_variants_do_not_satisfy_easy_twice() -> None:
             difficulty=Difficulty.EASY,
         )
         is None
+    )
+
+
+def _bag_colour_instance(selected_ids=("red", "green", "yellow", "blue")):
+    tennis = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
+    category = tennis.category_by_id("bag_colour")
+    values = tuple(category.value_by_id(value_id) for value_id in selected_ids)
+    return ThemeCategoryInstance(category, "bag_colour_1", values)
+
+
+def test_foreign_category_item_with_same_value_id_is_rejected() -> None:
+    policy = DifficultyPolicy()
+    child = Item("Emma")
+    selected = Item("blue", category_id="bag_colour")
+    foreign = Item("blue", category_id="racket_colour")
+
+    with pytest.raises(ValueError, match="does not match the selected page item"):
+        policy.theme_direct_assignment_identity(
+            SamePositionConstraint(child, foreign),
+            fixed_child_positions={child: Position(2)},
+            theme_items=[selected],
+        )
+
+
+def test_duplicate_selected_theme_item_ids_are_rejected() -> None:
+    policy = DifficultyPolicy()
+    child = Item("Emma")
+    blue = Item("blue", category_id="bag_colour")
+
+    with pytest.raises(ValueError, match="unique IDs"):
+        policy.theme_direct_assignment_identity(
+            SamePositionConstraint(child, blue),
+            fixed_child_positions={child: Position(2)},
+            theme_items=[blue, blue],
+        )
+
+
+def test_theme_item_category_must_match_category_instance() -> None:
+    policy = DifficultyPolicy()
+    child = Item("Emma")
+    selected = Item("blue", category_id="racket_colour")
+
+    with pytest.raises(ValueError, match="category does not match"):
+        policy.theme_direct_assignment_identity(
+            SamePositionConstraint(child, selected),
+            fixed_child_positions={child: Position(2)},
+            theme_items=[selected],
+            category_instance=_bag_colour_instance(),
+        )
+
+
+def test_theme_item_must_belong_to_category_instance_selected_values() -> None:
+    policy = DifficultyPolicy()
+    child = Item("Emma")
+    blue = Item("blue", category_id="bag_colour")
+
+    with pytest.raises(ValueError, match="not part of the category instance"):
+        policy.theme_direct_assignment_identity(
+            SamePositionConstraint(child, blue),
+            fixed_child_positions={child: Position(2)},
+            theme_items=[blue],
+            category_instance=_bag_colour_instance(("red", "green", "yellow")),
+        )
+
+
+def test_raw_theme_direct_constraint_count_differs_from_canonical_identity_count() -> None:
+    policy = DifficultyPolicy()
+    child = Item("Emma")
+    blue = Item("blue", category_id="bag_colour")
+    constraints = [SamePositionConstraint(child, blue), FixedPositionConstraint(blue, Position(2))]
+
+    assert policy.raw_theme_direct_constraint_count(constraints) == 2
+    assert (
+        len(
+            policy.theme_direct_assignment_identities(
+                constraints,
+                fixed_child_positions={child: Position(2)},
+                theme_items=[blue],
+            )
+        )
+        == 1
     )
