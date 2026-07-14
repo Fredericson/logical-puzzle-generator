@@ -119,6 +119,29 @@ def test_theme_relation_clues_do_not_render_theme_values_as_children(constraint_
     assert "shells" not in rendered
 
 
+def test_text_theme_position_anchor_rendering_uses_theme_value_subject() -> None:
+    resolver_en = _resolver("tennis_training", "bag_colour", "en")
+    resolver_de = _resolver("tennis_training", "bag_colour", "de")
+    clue = type(
+        "ClueLike",
+        (),
+        {
+            "constraint": FixedPositionConstraint(
+                Item("blue", category_id="bag_colour"), Position(3)
+            )
+        },
+    )()
+
+    assert (
+        ClueTextRenderer("en", presentation_resolver=resolver_en).render_clue(clue)
+        == "The blue tennis bag is in Position 3."
+    )
+    assert (
+        ClueTextRenderer("de", presentation_resolver=resolver_de).render_clue(clue)
+        == "Die blaue Tennistasche befindet sich auf Position 3."
+    )
+
+
 def test_thematic_fixed_position_clue_uses_child_with_theme_phrase() -> None:
     resolver = _resolver("zoo_visit", "animal_area", "de")
     clue = type(
@@ -133,7 +156,7 @@ def test_thematic_fixed_position_clue_uses_child_with_theme_phrase() -> None:
 
     assert (
         ClueTextRenderer("de", presentation_resolver=resolver).render_clue(clue)
-        == "das Kind bei den Krokodilen steht auf Position 2."
+        == "das Kind bei den Krokodilen befindet sich auf Position 2."
     )
 
 

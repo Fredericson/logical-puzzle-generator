@@ -5,6 +5,7 @@ import random
 import pytest
 
 from logical_puzzle_generator.clue_text_renderer import ClueTextRenderer
+from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
 from logical_puzzle_generator.constraints.numeric import (
     ExactNumericValueConstraint,
     NumericDifferenceConstraint,
@@ -18,6 +19,7 @@ from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 from logical_puzzle_generator.model.item import Item
+from logical_puzzle_generator.model.position import Position
 from logical_puzzle_generator.themes.children import select_child_items
 from logical_puzzle_generator.themes.presentation import ItemPresentationResolver
 from logical_puzzle_generator.themes.registry import DEFAULT_THEME_REGISTRY
@@ -150,7 +152,7 @@ def test_puzzle_book_repeated_tournament_wins_rows() -> None:
     assert len(rows) == 2
     assert rows[0].theme_category_instance_id != rows[1].theme_category_instance_id
     assert rows[0].theme_category_id == rows[1].theme_category_id == "tournament_wins"
-    assert len(rows[0].value_ids_by_child) == 4
+    assert len(rows[0].value_ids_by_position) == 4
 
 
 def test_numeric_value_identity_is_instance_scoped_and_strict() -> None:
@@ -193,6 +195,7 @@ def test_invalid_numeric_category_definitions_are_rejected() -> None:
         child_with_theme_nominative=text,
         child_with_theme_dative=text,
         numeric_exact=text,
+        numeric_position_exact=text,
         numeric_more=text,
         numeric_fewer=text,
         numeric_twice=text,
@@ -292,13 +295,6 @@ def test_tournament_wins_final_quality_and_difficulty_by_seed_range(
         )
         assert (
             sum(
-                isinstance(constraint, ExactNumericValueConstraint)
-                for constraint in puzzle.constraints
-            )
-            <= 1
-        )
-        assert (
-            sum(
                 isinstance(constraint, FixedPositionConstraint)
                 and constraint.item.category_id == "children"
                 for constraint in puzzle.constraints
@@ -367,6 +363,31 @@ def test_difference_rendering_is_seeded_and_can_use_more_or_fewer() -> None:
     assert german == "Emma gewann 1 Turnier weniger als Mia."
 
 
+def test_tournament_wins_position_anchor_rendering_is_data_driven() -> None:
+    tennis = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
+    instance = tennis.create_category_instance(
+        category_id="tournament_wins", random_source=random.Random(3), instance_index=1
+    )
+    value = next(value for value in instance.selected_values if value.numeric_value == 8)
+    clue = Clue(
+        ClueType.FIXED_POSITION,
+        "",
+        FixedPositionConstraint(Item(value.id, "tournament_wins"), Position(4)),
+    )
+
+    assert (
+        ClueTextRenderer(
+            "en", presentation_resolver=ItemPresentationResolver(tennis, instance, "en")
+        ).render_clue(clue)
+        == "The child in Position 4 won 8 tournaments."
+    )
+    german = ClueTextRenderer(
+        "de", presentation_resolver=ItemPresentationResolver(tennis, instance, "de")
+    ).render_clue(clue)
+    assert german == "Das Kind auf Position 4 gewann 8 Turniere."
+    assert "tournament_wins" not in german and "ß" not in german
+
+
 def test_puzzle_book_numeric_summary_pdf_story_uses_display_values(monkeypatch, tmp_path) -> None:
     from reportlab.platypus import Table
 
@@ -406,7 +427,7 @@ def test_puzzle_book_numeric_summary_pdf_story_uses_display_values(monkeypatch, 
         }
         assert all(
             value_id.startswith(f"{row.theme_category_instance_id}_value_")
-            for value_id in row.value_ids_by_child
+            for value_id in row.value_ids_by_position
         )
 
 
@@ -424,6 +445,7 @@ def test_neutral_generated_numeric_category_uses_generic_value_ids() -> None:
         child_with_theme_nominative=text,
         child_with_theme_dative=text,
         numeric_exact=text,
+        numeric_position_exact=text,
         numeric_more=text,
         numeric_fewer=text,
         numeric_twice=text,

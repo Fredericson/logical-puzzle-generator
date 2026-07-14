@@ -200,4 +200,4 @@ def test_create_puzzle_book_zero_theme_pages_is_intentional(tmp_path, monkeypatc
     assert len(puzzle_summary._cellvalues) == 2
     assert len(solution_summary._cellvalues) == 2
     assert puzzle_summary._cellvalues[1][1:] == ["", "", "", ""]
-    assert solution_summary._cellvalues[1][1:] == ["", "", "", ""]
+    assert solution_summary._cellvalues[1][1:] == list(book.summary_table.child_names_by_position)

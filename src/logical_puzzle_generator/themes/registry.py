@@ -29,6 +29,7 @@ class ThemeValue:
     short_label: LocalizedText | None = None
     subject_phrase: LocalizedText | None = None
     numeric_value: int | None = None
+    position_subject_phrase: LocalizedText | None = None
 
     def display(self, language: Language | str, *, short: bool = False) -> str:
         text = self.short_label if short and self.short_label is not None else self.label
@@ -38,6 +39,14 @@ class ThemeValue:
         text = self.subject_phrase if self.subject_phrase is not None else self.label
         return text.for_language(language)
 
+    def position_subject(self, language: Language | str) -> str:
+        text = (
+            self.position_subject_phrase
+            if self.position_subject_phrase is not None
+            else self.subject_phrase if self.subject_phrase is not None else self.label
+        )
+        return text.for_language(language)
+
 
 @dataclass(frozen=True, slots=True)
 class ThemeWording:
@@ -45,6 +54,7 @@ class ThemeWording:
     child_with_theme_nominative: LocalizedText
     child_with_theme_dative: LocalizedText
     numeric_exact: LocalizedText | None = None
+    numeric_position_exact: LocalizedText | None = None
     numeric_more: LocalizedText | None = None
     numeric_fewer: LocalizedText | None = None
     numeric_twice: LocalizedText | None = None
@@ -86,6 +96,7 @@ class ThemeCategoryDefinition:
             raise ValueError("Numeric category range must allow a factor-2 relationship.")
         required = (
             self.wording.numeric_exact,
+            self.wording.numeric_position_exact,
             self.wording.numeric_more,
             self.wording.numeric_fewer,
             self.wording.numeric_twice,
@@ -237,6 +248,8 @@ def _value(
     subject_en: str | None = None,
     subject_de: str | None = None,
     numeric_value: int | None = None,
+    position_subject_en: str | None = None,
+    position_subject_de: str | None = None,
 ) -> ThemeValue:
     return ThemeValue(
         id=value_id,
@@ -244,6 +257,11 @@ def _value(
         short_label=_text(short_en or en, short_de or de),
         subject_phrase=_text(subject_en or en, subject_de or de),
         numeric_value=numeric_value,
+        position_subject_phrase=(
+            _text(position_subject_en, position_subject_de)
+            if position_subject_en is not None and position_subject_de is not None
+            else None
+        ),
     )
 
 
@@ -431,6 +449,10 @@ TOURNAMENT_WINS_WORDING = ThemeWording(
     child_with_theme_nominative=_text("the child with {theme}", "das Kind mit {theme}"),
     child_with_theme_dative=_text("the child with {theme}", "dem Kind mit {theme}"),
     numeric_exact=_text("{child} won {value} {unit}.", "{child} gewann {value} {unit}."),
+    numeric_position_exact=_text(
+        "The child in Position {position} won {value} {unit}.",
+        "Das Kind auf Position {position} gewann {value} {unit}.",
+    ),
     numeric_more=_text(
         "{greater} won {difference} {unit} more than {lesser}.",
         "{greater} gewann {difference} {unit} mehr als {lesser}.",
@@ -456,6 +478,10 @@ RACKET_COUNT_WORDING = ThemeWording(
     numeric_exact=_text(
         "{child} has {value} {unit} in her bag.",
         "{child} hat {value} {unit} in ihrer Tasche.",
+    ),
+    numeric_position_exact=_text(
+        "The child in Position {position} has {value} {unit} in her bag.",
+        "Das Kind auf Position {position} hat {value} {unit} in ihrer Tasche.",
     ),
     numeric_more=_text(
         "{greater} has {difference} more {unit} in her bag than {lesser}.",
@@ -515,10 +541,42 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                 "Bag Colour",
                 "Taschenfarbe",
                 (
-                    _value("red", "the red bag", "der roten Tasche", "Red", "Rot"),
-                    _value("green", "the green bag", "der grünen Tasche", "Green", "Grün"),
-                    _value("yellow", "the yellow bag", "der gelben Tasche", "Yellow", "Gelb"),
-                    _value("blue", "the blue bag", "der blauen Tasche", "Blue", "Blau"),
+                    _value(
+                        "red",
+                        "the red bag",
+                        "der roten Tasche",
+                        "Red",
+                        "Rot",
+                        position_subject_en="The red tennis bag",
+                        position_subject_de="Die rote Tennistasche",
+                    ),
+                    _value(
+                        "green",
+                        "the green bag",
+                        "der grünen Tasche",
+                        "Green",
+                        "Grün",
+                        position_subject_en="The green tennis bag",
+                        position_subject_de="Die grüne Tennistasche",
+                    ),
+                    _value(
+                        "yellow",
+                        "the yellow bag",
+                        "der gelben Tasche",
+                        "Yellow",
+                        "Gelb",
+                        position_subject_en="The yellow tennis bag",
+                        position_subject_de="Die gelbe Tennistasche",
+                    ),
+                    _value(
+                        "blue",
+                        "the blue bag",
+                        "der blauen Tasche",
+                        "Blue",
+                        "Blau",
+                        position_subject_en="The blue tennis bag",
+                        position_subject_de="Die blaue Tennistasche",
+                    ),
                 ),
                 WITH_WORDING,
             ),

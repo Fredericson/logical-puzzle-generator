@@ -141,17 +141,17 @@ Decision: superseded by ADR-017. The old score-based difficulty heuristic is no 
 
 Rationale: child-facing difficulty should describe the puzzle the player actually receives. Removed clues, hidden/original constraints, rendered wording, PDF language, and the target solution must not shortcut the estimate.
 
-Current rule: see ADR-017. Only the count of final visible `FixedPositionConstraint` clues matters.
+Current rule: see ADR-017. Difficulty is based on final visible direct assignments for the active page task.
 
 Consequences: future generated clue/constraint types must define their difficulty impact before they are made visible. PDF localization remains presentation-only: `TranslationCatalog` maps stored numeric values to English/German labels and does not estimate difficulty.
 
-## ADR-017: Select difficulty by visible fixed-position clue count
+## ADR-017: Select difficulty by visible direct-assignment count
 
-Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only the final reduced puzzle constraints that correspond one-to-one with visible clues. Easy means exactly two visible `FixedPositionConstraint` clues, Medium means exactly one, and Hard means zero. Direct-left, direct-right, adjacent, left-of, and right-of constraints are not fixed-position clues and never count as anchors. Position-only compatibility puzzles may expose exactly three visible clues; Commit 12.2 themed puzzles are reduced without a fixed global clue count so both categories remain uniquely solvable.
+Decision: ADR-016 is superseded for Version 1 difficulty classification. `DifficultyPolicy` is the authoritative classifier and inspects only final constraints that correspond one-to-one with visible clues. Easy means exactly two distinct visible direct assignments, Medium means exactly one, and Hard means zero. Position pages and standalone puzzles count child-position `FixedPositionConstraint` anchors. Fixed-child PuzzleBook Theme pages count canonical direct Theme-value identities, including child-to-value `SamePositionConstraint` clues, Theme-value-to-position `FixedPositionConstraint` clues, and exact numeric child-to-value clues. Direct-left, direct-right, adjacent, left-of, right-of, numeric-difference, and numeric-multiple constraints are relative clues and never count toward Difficulty. Total clue count and raw constraint-instance count are not Difficulty measures; equivalent direct clues normalize through inherited child positions and selected Theme values to the same revealed answer.
 
-Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child. A fixed-position-count rule is predictable, testable, independent of language/PDF text, and based on the puzzle the child actually sees.
+Rationale: the previous heuristic often labelled puzzles Medium even when they were too difficult for the intended child, and fixed-child PuzzleBook pages need Difficulty to describe the page task rather than hidden inherited child positions. A direct-assignment-count rule is predictable, testable, independent of language/PDF text, and based on the answers directly revealed on the page the child actually sees.
 
-Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitted/`None` chooses randomly with the injected random source), delegates mandatory fixed assignment and target solution construction to `FixedPositionGenerator`, derives relational constraints separately, selects only the required four-player relational clue count before clue rendering whenever possible, reduces clues and constraints together while preserving the exact fixed count, validates unique solvability, classifies the final visible constraints, and retries until a matching candidate is found or raises a clear `RuntimeError` after `max_attempts`. Numeric metadata remains `1` Easy, `2` Medium, and `3` Hard. PDF and translation components render stored metadata only and do not recalculate difficulty.
+Consequences: `PuzzleGenerator` accepts an optional requested difficulty (omitted/`None` chooses randomly with the injected random source), delegates mandatory child-position assignment and target solution construction to `FixedPositionGenerator` for Position/standalone pages, and for fixed-child Theme pages selects exact distinct direct identities before choosing one clue variant for each identity and adding a variable relative subset for unique solvability. Clue reduction and final validation preserve the exact direct-assignment count, numeric Theme pages also retain at least one relative arithmetic clue, and generation retries until a matching candidate is found or raises a clear `RuntimeError` after `max_attempts`. Numeric metadata remains `1` Easy, `2` Medium, and `3` Hard. PDF and translation components render stored metadata only and do not recalculate difficulty.
 
 
 ## ADR-018: Use a deterministic constraint distribution policy for clue variety
@@ -203,7 +203,7 @@ Commit 12.2 adds selectable data-driven themes while deliberately keeping Versio
 
 ## ADR-022: Category-aware solver assignments
 
-The assignment model now treats children and thematic values as separate categories that independently occupy the same four positions.  This preserves one-to-one semantics per category and keeps the search space at 4! × 4!, avoiding an unrestricted 8! flattening.  Difficulty calibration remains isolated to fixed child-position anchors; thematic fixed-position constraints do not count toward easy/medium/hard anchors.
+The assignment model now treats children and thematic values as separate categories that independently occupy the same four positions.  This preserves one-to-one semantics per category and keeps the search space at 4! × 4!, avoiding an unrestricted 8! flattening.  Difficulty calibration remains isolated to direct assignments for the active page task; inherited fixed child positions do not count on fixed-child Theme pages.
 
 ## ADR-023: Deferred PuzzleBook structure
 

@@ -120,6 +120,7 @@ class ClueReducer:
             clues=clues,
             metadata=puzzle.metadata,
             solution=puzzle.solution,
+            fixed_positions=dict(puzzle.fixed_positions),
         )
 
     def _would_remove_required_variation(

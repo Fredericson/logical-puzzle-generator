@@ -20,13 +20,53 @@ from logical_puzzle_generator.themes.registry import (
 class SummaryRow:
     theme_category_id: str
     theme_category_instance_id: str
-    value_ids_by_child: tuple[str, ...]
+    value_ids_by_position: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.theme_category_id, str) or not self.theme_category_id:
+            raise ValueError("SummaryRow requires a non-empty theme_category_id.")
+        if (
+            not isinstance(self.theme_category_instance_id, str)
+            or not self.theme_category_instance_id
+        ):
+            raise ValueError("SummaryRow requires a non-empty theme_category_instance_id.")
+        if not self.value_ids_by_position:
+            raise ValueError("SummaryRow requires value IDs ordered by position.")
+        if any(
+            not isinstance(value_id, str) or not value_id for value_id in self.value_ids_by_position
+        ):
+            raise ValueError("SummaryRow value IDs must be non-empty strings.")
+        if len(set(self.value_ids_by_position)) != len(self.value_ids_by_position):
+            raise ValueError("SummaryRow value IDs must be distinct by position.")
 
 
 @dataclass(frozen=True, slots=True)
 class SummaryTable:
-    child_ids: tuple[str, ...]
+    position_ids: tuple[int, ...]
+    child_names_by_position: tuple[str, ...]
     rows: tuple[SummaryRow, ...]
+
+    def __post_init__(self) -> None:
+        if not self.position_ids:
+            raise ValueError("SummaryTable requires at least one position.")
+        if any(
+            isinstance(position, bool) or not isinstance(position, int) or position < 1
+            for position in self.position_ids
+        ):
+            raise ValueError("SummaryTable positions must be positive integers.")
+        expected = tuple(range(1, len(self.position_ids) + 1))
+        if self.position_ids != expected:
+            raise ValueError("SummaryTable positions must be ordered and contiguous from 1.")
+        if len(self.child_names_by_position) != len(self.position_ids):
+            raise ValueError("SummaryTable child names must match the position count.")
+        if any(
+            not isinstance(child_name, str) or not child_name
+            for child_name in self.child_names_by_position
+        ):
+            raise ValueError("SummaryTable child names must be non-empty strings.")
+        for row in self.rows:
+            if len(row.value_ids_by_position) != len(self.position_ids):
+                raise ValueError("SummaryRow values must match the SummaryTable position count.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,11 +122,13 @@ class PuzzleBook:
                 SummaryRow(
                     theme_category_id=puzzle.metadata.theme_category_id or "",
                     theme_category_instance_id=puzzle.metadata.theme_category_instance_id or "",
-                    value_ids_by_child=tuple(values),
+                    value_ids_by_position=tuple(values),
                 )
             )
         return SummaryTable(
-            child_ids=tuple(child.name for child in ordered_children), rows=tuple(rows)
+            position_ids=tuple(range(1, len(ordered_children) + 1)),
+            child_names_by_position=tuple(child.name for child in ordered_children),
+            rows=tuple(rows),
         )
 
 
@@ -145,6 +187,9 @@ class PuzzleBookGenerator:
 
         children = select_child_items(self._random, count=self._child_count)
         position_puzzle = self._generate_position_puzzle(children)
+        if position_puzzle.solution is None:
+            raise ValueError("Position puzzle requires a solution for fixed PuzzleBook positions.")
+        fixed_child_positions = dict(position_puzzle.solution.assignment.positions)
         category_ids = self.select_category_ids(theme_page_count)
         occurrence_counts: dict[str, int] = {}
         theme_puzzles: list[Puzzle] = []
@@ -158,6 +203,7 @@ class PuzzleBookGenerator:
                     category=category_id,
                     category_instance_index=occurrence_counts[category_id],
                     max_attempts=self._max_attempts,
+                    fixed_child_positions=fixed_child_positions,
                 ).generate(children)
             )
         book = PuzzleBook(

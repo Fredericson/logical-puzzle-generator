@@ -138,7 +138,28 @@ class PdfGenerator:
             self._validate_puzzle(puzzle)
             if index:
                 story.append(PageBreak())
-            story.extend(self._worksheet_story(puzzle))
+            story.extend(
+                self._worksheet_story(
+                    puzzle,
+                    theme_title=puzzle_book.theme.localized_title(self.language),
+                    question=(
+                        self._catalog.label("position_question")
+                        if index == 0
+                        else self._theme_category_label(puzzle)
+                    ),
+                    instruction=(
+                        self._catalog.label("position_instruction")
+                        if index == 0
+                        else self._catalog.label("theme_page_reminder")
+                    ),
+                    show_available_names=(index == 0),
+                    show_theme_values=(index != 0),
+                    show_child_field=(index == 0),
+                    show_theme_field=(index != 0),
+                    child_field_heading=(self._catalog.label("name") if index == 0 else ""),
+                    theme_field_heading=("" if index == 0 else self._theme_category_label(puzzle)),
+                )
+            )
         story.append(PageBreak())
         story.extend(self._summary_table_story(puzzle_book, solved=False))
         self._build(output_path, story)
@@ -149,12 +170,34 @@ class PdfGenerator:
         self._build(output_path, self._summary_table_story(puzzle_book, solved=True))
 
     def _worksheet_story(
-        self, puzzle: Puzzle, labels: list[str | tuple[str, str]] | None = None
+        self,
+        puzzle: Puzzle,
+        labels: list[str | tuple[str, str]] | None = None,
+        *,
+        theme_title: str | None = None,
+        question: str | None = None,
+        instruction: str | None = None,
+        show_available_names: bool = True,
+        show_theme_values: bool = True,
+        show_child_field: bool | None = None,
+        show_theme_field: bool | None = None,
+        child_field_heading: str = "",
+        theme_field_heading: str = "",
     ) -> list[Any]:
         story: list[Any] = []
-        story.extend(self._header(puzzle))
+        story.extend(self._header(puzzle, theme_title=theme_title, question=question))
         story.append(Spacer(1, 0.16 * inch))
-        story.append(self._lineup(puzzle, labels=labels))
+        story.append(
+            self._lineup(
+                puzzle,
+                labels=labels,
+                instruction=instruction,
+                show_child_field=show_child_field,
+                show_theme_field=show_theme_field,
+                child_field_heading=child_field_heading,
+                theme_field_heading=theme_field_heading,
+            )
+        )
         story.append(Spacer(1, 0.18 * inch))
         story.append(Paragraph(self._catalog.label("clues"), self._styles["SectionHeading"]))
         resolver = self._resolver(puzzle)
@@ -169,8 +212,9 @@ class PdfGenerator:
             for item in puzzle.items
             if item.category_id == CHILDREN_CATEGORY_ID
         ]
-        story.append(self._choice_box(self._catalog.label("players_items"), children))
-        if self._is_themed(puzzle):
+        if show_available_names:
+            story.append(self._choice_box(self._catalog.label("players_items"), children))
+        if show_theme_values and self._is_themed(puzzle):
             story.append(Spacer(1, 0.08 * inch))
             story.append(
                 self._choice_box(self._theme_category_label(puzzle), self._theme_values(puzzle))
@@ -183,25 +227,43 @@ class PdfGenerator:
             Paragraph(self._catalog.title("PuzzleBook Summary"), self._styles["WorksheetTitle"]),
             Spacer(1, 0.18 * inch),
         ]
-        header = [self._catalog.label("theme")] + list(summary.child_ids)
+        if solved:
+            story.append(
+                Paragraph(self._catalog.label("completed_summary"), self._styles["SectionHeading"])
+            )
+        else:
+            story.append(
+                Paragraph(self._catalog.label("summary_instruction"), self._styles["ChildClue"])
+            )
+        header = [self._catalog.label("question")] + [
+            f"{self._catalog.label('position')} {position}" for position in summary.position_ids
+        ]
         table_data: list[list[str]] = [header]
+        table_data.append(
+            [
+                self._catalog.label("name"),
+                *(
+                    summary.child_names_by_position
+                    if solved
+                    else ["" for _ in summary.position_ids]
+                ),
+            ]
+        )
         for row in summary.rows:
             category = puzzle_book.theme.category_by_id(row.theme_category_id)
             category_instance = self._category_instance_from_ids(
-                category, row.theme_category_instance_id, row.value_ids_by_child
+                category, row.theme_category_instance_id, row.value_ids_by_position
             )
             category_label = category.localized_label(self.language)
             values = (
                 [
                     category_instance.value_by_id(value_id).display(self.language, short=True)
-                    for value_id in row.value_ids_by_child
+                    for value_id in row.value_ids_by_position
                 ]
                 if solved
-                else ["" for _ in summary.child_ids]
+                else ["" for _ in summary.position_ids]
             )
             table_data.append([category_label, *values])
-        if len(table_data) == 1:
-            table_data.append(["", *("" for _ in summary.child_ids)])
         table = Table(table_data, repeatRows=1)
         table.setStyle(
             TableStyle(
@@ -221,10 +283,12 @@ class PdfGenerator:
         story.append(table)
         return story
 
-    def _header(self, puzzle: Puzzle) -> list[Any]:
+    def _header(
+        self, puzzle: Puzzle, *, theme_title: str | None = None, question: str | None = None
+    ) -> list[Any]:
         metadata = puzzle.metadata
-        title = self._theme_title(puzzle)
-        theme = (
+        title = question or self._theme_title(puzzle)
+        theme = theme_title or (
             self._theme_title(puzzle)
             if self._is_themed(puzzle)
             else (metadata.theme if metadata is not None else self._catalog.label("general"))
@@ -235,6 +299,12 @@ class PdfGenerator:
         if self.puzzle_number is not None:
             meta_parts.append(f"{self._catalog.label('puzzle_number')}: {self.puzzle_number}")
         meta_parts.append(f"{self._catalog.label('theme')}: {theme}")
+        if question is None and self._is_themed(puzzle):
+            meta_parts.append(
+                f"{self._catalog.label('question')}: {self._theme_category_label(puzzle)}"
+            )
+        elif question is not None:
+            meta_parts.append(f"{self._catalog.label('question')}: {question}")
         if metadata is not None and metadata.difficulty is not None:
             difficulty_label = self._catalog.difficulty_label(metadata.difficulty)
             meta_parts.append(f"{self._catalog.label('difficulty')}: {difficulty_label}")
@@ -355,14 +425,26 @@ class PdfGenerator:
         self,
         puzzle: Puzzle,
         labels: list[str | tuple[str, str]] | None = None,
+        instruction: str | None = None,
+        show_child_field: bool | None = None,
+        show_theme_field: bool | None = None,
+        child_field_heading: str = "",
+        theme_field_heading: str = "",
     ) -> PlayerLineupRenderer:
         return PlayerLineupRenderer(
             item_count=len(
                 [item for item in puzzle.items if item.category_id == CHILDREN_CATEGORY_ID]
             ),
             labels=labels,
-            instruction=self._catalog.label("solving_grid"),
-            show_theme_field=self._is_themed(puzzle),
+            instruction=(
+                instruction if instruction is not None else self._catalog.label("solving_grid")
+            ),
+            show_child_field=True if show_child_field is None else show_child_field,
+            show_theme_field=(
+                self._is_themed(puzzle) if show_theme_field is None else show_theme_field
+            ),
+            child_field_heading=child_field_heading,
+            theme_field_heading=theme_field_heading,
         )
 
     def _solution_labels(self, puzzle: Puzzle):
