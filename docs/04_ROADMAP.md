@@ -33,7 +33,7 @@ Potential next release work:
 - Multi-category puzzle relationships.
 - Additional implemented constraints such as not-adjacent, between, and not-position.
 - Richer clue generation from multiple categories.
-- Puzzle-quality scoring remains intentionally simple and only compares candidates that already match the requested difficulty. Difficulty selection is implemented with the final visible fixed-position-count rule after clue reduction.
+- Puzzle-quality scoring remains intentionally simple and only compares candidates that already match the requested difficulty. Difficulty selection is implemented with the final visible direct-assignment rule for the active page task after clue reduction.
 - More sophisticated clue minimization/optimization.
 - JSON export and import.
 - Batch generation.
@@ -53,7 +53,7 @@ Potential next release work:
 
 Completed: clue variety distribution policy with neutral fixed-count context, adjacent/non-adjacent relation semantic separation, rule-based early rejection of repetitive generated constraints, and seeded selection among tied best visible subsets that preserves diversity where possible.
 
-Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible FixedPositionConstraint count. Position-only compatibility puzzles retain their established difficulty behavior; themed puzzles preserve child-anchor difficulty while allowing the clue count needed for two-category solving.
+Completed: selectable difficulty. The CLI and public API accept easy, medium, and hard; generation retries until the final uniquely solvable puzzle has the requested visible direct-assignment count. Position-only compatibility puzzles retain their established difficulty behavior; fixed-child Theme pages count canonical Theme direct-assignment identities while allowing the clue count needed for two-category solving.
 
 
 ## Commit 11.9 status

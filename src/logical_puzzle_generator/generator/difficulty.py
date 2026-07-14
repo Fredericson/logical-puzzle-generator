@@ -59,7 +59,7 @@ class DifficultyPolicy:
         if count == 0:
             return Difficulty.HARD
         raise ValueError(
-            f"Invalid Version 1 fixed-position clue count {count}. " "Expected exactly 2, 1, or 0."
+            f"Invalid Version 1 fixed-position clue count {count}. Expected exactly 2, 1, or 0."
         )
 
     def metadata_value(self, puzzle_or_constraints: Puzzle | Iterable[Constraint]) -> int:
@@ -133,10 +133,10 @@ class DifficultyPolicy:
                         category_instance=category_instance,
                     )
                 )
-            return self.theme_direct_assignment_count(constraints)
+            return self.raw_theme_direct_constraint_count(constraints)
         raise ValueError(f"Unsupported difficulty context: {context!r}.")
 
-    def theme_direct_assignment_count(
+    def raw_theme_direct_constraint_count(
         self, puzzle_or_constraints: Puzzle | Iterable[Constraint]
     ) -> int:
         constraints = (
@@ -196,7 +196,9 @@ class DifficultyPolicy:
         if not self.is_theme_direct_assignment(constraint):
             return None
 
-        theme_items_by_id = {item.name: item for item in theme_items}
+        theme_items_by_id = self._theme_items_by_id(
+            theme_items, category_instance=category_instance
+        )
 
         if isinstance(constraint, SamePositionConstraint):
             first_is_child = constraint.first.category_id == CHILDREN_CATEGORY_ID
@@ -228,11 +230,12 @@ class DifficultyPolicy:
             if len(matching_values) != 1:
                 raise ValueError("Exact numeric direct assignment must match one selected value.")
             value_id = matching_values[0].id
-            if value_id not in theme_items_by_id:
+            canonical_item = theme_items_by_id.get(value_id)
+            if canonical_item is None:
                 raise ValueError("Exact numeric selected value is not present in page theme items.")
             return (
                 self._fixed_child_position_index(constraint.child, fixed_child_positions),
-                value_id,
+                self._validated_theme_item_id(canonical_item, theme_items_by_id),
             )
 
         return None
@@ -244,14 +247,44 @@ class DifficultyPolicy:
             raise ValueError("Direct child-to-theme assignment child is not fixed on this page.")
         return fixed_child_positions[child].index
 
+    def _theme_items_by_id(
+        self,
+        theme_items: Iterable[Item],
+        *,
+        category_instance: ThemeCategoryInstance | None = None,
+    ) -> dict[str, Item]:
+        theme_items_by_id: dict[str, Item] = {}
+        selected_value_ids = (
+            set(category_instance.selected_value_ids) if category_instance is not None else None
+        )
+        for item in theme_items:
+            if item.category_id == CHILDREN_CATEGORY_ID:
+                raise ValueError("Selected page Theme items must be non-child items.")
+            if item.name in theme_items_by_id:
+                raise ValueError("Selected page Theme items must have unique IDs.")
+            if category_instance is not None:
+                if item.category_id != category_instance.category_id:
+                    raise ValueError(
+                        "Selected page Theme item category does not match the page category."
+                    )
+                if selected_value_ids is not None and item.name not in selected_value_ids:
+                    raise ValueError(
+                        "Selected page Theme item is not part of the category instance."
+                    )
+            theme_items_by_id[item.name] = item
+        return theme_items_by_id
+
     def _validated_theme_item_id(
         self, theme_item: Item, theme_items_by_id: Mapping[str, Item]
     ) -> str:
         if theme_item.category_id == CHILDREN_CATEGORY_ID:
             raise ValueError("Theme direct assignment expected a non-child theme item.")
-        if theme_item.name not in theme_items_by_id:
+        canonical_item = theme_items_by_id.get(theme_item.name)
+        if canonical_item is None:
             raise ValueError("Theme direct assignment item is not selected on this page.")
-        return theme_item.name
+        if canonical_item != theme_item:
+            raise ValueError("Theme direct assignment item does not match the selected page item.")
+        return canonical_item.name
 
     def can_remove_to_match(
         self,
