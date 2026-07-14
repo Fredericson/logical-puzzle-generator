@@ -53,6 +53,10 @@ class ItemPresentationResolver:
         value = self.theme_value(item)
         return value.subject(self.language)
 
+    def theme_position_subject_phrase(self, item: Item) -> str:
+        value = self.theme_value(item)
+        return value.position_subject(self.language)
+
     def child_with_theme_phrase(self, item: Item, *, dative: bool = False) -> str:
         value = self.theme_value(item)
         wording = self.category.wording

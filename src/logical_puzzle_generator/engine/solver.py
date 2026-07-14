@@ -31,7 +31,7 @@ class Solver:
 
         stats = SolverStatistics()
 
-        for assignment in self._iterator.iterate(puzzle.logical_items):
+        for assignment in self._iterator.iterate(puzzle.logical_items, puzzle.fixed_positions):
 
             stats.assignments_checked += 1
 

@@ -108,12 +108,27 @@ class ClueTextRenderer:
             return self._render_template(
                 FixedPositionConstraint, {"A": self._label(item), "position": position}
             )
-        if self.language is Language.GERMAN:
-            return "{subject} steht auf Position {position}.".format(
-                subject=self._resolver_required().child_with_theme_phrase(item), position=position
+        value = self._resolver_required().theme_value(item)
+        if value.numeric_value is not None:
+            wording = self._resolver_required().category.wording
+            return self._numeric_text(wording.numeric_position_exact).format(
+                position=position,
+                value=value.numeric_value,
+                unit=self._numeric_unit(value.numeric_value),
             )
-        return "{subject} stands at position {position}.".format(
-            subject=self._resolver_required().child_with_theme_phrase(item), position=position
+        subject = (
+            self._resolver_required().theme_position_subject_phrase(item)
+            if value.position_subject_phrase is not None
+            else self._resolver_required().child_with_theme_phrase(item)
+        )
+        if self.language is Language.GERMAN:
+            return "{subject} befindet sich auf Position {position}.".format(
+                subject=subject,
+                position=position,
+            )
+        return "{subject} is in Position {position}.".format(
+            subject=subject,
+            position=position,
         )
 
     def _render_relation(self, relation: str, first: Item, second: Item) -> str:

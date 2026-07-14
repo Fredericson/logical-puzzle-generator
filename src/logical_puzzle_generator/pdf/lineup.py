@@ -91,7 +91,10 @@ class PlayerLineupRenderer(Flowable):
         labels: list[str | tuple[str, str]] | None = None,
         instruction: str = "",
         width: float = 6.65 * inch,
+        show_child_field: bool = True,
         show_theme_field: bool = True,
+        child_field_heading: str = "",
+        theme_field_heading: str = "",
     ) -> None:
         super().__init__()
         if item_count < 1:
@@ -103,16 +106,22 @@ class PlayerLineupRenderer(Flowable):
             raise ValueError("Lineup label count must match item count.")
         self.instruction = instruction
         self.width = width
+        self.show_child_field = show_child_field
         self.show_theme_field = show_theme_field
-        self.height = 3.48 * inch if show_theme_field else 3.16 * inch
+        if not self.show_child_field and not self.show_theme_field:
+            raise ValueError("Lineup must show at least one answer field.")
+        self.child_field_heading = child_field_heading
+        self.theme_field_heading = theme_field_heading
+        field_count = int(self.show_child_field) + int(self.show_theme_field)
+        self.height = (3.16 + 0.35 * (field_count - 1)) * inch
         self._figure_renderer = GirlFigureRenderer()
 
     def layout_slots(self) -> list[LineupSlot]:
         slot_width = self.width / self.item_count
         figure_width = min(1.26 * inch, slot_width * 0.7)
         box_width = min(1.48 * inch, slot_width * 0.88)
-        name_box_height = 0.5 * inch
-        theme_box_height = 0.32 * inch if self.show_theme_field else 0
+        name_box_height = 0.5 * inch if self.show_child_field else 0
+        theme_box_height = 0.5 * inch if self.show_theme_field else 0
         return [
             LineupSlot(
                 position=index + 1,
@@ -137,8 +146,15 @@ class PlayerLineupRenderer(Flowable):
 
         figure_bottom = 1.34 * inch
         figure_height = 1.52 * inch
-        theme_box_y = 0.34 * inch
-        name_box_y = theme_box_y + (0.35 * inch if self.show_theme_field else 0)
+        first_box_y = 0.34 * inch
+        theme_box_y = first_box_y
+        name_box_y = first_box_y + (0.58 * inch if self.show_theme_field else 0)
+        if self.show_child_field and self.child_field_heading:
+            canvas.setFont("Helvetica-Bold", 9)
+            canvas.drawString(0, name_box_y + 0.53 * inch, self.child_field_heading)
+        if self.show_theme_field and self.theme_field_heading:
+            canvas.setFont("Helvetica-Bold", 9)
+            canvas.drawString(0, theme_box_y + 0.53 * inch, self.theme_field_heading)
         for index, slot in enumerate(self.layout_slots()):
             center = slot.x
             self._figure_renderer.draw(
@@ -150,15 +166,16 @@ class PlayerLineupRenderer(Flowable):
                 index,
             )
             box_x = center - slot.box_width / 2
-            self._draw_box(
-                canvas,
-                box_x,
-                name_box_y,
-                slot.box_width,
-                slot.name_box_height,
-                slot.name_label,
-                bold=True,
-            )
+            if self.show_child_field:
+                self._draw_box(
+                    canvas,
+                    box_x,
+                    name_box_y,
+                    slot.box_width,
+                    slot.name_box_height,
+                    slot.name_label,
+                    bold=True,
+                )
             if self.show_theme_field:
                 self._draw_box(
                     canvas,

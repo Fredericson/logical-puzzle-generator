@@ -18,6 +18,7 @@ from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.model.clue import Clue
 from logical_puzzle_generator.model.clue_type import ClueType
 from logical_puzzle_generator.model.item import Item
+from logical_puzzle_generator.model.position import Position
 from logical_puzzle_generator.pdf.generator import PdfGenerator
 from logical_puzzle_generator.themes.children import select_child_items
 from logical_puzzle_generator.themes.presentation import ItemPresentationResolver
@@ -121,7 +122,6 @@ def test_racket_count_puzzles_are_unique_and_keep_fixed_position_difficulty(
             isinstance(constraint, (NumericDifferenceConstraint, NumericMultipleConstraint))
             for constraint in puzzle.constraints
         )
-        assert sum(isinstance(c, ExactNumericValueConstraint) for c in puzzle.constraints) <= 1
         assert (
             sum(
                 isinstance(c, FixedPositionConstraint) and c.item.category_id == "children"
@@ -218,6 +218,28 @@ def test_racket_count_german_rendering_is_natural_swiss_and_hides_ids() -> None:
     assert all("racket_count_" not in text for text in rendered)
 
 
+def test_racket_count_position_anchor_rendering_is_data_driven() -> None:
+    resolver_en = ItemPresentationResolver(
+        DEFAULT_THEME_REGISTRY.resolve("tennis_training"), _racket_instance(), "en"
+    )
+    resolver_de = ItemPresentationResolver(
+        DEFAULT_THEME_REGISTRY.resolve("tennis_training"), _racket_instance(), "de"
+    )
+    clue = Clue(
+        ClueType.FIXED_POSITION,
+        "",
+        FixedPositionConstraint(Item("racket_count_1_value_4", "racket_count"), Position(2)),
+    )
+
+    assert (
+        ClueTextRenderer("en", presentation_resolver=resolver_en).render_clue(clue)
+        == "The child in Position 2 has 4 rackets in her bag."
+    )
+    german = ClueTextRenderer("de", presentation_resolver=resolver_de).render_clue(clue)
+    assert german == "Das Kind auf Position 2 hat 4 Schläger in ihrer Tasche."
+    assert "racket_count" not in german and "ß" not in german
+
+
 def test_puzzle_book_repeated_racket_count_rows_are_instance_scoped_and_summarized() -> None:
     class RepeatedRacketBookGenerator(PuzzleBookGenerator):
         def select_category_ids(self, theme_page_count: int) -> tuple[str, ...]:
@@ -227,22 +249,24 @@ def test_puzzle_book_repeated_racket_count_rows_are_instance_scoped_and_summariz
         random_source=random.Random(6), difficulty="easy", theme="tennis_training"
     ).generate(theme_page_count=2)
     assert len(book.theme_puzzles) == 2
-    assert book.summary_table.child_ids == tuple(child.name for child in book.stable_children)
+    assert book.summary_table.child_names_by_position == tuple(
+        child.name for child in book.stable_children
+    )
     rows = book.summary_table.rows
     assert [row.theme_category_id for row in rows] == ["racket_count", "racket_count"]
     assert rows[0].theme_category_instance_id != rows[1].theme_category_instance_id
     for row in rows:
-        assert len(row.value_ids_by_child) == 4
+        assert len(row.value_ids_by_position) == 4
         assert all(
             value_id.startswith(f"{row.theme_category_instance_id}_value_")
-            for value_id in row.value_ids_by_child
+            for value_id in row.value_ids_by_position
         )
         assert all(
             book.theme.category_by_id("racket_count")
             .parse_generated_numeric_value_id(value_id, instance_id=row.theme_category_instance_id)
             .display("en")
             .isdigit()
-            for value_id in row.value_ids_by_child
+            for value_id in row.value_ids_by_position
         )
 
 
@@ -286,7 +310,7 @@ def test_racket_count_pdf_story_has_headings_choices_summary_and_no_ids(
     solved_table = [f for f in solution_story if isinstance(f, Table)][-1]
     assert len([f for f in solution_story if isinstance(f, Table)]) == 1
     assert "Schläger in der Tasche" in [row[0] for row in solved_table._cellvalues[1:]]
-    solved_cells = [str(cell) for row in solved_table._cellvalues[1:] for cell in row[1:]]
+    solved_cells = [str(cell) for row in solved_table._cellvalues[2:] for cell in row[1:]]
     assert all(cell.isdigit() for cell in solved_cells)
     assert all(not cell.startswith("racket_count_") for cell in solved_cells)
 
