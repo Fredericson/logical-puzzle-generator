@@ -240,3 +240,15 @@ PuzzleBook worksheet pages render a consistent child-facing header with Theme, Q
 PuzzleBook summaries now use Position 1-4 columns plus an explicit Name row. The unsolved summary leaves the Name row and Theme-answer cells empty so it does not reveal the Position solution. The solved summary uses the same table shape and fills the Name row from the Position puzzle solution before filling one row per Theme page.
 
 The solving models are intentionally different by context: standalone themed puzzles remain complete `4! × 4!` puzzles that solve both child positions and Theme values independently, the PuzzleBook Position page solves the `4!` child order, and each PuzzleBook Theme page constructs exactly one fixed child assignment times `4!` Theme-value assignments.
+
+### Commit 12.8 complete Tennis Training category catalogue
+
+Commit 12.8 completes the production `tennis_training` Theme catalogue through registry data. The seven added categories are `racket_colour`, `string_colour`, `forehand_grip`, `lucky_charm`, `footwork`, `body_build`, and `accessory`. The complete Tennis category list is now: `training`, `backhand_type`, `bag_colour`, `playing_style`, `favourite_surface`, `tournament_wins`, `racket_count`, `racket_colour`, `string_colour`, `forehand_grip`, `lucky_charm`, `footwork`, `body_build`, and `accessory`.
+
+The Accessory category uses exactly four initial production values: `Baseball Cap`, `Visor`, `Sunglasses`, and `Headband` in English, and `Baseballcap`, `Visor`, `Sonnenbrille`, and `Stirnband` in German. No sun-hat or open-hat accessory values are registered.
+
+Grammar-sensitive wording remains data-driven. Theme values carry localized short labels for answer rows, available-value boxes, summaries, and solution summaries, plus full labels and subject or position-anchor phrases for clues. Commit 12.8 adds a narrow value-level position-anchor sentence so plural or idiomatic values such as strings and footwork can render natural position clues without category-ID branches in the renderer.
+
+Every non-numeric page still selects exactly four distinct Theme values. Categories with larger pools, such as racket colour, string colour, lucky charm, and player build, deterministically sample four values from the page random source; categories with exactly four values, such as forehand grip, footwork, and accessory, use all four. PuzzleBook category selection continues to exhaust all registered categories before any category repeats, and repeated category labels are numbered by the existing presentation flow.
+
+No solver special case, PuzzleBook Tennis list, PDF layout redesign, or new constraint type was introduced for these categories.
