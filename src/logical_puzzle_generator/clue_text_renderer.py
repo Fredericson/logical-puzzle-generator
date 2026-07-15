@@ -116,6 +116,9 @@ class ClueTextRenderer:
                 value=value.numeric_value,
                 unit=self._numeric_unit(value.numeric_value),
             )
+        custom_anchor = self._resolver_required().theme_position_anchor_sentence(item, position)
+        if custom_anchor is not None:
+            return custom_anchor
         subject = (
             self._resolver_required().theme_position_subject_phrase(item)
             if value.position_subject_phrase is not None

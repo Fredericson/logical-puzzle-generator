@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from string import Formatter
 from typing import Final
 
 from logical_puzzle_generator.localization import Language, parse_language
@@ -17,6 +18,12 @@ class LocalizedText:
     en: str
     de: str
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.en, str) or not self.en.strip():
+            raise ValueError("English localized text must be a non-empty string.")
+        if not isinstance(self.de, str) or not self.de.strip():
+            raise ValueError("German localized text must be a non-empty string.")
+
     def for_language(self, language: Language | str) -> str:
         parsed = parse_language(language)
         return self.de if parsed is Language.GERMAN else self.en
@@ -30,6 +37,14 @@ class ThemeValue:
     subject_phrase: LocalizedText | None = None
     numeric_value: int | None = None
     position_subject_phrase: LocalizedText | None = None
+    dative_subject_phrase: LocalizedText | None = None
+    position_anchor_sentence: LocalizedText | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.id, str) or not self.id.strip():
+            raise ValueError("Theme value ID must be a non-empty string.")
+        if self.position_anchor_sentence is not None:
+            _validate_position_anchor_sentence(self.position_anchor_sentence)
 
     def display(self, language: Language | str, *, short: bool = False) -> str:
         text = self.short_label if short and self.short_label is not None else self.label
@@ -39,6 +54,16 @@ class ThemeValue:
         text = self.subject_phrase if self.subject_phrase is not None else self.label
         return text.for_language(language)
 
+    def dative_subject(self, language: Language | str) -> str:
+        text = (
+            self.dative_subject_phrase
+            if self.dative_subject_phrase is not None
+            else self.subject_phrase
+        )
+        if text is None:
+            text = self.label
+        return text.for_language(language)
+
     def position_subject(self, language: Language | str) -> str:
         text = (
             self.position_subject_phrase
@@ -46,6 +71,26 @@ class ThemeValue:
             else self.subject_phrase if self.subject_phrase is not None else self.label
         )
         return text.for_language(language)
+
+    def position_anchor(self, language: Language | str, position: int | str) -> str | None:
+        if self.position_anchor_sentence is None:
+            return None
+        return self.position_anchor_sentence.for_language(language).format(position=position)
+
+
+def _validate_position_anchor_sentence(text: LocalizedText) -> None:
+    for language, template in (("English", text.en), ("German", text.de)):
+        placeholders = [
+            field_name for _, field_name, _, _ in Formatter().parse(template) if field_name
+        ]
+        invalid = sorted(set(placeholders) - {"position"})
+        if invalid:
+            joined = ", ".join(invalid)
+            raise ValueError(
+                f"{language} position-anchor sentence uses unsupported placeholder(s): {joined}."
+            )
+        if "position" not in placeholders:
+            raise ValueError(f"{language} position-anchor sentence must include {{position}}.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,10 +292,20 @@ def _value(
     short_de: str | None = None,
     subject_en: str | None = None,
     subject_de: str | None = None,
+    dative_subject_en: str | None = None,
+    dative_subject_de: str | None = None,
     numeric_value: int | None = None,
     position_subject_en: str | None = None,
     position_subject_de: str | None = None,
+    position_anchor_en: str | None = None,
+    position_anchor_de: str | None = None,
 ) -> ThemeValue:
+    if (dative_subject_en is None) != (dative_subject_de is None):
+        raise ValueError("Dative subject phrases must provide both English and German text.")
+    if (position_subject_en is None) != (position_subject_de is None):
+        raise ValueError("Position subject phrases must provide both English and German text.")
+    if (position_anchor_en is None) != (position_anchor_de is None):
+        raise ValueError("Position-anchor sentences must provide both English and German text.")
     return ThemeValue(
         id=value_id,
         label=_text(en, de),
@@ -260,6 +315,16 @@ def _value(
         position_subject_phrase=(
             _text(position_subject_en, position_subject_de)
             if position_subject_en is not None and position_subject_de is not None
+            else None
+        ),
+        dative_subject_phrase=(
+            _text(dative_subject_en, dative_subject_de)
+            if dative_subject_en is not None and dative_subject_de is not None
+            else None
+        ),
+        position_anchor_sentence=(
+            _text(position_anchor_en, position_anchor_de)
+            if position_anchor_en is not None and position_anchor_de is not None
             else None
         ),
     )
@@ -305,7 +370,13 @@ def _category(
 def _numeric_value(category: ThemeCategoryDefinition, value: int, instance_id: str) -> ThemeValue:
     value_id = build_numeric_value_id(instance_id=instance_id, numeric_value=value)
     text = str(value)
-    return ThemeValue(value_id, _text(text, text), _text(text, text), _text(text, text), value)
+    return ThemeValue(
+        id=value_id,
+        label=_text(text, text),
+        short_label=_text(text, text),
+        subject_phrase=_text(text, text),
+        numeric_value=value,
+    )
 
 
 def _generate_numeric_values(
@@ -484,6 +555,64 @@ TOURNAMENT_WINS_WORDING = ThemeWording(
     ),
     unit_singular=_text("tournament", "Turnier"),
     unit_plural=_text("tournaments", "Turniere"),
+)
+
+
+RACKET_COLOUR_WORDING = _wording(
+    "{child} has {theme}.",
+    "{child} hat {theme}.",
+    "the child with {theme_subject}",
+    "das Kind mit {theme_subject}",
+    "the child with {theme_subject}",
+    "dem Kind mit {theme_subject}",
+)
+STRING_COLOUR_WORDING = _wording(
+    "{child} plays with {theme}.",
+    "{child} spielt mit {theme}.",
+    "the child with {theme_subject}",
+    "das Kind mit {theme_subject}",
+    "the child with {theme_subject}",
+    "dem Kind mit {theme_subject}",
+)
+FOREHAND_GRIP_WORDING = _wording(
+    "{child} uses {theme}.",
+    "{child} spielt die Vorhand mit {theme}.",
+    "the child using {theme_subject}",
+    "das Kind mit {theme_subject}",
+    "the child using {theme_subject}",
+    "dem Kind mit {theme_subject}",
+)
+LUCKY_CHARM_WORDING = _wording(
+    "{child} carries {theme} as her lucky charm.",
+    "{child} hat {theme} als Glücksbringer dabei.",
+    "the child with {theme_subject}",
+    "das Kind mit {theme_subject}",
+    "the child with {theme_subject}",
+    "dem Kind mit {theme_subject}",
+)
+FOOTWORK_WORDING = _wording(
+    "{child} {theme}.",
+    "{child} {theme}.",
+    "the child {theme_subject}",
+    "das Kind mit {theme_subject}",
+    "the child {theme_subject}",
+    "dem Kind mit {theme_subject}",
+)
+BODY_BUILD_WORDING = _wording(
+    "{child} {theme}.",
+    "{child} {theme}.",
+    "{theme_subject}",
+    "{theme_subject}",
+    "{theme_subject}",
+    "{theme_subject}",
+)
+ACCESSORY_WORDING = _wording(
+    "{child} wears {theme}.",
+    "{child} trägt {theme}.",
+    "the child wearing {theme_subject}",
+    "das Kind mit {theme_subject}",
+    "the child wearing {theme_subject}",
+    "dem Kind mit {theme_subject}",
 )
 
 RACKET_COUNT_WORDING = ThemeWording(
@@ -681,6 +810,560 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                 is_numeric=True,
                 numeric_minimum=1,
                 numeric_maximum=8,
+            ),
+            _category(
+                "racket_colour",
+                "Racket Colour",
+                "Schlägerfarbe",
+                (
+                    _value(
+                        "blue",
+                        "a blue racket",
+                        "einen blauen Schläger",
+                        "Blue",
+                        "Blau",
+                        "the blue racket",
+                        "dem blauen Schläger",
+                        position_subject_en="The blue racket",
+                        position_subject_de="Der blaue Schläger",
+                    ),
+                    _value(
+                        "red",
+                        "a red racket",
+                        "einen roten Schläger",
+                        "Red",
+                        "Rot",
+                        "the red racket",
+                        "dem roten Schläger",
+                        position_subject_en="The red racket",
+                        position_subject_de="Der rote Schläger",
+                    ),
+                    _value(
+                        "green",
+                        "a green racket",
+                        "einen grünen Schläger",
+                        "Green",
+                        "Grün",
+                        "the green racket",
+                        "dem grünen Schläger",
+                        position_subject_en="The green racket",
+                        position_subject_de="Der grüne Schläger",
+                    ),
+                    _value(
+                        "yellow",
+                        "a yellow racket",
+                        "einen gelben Schläger",
+                        "Yellow",
+                        "Gelb",
+                        "the yellow racket",
+                        "dem gelben Schläger",
+                        position_subject_en="The yellow racket",
+                        position_subject_de="Der gelbe Schläger",
+                    ),
+                    _value(
+                        "black",
+                        "a black racket",
+                        "einen schwarzen Schläger",
+                        "Black",
+                        "Schwarz",
+                        "the black racket",
+                        "dem schwarzen Schläger",
+                        position_subject_en="The black racket",
+                        position_subject_de="Der schwarze Schläger",
+                    ),
+                    _value(
+                        "white",
+                        "a white racket",
+                        "einen weissen Schläger",
+                        "White",
+                        "Weiss",
+                        "the white racket",
+                        "dem weissen Schläger",
+                        position_subject_en="The white racket",
+                        position_subject_de="Der weisse Schläger",
+                    ),
+                    _value(
+                        "pink",
+                        "a pink racket",
+                        "einen pinken Schläger",
+                        "Pink",
+                        "Pink",
+                        "the pink racket",
+                        "dem pinken Schläger",
+                        position_subject_en="The pink racket",
+                        position_subject_de="Der pinke Schläger",
+                    ),
+                    _value(
+                        "orange",
+                        "an orange racket",
+                        "einen orangen Schläger",
+                        "Orange",
+                        "Orange",
+                        "the orange racket",
+                        "dem orangen Schläger",
+                        position_subject_en="The orange racket",
+                        position_subject_de="Der orange Schläger",
+                    ),
+                ),
+                RACKET_COLOUR_WORDING,
+            ),
+            _category(
+                "string_colour",
+                "String Colour",
+                "Saitenfarbe",
+                (
+                    _value(
+                        "white",
+                        "white strings",
+                        "weissen Saiten",
+                        "White",
+                        "Weiss",
+                        "the white strings",
+                        "den weissen Saiten",
+                        position_subject_en="The white strings",
+                        position_subject_de="Die weissen Saiten",
+                        position_anchor_en="The white strings are in Position {position}.",
+                        position_anchor_de="Die weissen Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "black",
+                        "black strings",
+                        "schwarzen Saiten",
+                        "Black",
+                        "Schwarz",
+                        "the black strings",
+                        "den schwarzen Saiten",
+                        position_subject_en="The black strings",
+                        position_subject_de="Die schwarzen Saiten",
+                        position_anchor_en="The black strings are in Position {position}.",
+                        position_anchor_de="Die schwarzen Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "yellow",
+                        "yellow strings",
+                        "gelben Saiten",
+                        "Yellow",
+                        "Gelb",
+                        "the yellow strings",
+                        "den gelben Saiten",
+                        position_subject_en="The yellow strings",
+                        position_subject_de="Die gelben Saiten",
+                        position_anchor_en="The yellow strings are in Position {position}.",
+                        position_anchor_de="Die gelben Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "red",
+                        "red strings",
+                        "roten Saiten",
+                        "Red",
+                        "Rot",
+                        "the red strings",
+                        "den roten Saiten",
+                        position_subject_en="The red strings",
+                        position_subject_de="Die roten Saiten",
+                        position_anchor_en="The red strings are in Position {position}.",
+                        position_anchor_de="Die roten Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "blue",
+                        "blue strings",
+                        "blauen Saiten",
+                        "Blue",
+                        "Blau",
+                        "the blue strings",
+                        "den blauen Saiten",
+                        position_subject_en="The blue strings",
+                        position_subject_de="Die blauen Saiten",
+                        position_anchor_en="The blue strings are in Position {position}.",
+                        position_anchor_de="Die blauen Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "green",
+                        "green strings",
+                        "grünen Saiten",
+                        "Green",
+                        "Grün",
+                        "the green strings",
+                        "den grünen Saiten",
+                        position_subject_en="The green strings",
+                        position_subject_de="Die grünen Saiten",
+                        position_anchor_en="The green strings are in Position {position}.",
+                        position_anchor_de="Die grünen Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "orange",
+                        "orange strings",
+                        "orangen Saiten",
+                        "Orange",
+                        "Orange",
+                        "the orange strings",
+                        "den orangen Saiten",
+                        position_subject_en="The orange strings",
+                        position_subject_de="Die orangen Saiten",
+                        position_anchor_en="The orange strings are in Position {position}.",
+                        position_anchor_de="Die orangen Saiten befinden sich auf Position {position}.",
+                    ),
+                    _value(
+                        "pink",
+                        "pink strings",
+                        "pinken Saiten",
+                        "Pink",
+                        "Pink",
+                        "the pink strings",
+                        "den pinken Saiten",
+                        position_subject_en="The pink strings",
+                        position_subject_de="Die pinken Saiten",
+                        position_anchor_en="The pink strings are in Position {position}.",
+                        position_anchor_de="Die pinken Saiten befinden sich auf Position {position}.",
+                    ),
+                ),
+                STRING_COLOUR_WORDING,
+            ),
+            _category(
+                "forehand_grip",
+                "Forehand Grip",
+                "Vorhandgriff",
+                (
+                    _value(
+                        "continental",
+                        "a Continental forehand grip",
+                        "einem Kontinentalgriff",
+                        "Continental",
+                        "Kontinental",
+                        "a Continental forehand grip",
+                        "dem Kontinentalgriff",
+                        position_subject_en="The Continental forehand grip",
+                        position_subject_de="Der Kontinentalgriff",
+                    ),
+                    _value(
+                        "eastern",
+                        "an Eastern forehand grip",
+                        "einem Eastern-Griff",
+                        "Eastern",
+                        "Eastern",
+                        "an Eastern forehand grip",
+                        "dem Eastern-Vorhandgriff",
+                        position_subject_en="The Eastern forehand grip",
+                        position_subject_de="Der Eastern-Vorhandgriff",
+                    ),
+                    _value(
+                        "semi_western",
+                        "a Semi-Western forehand grip",
+                        "einem Semi-Western-Griff",
+                        "Semi-Western",
+                        "Semi-Western",
+                        "a Semi-Western forehand grip",
+                        "dem Semi-Western-Vorhandgriff",
+                        position_subject_en="The Semi-Western forehand grip",
+                        position_subject_de="Der Semi-Western-Vorhandgriff",
+                    ),
+                    _value(
+                        "western",
+                        "a Western forehand grip",
+                        "einem Western-Griff",
+                        "Western",
+                        "Western",
+                        "a Western forehand grip",
+                        "dem Western-Vorhandgriff",
+                        position_subject_en="The Western forehand grip",
+                        position_subject_de="Der Western-Vorhandgriff",
+                    ),
+                ),
+                FOREHAND_GRIP_WORDING,
+            ),
+            _category(
+                "lucky_charm",
+                "Lucky Charm",
+                "Glücksbringer",
+                (
+                    _value(
+                        "bracelet",
+                        "a bracelet",
+                        "ein Armband",
+                        "Bracelet",
+                        "Armband",
+                        "the bracelet",
+                        "dem Armband",
+                        position_subject_en="The bracelet",
+                        position_subject_de="Das Armband",
+                    ),
+                    _value(
+                        "small_teddy",
+                        "a small teddy",
+                        "einen kleinen Teddybär",
+                        "Small Teddy",
+                        "Kleiner Teddybär",
+                        "the small teddy",
+                        "dem kleinen Teddybär",
+                        position_subject_en="The small teddy",
+                        position_subject_de="Der kleine Teddybär",
+                    ),
+                    _value(
+                        "keyring",
+                        "a keyring",
+                        "einen Schlüsselanhänger",
+                        "Keyring",
+                        "Schlüsselanhänger",
+                        "the keyring",
+                        "dem Schlüsselanhänger",
+                        position_subject_en="The keyring",
+                        position_subject_de="Der Schlüsselanhänger",
+                    ),
+                    _value(
+                        "lucky_coin",
+                        "a lucky coin",
+                        "eine Glücksmünze",
+                        "Lucky Coin",
+                        "Glücksmünze",
+                        "the lucky coin",
+                        "der Glücksmünze",
+                        position_subject_en="The lucky coin",
+                        position_subject_de="Die Glücksmünze",
+                    ),
+                    _value(
+                        "hair_ribbon",
+                        "a hair ribbon",
+                        "ein Haarband",
+                        "Hair Ribbon",
+                        "Haarband",
+                        "the hair ribbon",
+                        "dem Haarband",
+                        position_subject_en="The hair ribbon",
+                        position_subject_de="Das Haarband",
+                    ),
+                    _value(
+                        "mini_tennis_ball",
+                        "a mini tennis ball",
+                        "einen Mini-Tennisball",
+                        "Mini Tennis Ball",
+                        "Mini-Tennisball",
+                        "the mini tennis ball",
+                        "dem Mini-Tennisball",
+                        position_subject_en="The mini tennis ball",
+                        position_subject_de="Der Mini-Tennisball",
+                    ),
+                    _value(
+                        "four_leaf_clover",
+                        "a four-leaf clover",
+                        "ein vierblättriges Kleeblatt",
+                        "Four-Leaf Clover",
+                        "Vierblättriges Kleeblatt",
+                        "the four-leaf clover",
+                        "dem vierblättrigen Kleeblatt",
+                        position_subject_en="The four-leaf clover",
+                        position_subject_de="Das vierblättrige Kleeblatt",
+                    ),
+                    _value(
+                        "mascot",
+                        "a mascot",
+                        "ein Maskottchen",
+                        "Mascot",
+                        "Maskottchen",
+                        "the mascot",
+                        "dem Maskottchen",
+                        position_subject_en="The mascot",
+                        position_subject_de="Das Maskottchen",
+                    ),
+                ),
+                LUCKY_CHARM_WORDING,
+            ),
+            _category(
+                "footwork",
+                "Footwork",
+                "Schritttechnik",
+                (
+                    _value(
+                        "short_steps",
+                        "uses short steps",
+                        "macht kurze Schritte",
+                        "Short Steps",
+                        "Kurze Schritte",
+                        "using short steps",
+                        "den kurzen Schritten",
+                        position_subject_en="Short steps",
+                        position_subject_de="Die kurzen Schritte",
+                        position_anchor_en="Short steps belong to Position {position}.",
+                        position_anchor_de="Die kurzen Schritte gehören zu Position {position}.",
+                    ),
+                    _value(
+                        "long_steps",
+                        "uses long steps",
+                        "macht lange Schritte",
+                        "Long Steps",
+                        "Lange Schritte",
+                        "using long steps",
+                        "den langen Schritten",
+                        position_subject_en="Long steps",
+                        position_subject_de="Die langen Schritte",
+                        position_anchor_en="Long steps belong to Position {position}.",
+                        position_anchor_de="Die langen Schritte gehören zu Position {position}.",
+                    ),
+                    _value(
+                        "quick_steps",
+                        "uses quick steps",
+                        "macht schnelle Schritte",
+                        "Quick Steps",
+                        "Schnelle Schritte",
+                        "using quick steps",
+                        "den schnellen Schritten",
+                        position_subject_en="Quick steps",
+                        position_subject_de="Die schnellen Schritte",
+                        position_anchor_en="Quick steps belong to Position {position}.",
+                        position_anchor_de="Die schnellen Schritte gehören zu Position {position}.",
+                    ),
+                    _value(
+                        "split_step",
+                        "has a strong split step",
+                        "hat einen guten Split-Step",
+                        "Strong Split Step",
+                        "Guter Split-Step",
+                        "with the strong split step",
+                        "dem guten Split-Step",
+                        position_subject_en="The strong split step",
+                        position_subject_de="Der gute Split-Step",
+                    ),
+                ),
+                FOOTWORK_WORDING,
+            ),
+            _category(
+                "body_build",
+                "Player Build",
+                "Spielerstatur",
+                (
+                    _value(
+                        "tall",
+                        "is tall",
+                        "ist gross",
+                        "Tall",
+                        "Gross",
+                        "the tall child",
+                        "das grosse Kind",
+                        dative_subject_en="the tall child",
+                        dative_subject_de="dem grossen Kind",
+                        position_subject_en="The tall child",
+                        position_subject_de="Das grosse Kind",
+                    ),
+                    _value(
+                        "medium_height",
+                        "is medium height",
+                        "ist mittelgross",
+                        "Medium Height",
+                        "Mittelgross",
+                        "the medium-height child",
+                        "das mittelgrosse Kind",
+                        dative_subject_en="the medium-height child",
+                        dative_subject_de="dem mittelgrossen Kind",
+                        position_subject_en="The medium-height child",
+                        position_subject_de="Das mittelgrosse Kind",
+                    ),
+                    _value(
+                        "small",
+                        "is small",
+                        "ist klein",
+                        "Small",
+                        "Klein",
+                        "the small child",
+                        "das kleine Kind",
+                        dative_subject_en="the small child",
+                        dative_subject_de="dem kleinen Kind",
+                        position_subject_en="The small child",
+                        position_subject_de="Das kleine Kind",
+                    ),
+                    _value(
+                        "slim",
+                        "is slim",
+                        "ist schlank",
+                        "Slim",
+                        "Schlank",
+                        "the slim child",
+                        "das schlanke Kind",
+                        dative_subject_en="the slim child",
+                        dative_subject_de="dem schlanken Kind",
+                        position_subject_en="The slim child",
+                        position_subject_de="Das schlanke Kind",
+                    ),
+                    _value(
+                        "athletic",
+                        "has an athletic build",
+                        "ist athletisch gebaut",
+                        "Athletic",
+                        "Athletisch",
+                        "the child with the athletic build",
+                        "das athletisch gebaute Kind",
+                        dative_subject_en="the child with the athletic build",
+                        dative_subject_de="dem athletisch gebauten Kind",
+                        position_subject_en="The athletic child",
+                        position_subject_de="Das athletisch gebaute Kind",
+                    ),
+                    _value(
+                        "strong",
+                        "has a strong build",
+                        "ist kräftig",
+                        "Strong Build",
+                        "Kräftig",
+                        "the child with the strong build",
+                        "das kräftige Kind",
+                        dative_subject_en="the child with the strong build",
+                        dative_subject_de="dem kräftigen Kind",
+                        position_subject_en="The strong child",
+                        position_subject_de="Das kräftige Kind",
+                    ),
+                ),
+                BODY_BUILD_WORDING,
+            ),
+            _category(
+                "accessory",
+                "Accessory",
+                "Accessoire",
+                (
+                    _value(
+                        "baseball_cap",
+                        "a baseball cap",
+                        "eine Baseballcap",
+                        "Baseball Cap",
+                        "Baseballcap",
+                        "the baseball cap",
+                        "der Baseballcap",
+                        position_subject_en="The baseball cap",
+                        position_subject_de="Die Baseballcap",
+                    ),
+                    _value(
+                        "visor",
+                        "a visor",
+                        "einen Visor",
+                        "Visor",
+                        "Visor",
+                        "the visor",
+                        "dem Visor",
+                        position_subject_en="The visor",
+                        position_subject_de="Der Visor",
+                    ),
+                    _value(
+                        "sunglasses",
+                        "sunglasses",
+                        "eine Sonnenbrille",
+                        "Sunglasses",
+                        "Sonnenbrille",
+                        "sunglasses",
+                        "der Sonnenbrille",
+                        position_subject_en="The sunglasses",
+                        position_subject_de="Die Sonnenbrille",
+                        position_anchor_en="The sunglasses are in Position {position}.",
+                        position_anchor_de="Die Sonnenbrille befindet sich auf Position {position}.",
+                    ),
+                    _value(
+                        "headband",
+                        "a headband",
+                        "ein Stirnband",
+                        "Headband",
+                        "Stirnband",
+                        "the headband",
+                        "dem Stirnband",
+                        position_subject_en="The headband",
+                        position_subject_de="Das Stirnband",
+                    ),
+                ),
+                ACCESSORY_WORDING,
             ),
         ),
     ),

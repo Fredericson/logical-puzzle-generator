@@ -57,15 +57,18 @@ class ItemPresentationResolver:
         value = self.theme_value(item)
         return value.position_subject(self.language)
 
+    def theme_position_anchor_sentence(self, item: Item, position: int | str) -> str | None:
+        value = self.theme_value(item)
+        return value.position_anchor(self.language, position)
+
     def child_with_theme_phrase(self, item: Item, *, dative: bool = False) -> str:
         value = self.theme_value(item)
         wording = self.category.wording
         template = (
             wording.child_with_theme_dative if dative else wording.child_with_theme_nominative
         ).for_language(self.language)
-        return template.format(
-            theme=value.display(self.language), theme_subject=value.subject(self.language)
-        )
+        subject = value.dative_subject(self.language) if dative else value.subject(self.language)
+        return template.format(theme=value.display(self.language), theme_subject=subject)
 
     def direct_assignment_sentence(self, child: Item, theme_item: Item) -> str:
         template = self.category.wording.direct_assignment.for_language(self.language)
