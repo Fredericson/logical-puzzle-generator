@@ -191,3 +191,76 @@ def test_generated_pdfs_do_not_expose_internal_theme_ids(tmp_path, language: str
         assert internal_id.encode() not in combined
     if language == "de":
         assert "ß".encode() not in combined
+
+
+def test_tennis_backhand_and_playing_style_wording_is_child_facing() -> None:
+    from logical_puzzle_generator.themes.registry import ThemeCategoryInstance
+
+    theme = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
+    child = Item("Emma")
+
+    backhand = theme.category_by_id("backhand_type")
+    backhand_instance = ThemeCategoryInstance(backhand, "backhand_type_1", backhand.values[:4])
+    backhand_resolver_de = ItemPresentationResolver(theme, backhand_instance, "de")
+    backhand_resolver_en = ItemPresentationResolver(theme, backhand_instance, "en")
+    backhand_clue = type(
+        "ClueLike",
+        (),
+        {"constraint": SamePositionConstraint(child, Item("one_handed", "backhand_type"))},
+    )()
+    assert (
+        ClueTextRenderer("de", presentation_resolver=backhand_resolver_de).render_clue(
+            backhand_clue
+        )
+        == "Emma spielt eine einhändige Rückhand."
+    )
+    assert (
+        ClueTextRenderer("en", presentation_resolver=backhand_resolver_en).render_clue(
+            backhand_clue
+        )
+        == "Emma plays a one-handed backhand."
+    )
+
+    style = theme.category_by_id("playing_style")
+    style_instance = ThemeCategoryInstance(style, "playing_style_1", style.values[:4])
+    style_resolver_de = ItemPresentationResolver(theme, style_instance, "de")
+    serve_clue = type(
+        "ClueLike",
+        (),
+        {"constraint": SamePositionConstraint(child, Item("serve_and_volley", "playing_style"))},
+    )()
+    rendered = ClueTextRenderer("de", presentation_resolver=style_resolver_de).render_clue(
+        serve_clue
+    )
+    assert rendered == "Emma spielt viel Serve-and-Volley."
+    assert "trainiert" not in rendered
+    assert style.localized_label("de") == "Spielstil"
+
+
+def test_tennis_playing_style_relative_wording_is_natural() -> None:
+    from logical_puzzle_generator.themes.registry import ThemeCategoryInstance
+
+    theme = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
+    style = theme.category_by_id("playing_style")
+    style_instance = ThemeCategoryInstance(style, "playing_style_1", style.values)
+    drop = Item("drop_shot", "playing_style")
+    serve = Item("serve_and_volley", "playing_style")
+    clue = type("ClueLike", (), {"constraint": LeftOfConstraint(drop, serve)})()
+
+    rendered_en = ClueTextRenderer(
+        "en", presentation_resolver=ItemPresentationResolver(theme, style_instance, "en")
+    ).render_clue(clue)
+    rendered_de = ClueTextRenderer(
+        "de", presentation_resolver=ItemPresentationResolver(theme, style_instance, "de")
+    ).render_clue(clue)
+
+    assert (
+        rendered_en
+        == "the child who plays many drop shots stands left of the child who plays a lot of serve-and-volley."
+    )
+    assert (
+        rendered_de
+        == "das Kind, das viele Stopbälle spielt steht links von dem Kind, das viel Serve-and-Volley spielt."
+    )
+    assert "trainiert" not in rendered_de
+    assert "trains" not in rendered_en

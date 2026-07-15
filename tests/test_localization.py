@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
 from copy import deepcopy
 
 import pytest
@@ -140,13 +141,14 @@ def test_german_puzzle_pdf_contains_german_headings_and_clues_without_english_le
     assert "Thema" in text
     assert "Schwierigkeit" in text
     assert "Hinweise" in text
-    assert "Trage die Namen ein" in text
+    assert "Schreibe den richtigen Namen unter jede Position" in text
     assert "Verf\\374gbare Namen" in text
     assert "steht" in text
     assert "Theme" not in text
     assert "Difficulty" not in text
     assert "Clues" not in text
     assert "Solving Grid" not in text
+    assert "Trage die Namen ein" not in text
     assert "Players / Items" not in text
 
 
@@ -160,7 +162,7 @@ def test_german_solution_pdf_contains_german_headings(tmp_path) -> None:
     assert "Tennistraining" in text
     assert "Thema" in text
     assert "Schwierigkeit" in text
-    assert "Trage die Namen ein" in text
+    assert "Schreibe den richtigen Namen unter jede Position" in text
     assert "Hinweise" in text
     assert "Aurelia" in text
     assert "Theme" not in text
@@ -211,3 +213,14 @@ def test_translation_catalog_localizes_difficulty_labels() -> None:
     assert TranslationCatalog("de").difficulty_label(2) == "Mittel"
     assert TranslationCatalog("de").difficulty_label(3) == "Schwierig"
     assert TranslationCatalog("de").difficulty_label(4) == "Schwierig"
+
+
+def test_obsolete_write_the_names_labels_are_not_child_facing_resources() -> None:
+    production_text = "\n".join(
+        path.read_text()
+        for path in Path("src/logical_puzzle_generator").rglob("*.py")
+        if "__pycache__" not in path.parts
+    )
+    assert "Write the names" not in production_text
+    assert "Trage die Namen ein" not in production_text
+    assert "solving_grid" not in production_text

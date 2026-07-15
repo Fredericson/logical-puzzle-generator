@@ -54,10 +54,31 @@ def test_model_layer_does_not_import_theme_registry_or_puzzle_book_scaffold() ->
         assert "logical_puzzle_generator.themes" not in path.read_text()
 
 
-def test_tennis_playing_style_has_larger_seeded_value_pool() -> None:
+def test_tennis_playing_style_has_exact_child_facing_values() -> None:
     theme = DEFAULT_THEME_REGISTRY.resolve("tennis_training")
     category = theme.category_by_id("playing_style")
-    assert len(category.values) > 4
+    assert len(category.values) == 4
+    assert [value.id for value in category.values] == [
+        "serve_and_volley",
+        "chip_and_charge",
+        "high_balls",
+        "drop_shot",
+    ]
+    assert {value.display("en", short=True) for value in category.values} == {
+        "Serve-and-Volley",
+        "Chip-and-Charge",
+        "High Balls",
+        "Drop Shots",
+    }
+    assert {value.display("de", short=True) for value in category.values} == {
+        "Serve-and-Volley",
+        "Chip-and-Charge",
+        "Hohe Bälle",
+        "Stopbälle",
+    }
+    assert "crosscourt" not in {value.id for value in category.values}
+    assert "down_the_line" not in {value.id for value in category.values}
+
     first = theme.create_category_instance(
         category_id="playing_style", random_source=random.Random(10)
     )
@@ -67,6 +88,7 @@ def test_tennis_playing_style_has_larger_seeded_value_pool() -> None:
     assert first.selected_value_ids == second.selected_value_ids
     assert len(first.selected_values) == 4
     assert len(set(first.selected_value_ids)) == 4
+    assert set(first.selected_value_ids) == {value.id for value in category.values}
     assert first.instance_id == "playing_style_1"
 
 

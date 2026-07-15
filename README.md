@@ -222,6 +222,15 @@ output/puzzle_book_solution.pdf
 python -m logical_puzzle_generator.create_puzzle_book --theme tennis_training --pages 8 --difficulty easy --language de --seed 42
 ```
 
+
+### Commit 12.7 PuzzleBook usability
+
+Commit 12.7 incorporates child usability findings from a generated German Tennis PuzzleBook. PuzzleBook pages now keep the header, instruction block, choices, lineup, clues, and footer in separate flowable regions so wrapped German and English instructions remain visible and do not overlap player illustrations. PuzzleBook Position pages display the containing PuzzleBook Theme, not the standalone `General` fallback. PuzzleBook puzzle and solution PDFs receive localized page numbers such as `Page 1 / 10` or `Seite 1 / 10`, with page counts passed explicitly by the book renderer.
+
+PuzzleBook Theme pages now show an empty `Name` row plus the localized Theme-value row, so children can copy the Page-1 names before solving the current Theme page. Names are still not prefilled on puzzle pages; only the solved Summary reveals them. Obsolete generic name-entry wording was replaced with explicit page-type instructions. Fixed-child PuzzleBook Theme pages now use exactly three visible clues because they solve Theme values only: Easy uses 2 direct + 1 relative clue, Medium uses 1 direct + 2 relative clues, and Hard uses 0 direct + 3 relative clues. Standalone themed puzzles keep their variable clue count and complete `4! × 4!` child-plus-Theme solving behavior.
+
+Repeated Theme categories are numbered consistently in page Questions, Theme row labels, and Summary rows, for example `Playing Style 1` and `Playing Style 2`. The current `playing_style` values are exactly `Serve-and-Volley`, `Chip-and-Charge`, `High Balls`, and `Drop Shots`. Existing Tennis wording was improved for `backhand_type`, `playing_style`, and `racket_count`; no missing Tennis category was introduced in Commit 12.7. The still-planned categories remain out of scope: `racket_colour`, `string_colour`, `forehand_grip`, `lucky_charm`, `footwork`, `body_build`, and `accessory`.
+
 ### Commit 12.6 stable PuzzleBook progression
 
 PuzzleBooks now use Page 1 as the permanent child-order authority. The Position puzzle establishes which child belongs to Position 1, Position 2, Position 3, and Position 4, and that same order applies to every later Theme page. Available names are shown only on the Position page; Theme pages reuse the Page-1 child order and ask only for the selected Theme category values by position.

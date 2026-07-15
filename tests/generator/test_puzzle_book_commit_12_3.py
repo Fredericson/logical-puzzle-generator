@@ -148,7 +148,7 @@ def test_puzzle_book_pdfs_use_expected_page_shapes(monkeypatch, tmp_path) -> Non
     book = _book(theme_page_count=2, seed=8)
     captured: dict[str, list[object]] = {}
 
-    def capture_build(self, output_path, story):
+    def capture_build(self, output_path, story, *, page_count=None):
         captured[output_path.name] = story
 
     monkeypatch.setattr(PdfGenerator, "_build", capture_build)
@@ -244,7 +244,7 @@ def test_puzzle_book_lineup_field_modes_and_choices_for_text_and_numeric_pages(
 
     captured = {}
 
-    def capture_build(self, output_path, story):
+    def capture_build(self, output_path, story, *, page_count=None):
         captured[output_path.name] = story
 
     monkeypatch.setattr(PdfGenerator, "_build", capture_build)
@@ -262,14 +262,17 @@ def test_puzzle_book_lineup_field_modes_and_choices_for_text_and_numeric_pages(
     assert position_lineup.show_child_field is True
     assert position_lineup.show_theme_field is False
     assert position_lineup.child_field_heading == "Name"
-    assert training_lineup.show_child_field is False
+    assert training_lineup.show_child_field is True
     assert training_lineup.show_theme_field is True
+    assert training_lineup.child_field_heading == "Name"
     assert training_lineup.theme_field_heading == "Training"
-    assert wins_lineup.show_child_field is False
+    assert wins_lineup.show_child_field is True
     assert wins_lineup.show_theme_field is True
+    assert wins_lineup.child_field_heading == "Name"
     assert wins_lineup.theme_field_heading == "Tournament Wins"
-    assert rackets_lineup.show_child_field is False
+    assert rackets_lineup.show_child_field is True
     assert rackets_lineup.show_theme_field is True
+    assert rackets_lineup.child_field_heading == "Name"
     assert rackets_lineup.theme_field_heading == "Rackets in Bag"
 
     tables = [flowable for flowable in captured["book.pdf"] if isinstance(flowable, Table)]
@@ -287,7 +290,7 @@ def test_solution_summary_uses_completed_subtitle_not_worksheet_instruction(
 
     captured = {}
 
-    def capture_build(self, output_path, story):
+    def capture_build(self, output_path, story, *, page_count=None):
         captured[output_path.name] = story
 
     monkeypatch.setattr(PdfGenerator, "_build", capture_build)
@@ -378,7 +381,7 @@ def test_fixed_child_theme_page_direct_assignment_counts_across_categories_and_s
                 page = book.theme_puzzles[0]
                 assert page.metadata is not None
                 assert page.metadata.difficulty == metadata_value
-                assert len(page.constraints) == len(page.clues)
+                assert len(page.constraints) == len(page.clues) == 3
                 assert _theme_direct_count(page, book) == direct_count
                 assert page.fixed_positions == dict(
                     book.position_puzzle.solution.assignment.positions
@@ -498,3 +501,136 @@ def test_generation_failure_messages_are_context_specific(monkeypatch) -> None:
     monkeypatch.setattr(fixed, "_generate_candidate", lambda *args, **kwargs: (None, "forced"))
     with pytest.raises(RuntimeError, match="direct Theme assignments"):
         fixed.generate(children)
+
+
+def test_puzzle_book_page_number_context_for_zero_one_and_eight_theme_pages(
+    monkeypatch, tmp_path
+) -> None:
+    captured: dict[str, int | None] = {}
+
+    def capture_build(self, output_path, story, *, page_count=None):
+        assert not hasattr(self, "_pending_page_count")
+        captured[output_path.name] = page_count
+
+    monkeypatch.setattr(PdfGenerator, "_build", capture_build)
+    for pages, expected_total in ((0, 2), (1, 3), (8, 10)):
+        book = _book(theme_page_count=pages, seed=100 + pages)
+        PdfGenerator(language="en").create_puzzle_book_pdf(book, tmp_path / f"book_{pages}.pdf")
+        assert captured[f"book_{pages}.pdf"] == expected_total
+
+    PdfGenerator(language="de").create_puzzle_book_solution_pdf(
+        _book(theme_page_count=1, seed=109), tmp_path / "solution.pdf"
+    )
+    assert captured["solution.pdf"] == 1
+
+
+def test_puzzle_book_position_page_uses_book_theme_header_and_explicit_instructions(
+    monkeypatch, tmp_path
+) -> None:
+    from reportlab.platypus import Paragraph
+    from logical_puzzle_generator.pdf.lineup import PlayerLineupRenderer
+
+    captured = {}
+
+    def capture_build(self, output_path, story, *, page_count=None):
+        captured[output_path.name] = story
+
+    monkeypatch.setattr(PdfGenerator, "_build", capture_build)
+    book = _book(theme_page_count=1, seed=117)
+
+    PdfGenerator(language="en").create_puzzle_book_pdf(book, tmp_path / "book-en.pdf")
+    PdfGenerator(language="de").create_puzzle_book_pdf(book, tmp_path / "book-de.pdf")
+
+    english_text = "\n".join(
+        flowable.text for flowable in captured["book-en.pdf"] if isinstance(flowable, Paragraph)
+    )
+    german_text = "\n".join(
+        flowable.text for flowable in captured["book-de.pdf"] if isinstance(flowable, Paragraph)
+    )
+
+    assert "Theme: Tennis Training" in english_text
+    assert "Question: Order of the Children" in english_text
+    assert "Difficulty: Easy" in english_text
+    assert "General" not in english_text
+    assert "Write the correct name below each position" in english_text
+    assert "First copy the names from Page 1 into the Name row" in english_text
+    assert "Write the names" not in english_text
+
+    assert "Thema: Tennistraining" in german_text
+    assert "Frage: Reihenfolge der Kinder" in german_text
+    assert "Schwierigkeit: Leicht" in german_text
+    assert "Allgemein" not in german_text
+    assert "Schreibe den richtigen Namen unter jede Position" in german_text
+    assert "Übertrage zuerst die Namen von Seite 1" in german_text
+    assert "Trage die Namen ein" not in german_text
+
+    assert all(
+        lineup.instruction == ""
+        for lineup in captured["book-de.pdf"]
+        if isinstance(lineup, PlayerLineupRenderer)
+    )
+
+
+def test_repeated_category_display_labels_number_pages_and_summary(monkeypatch, tmp_path) -> None:
+    from reportlab.platypus import Paragraph, Table
+
+    class RepeatedCategories(PuzzleBookGenerator):
+        def select_category_ids(self, theme_page_count: int) -> tuple[str, ...]:
+            return ("playing_style", "playing_style", "racket_count")[:theme_page_count]
+
+    captured = {}
+
+    def capture_build(self, output_path, story, *, page_count=None):
+        captured[output_path.name] = story
+
+    monkeypatch.setattr(PdfGenerator, "_build", capture_build)
+    book = RepeatedCategories(
+        theme="tennis_training", random_source=random.Random(44), difficulty="easy"
+    ).generate(theme_page_count=3)
+    PdfGenerator(language="de").create_puzzle_book_pdf(book, tmp_path / "book.pdf")
+
+    paragraphs = [
+        flowable.text for flowable in captured["book.pdf"] if isinstance(flowable, Paragraph)
+    ]
+    assert any("Frage: Spielstil 1" in text for text in paragraphs)
+    assert any("Frage: Spielstil 2" in text for text in paragraphs)
+    assert any("Frage: Schläger in der Tasche" in text for text in paragraphs)
+
+    summary = [flowable for flowable in captured["book.pdf"] if isinstance(flowable, Table)][-1]
+    row_labels = [row[0] for row in summary._cellvalues[2:]]
+    assert row_labels == ["Spielstil 1", "Spielstil 2", "Schläger in der Tasche"]
+
+
+def _pdf_page_count(path) -> int:
+    text = path.read_bytes().decode("latin-1")
+    return text.count("/Type /Page") - text.count("/Type /Pages")
+
+
+def test_puzzle_book_physical_page_count_matches_declared_footer(tmp_path) -> None:
+    book = _book(theme_page_count=2, seed=131)
+    puzzle_path = tmp_path / "book.pdf"
+    solution_path = tmp_path / "solution.pdf"
+    pdf = PdfGenerator(language="en")
+
+    pdf.create_puzzle_book_pdf(book, puzzle_path)
+    pdf.create_puzzle_book_solution_pdf(book, solution_path)
+
+    puzzle_text = puzzle_path.read_bytes().decode("latin-1")
+    solution_text = solution_path.read_bytes().decode("latin-1")
+    assert _pdf_page_count(puzzle_path) == 4
+    assert _pdf_page_count(solution_path) == 1
+    assert "Page 1 / 4" in puzzle_text
+    assert "Page 4 / 4" in puzzle_text
+    assert "Page 1 / 1" in solution_text
+
+
+def test_failed_puzzle_book_build_leaves_no_page_count_state(monkeypatch, tmp_path) -> None:
+    def failing_build(self, output_path, story, *, page_count=None):
+        assert page_count == 3
+        raise OSError("forced build failure")
+
+    monkeypatch.setattr(PdfGenerator, "_build", failing_build)
+    generator = PdfGenerator(language="en")
+    with pytest.raises(OSError, match="forced build failure"):
+        generator.create_puzzle_book_pdf(_book(theme_page_count=1, seed=141), tmp_path / "book.pdf")
+    assert not hasattr(generator, "_pending_page_count")
