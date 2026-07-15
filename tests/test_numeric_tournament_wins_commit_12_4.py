@@ -402,7 +402,7 @@ def test_puzzle_book_numeric_summary_pdf_story_uses_display_values(monkeypatch, 
     ).generate(theme_page_count=2)
     captured = {}
 
-    def capture_build(self, output_path, story):
+    def capture_build(self, output_path, story, *, page_count=None):
         captured[output_path.name] = story
 
     monkeypatch.setattr(PdfGenerator, "_build", capture_build)
@@ -419,7 +419,8 @@ def test_puzzle_book_numeric_summary_pdf_story_uses_display_values(monkeypatch, 
     assert len(book.summary_table.rows) == 2
     assert all(cell == "" for row in unsolved_table._cellvalues[1:] for cell in row[1:])
     solved_cells = [cell for row in solved_table._cellvalues[1:] for cell in row]
-    assert "Tournament Wins" in [row[0] for row in solved_table._cellvalues[1:]]
+    assert "Tournament Wins 1" in [row[0] for row in solved_table._cellvalues[1:]]
+    assert "Tournament Wins 2" in [row[0] for row in solved_table._cellvalues[1:]]
     assert all(not str(cell).startswith("tournament_wins_") for cell in solved_cells)
     for row in book.summary_table.rows:
         assert row.theme_category_instance_id in {

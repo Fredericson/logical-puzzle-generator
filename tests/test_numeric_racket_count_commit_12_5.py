@@ -5,7 +5,11 @@ import random
 import pytest
 
 from logical_puzzle_generator.clue_text_renderer import ClueTextRenderer
+from logical_puzzle_generator.constraints.adjacent import AdjacentConstraint
+from logical_puzzle_generator.constraints.direct_left_of import DirectLeftOfConstraint
 from logical_puzzle_generator.constraints.fixed_position import FixedPositionConstraint
+from logical_puzzle_generator.constraints.left_of import LeftOfConstraint
+from logical_puzzle_generator.constraints.right_of import RightOfConstraint
 from logical_puzzle_generator.constraints.numeric import (
     ExactNumericValueConstraint,
     NumericDifferenceConstraint,
@@ -218,6 +222,34 @@ def test_racket_count_german_rendering_is_natural_swiss_and_hides_ids() -> None:
     assert all("racket_count_" not in text for text in rendered)
 
 
+def test_racket_count_relative_position_wording_keeps_bag_context() -> None:
+    instance = _racket_instance()
+    resolver_en = ItemPresentationResolver(
+        DEFAULT_THEME_REGISTRY.resolve("tennis_training"), instance, "en"
+    )
+    resolver_de = ItemPresentationResolver(
+        DEFAULT_THEME_REGISTRY.resolve("tennis_training"), instance, "de"
+    )
+    seven_value, eight_value = instance.selected_values[:2]
+    seven = Item(seven_value.id, category_id="racket_count")
+    eight = Item(eight_value.id, category_id="racket_count")
+
+    cases = [
+        LeftOfConstraint(seven, eight),
+        DirectLeftOfConstraint(seven, eight),
+        AdjacentConstraint(seven, eight),
+        RightOfConstraint(eight, seven),
+    ]
+    for constraint in cases:
+        clue = Clue(ClueType.LEFT_OF, "", constraint)
+        en = ClueTextRenderer("en", presentation_resolver=resolver_en).render_clue(clue)
+        de = ClueTextRenderer("de", presentation_resolver=resolver_de).render_clue(clue)
+        assert "rackets in her bag" in en
+        assert "Schlägern in der Tasche" in de
+        assert "racket_count_" not in en + de
+        assert "ß" not in de
+
+
 def test_racket_count_position_anchor_rendering_is_data_driven() -> None:
     resolver_en = ItemPresentationResolver(
         DEFAULT_THEME_REGISTRY.resolve("tennis_training"), _racket_instance(), "en"
@@ -281,7 +313,7 @@ def test_racket_count_pdf_story_has_headings_choices_summary_and_no_ids(
 
     captured = {}
 
-    def capture_build(self, output_path, story):
+    def capture_build(self, output_path, story, *, page_count=None):
         captured[output_path.name] = story
 
     monkeypatch.setattr(PdfGenerator, "_build", capture_build)

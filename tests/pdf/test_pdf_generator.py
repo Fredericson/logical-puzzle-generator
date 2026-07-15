@@ -325,7 +325,7 @@ def test_german_pdf_contains_child_facing_labels(tmp_path) -> None:
     assert "Thema" in text
     assert "Schwierigkeit" in text
     assert "Hinweise" in text
-    assert "Trage die Namen ein" in text
+    assert "Schreibe den richtigen Namen unter jede Position" in text
     assert "Verf\\374gbare Namen" in text
     assert "Players / Items" not in text
 
@@ -339,7 +339,7 @@ def test_english_pdf_remains_supported(tmp_path) -> None:
     assert "Theme" in text
     assert "Difficulty" in text
     assert "Clues" in text
-    assert "Write the names" in text
+    assert "Write the correct name below each position" in text
     assert "Available Names" in text
 
 
@@ -490,3 +490,25 @@ def test_pdf_generation_with_localized_difficulty_remains_one_page(tmp_path) -> 
 
     assert pdf_page_count(puzzle_path) == 1
     assert pdf_page_count(solution_path) == 1
+
+
+def test_build_page_count_contract_rejects_invalid_values(tmp_path) -> None:
+    generator = PdfGenerator()
+    story = generator._worksheet_story(sample_puzzle())
+    for invalid in (True, False, 0, -1, 1.5, "3"):
+        with pytest.raises(OSError, match="Page count must be a positive integer"):
+            generator._build(tmp_path / f"invalid_{invalid}.pdf", list(story), page_count=invalid)  # type: ignore[arg-type]
+
+
+def test_standalone_pdfs_do_not_pass_page_count(monkeypatch, tmp_path) -> None:
+    captured: list[int | None] = []
+
+    def capture_build(self, output_path, story, *, page_count=None):
+        captured.append(page_count)
+
+    monkeypatch.setattr(PdfGenerator, "_build", capture_build)
+    generator = PdfGenerator()
+    generator.create_puzzle_pdf(sample_puzzle(), tmp_path / "puzzle.pdf")
+    generator.create_solution_pdf(sample_puzzle(), tmp_path / "solution.pdf")
+
+    assert captured == [None, None]

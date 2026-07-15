@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from collections import Counter, defaultdict
 
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,28 @@ class PdfGenerator:
         )
         self._styles.add(
             ParagraphStyle(
+                name="Instruction",
+                parent=self._styles["BodyText"],
+                fontName="Helvetica-Bold",
+                fontSize=12.5,
+                leading=16,
+                spaceAfter=8,
+                textColor=colors.black,
+            )
+        )
+        self._styles.add(
+            ParagraphStyle(
+                name="Footer",
+                parent=self._styles["BodyText"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=11,
+                alignment=1,
+                textColor=colors.black,
+            )
+        )
+        self._styles.add(
+            ParagraphStyle(
                 name="ChildClue",
                 parent=self._styles["BodyText"],
                 fontName="Helvetica",
@@ -134,6 +157,8 @@ class PdfGenerator:
         """Create the PuzzleBook puzzle PDF: position, theme pages, empty summary."""
         output_path = self._prepare_output_path(filename)
         story: list[Any] = []
+        display_labels = self._book_display_labels(puzzle_book)
+        total_pages = len(puzzle_book.theme_puzzles) + 2
         for index, puzzle in enumerate(puzzle_book.pages):
             self._validate_puzzle(puzzle)
             if index:
@@ -145,7 +170,7 @@ class PdfGenerator:
                     question=(
                         self._catalog.label("position_question")
                         if index == 0
-                        else self._theme_category_label(puzzle)
+                        else display_labels[index - 1]
                     ),
                     instruction=(
                         self._catalog.label("position_instruction")
@@ -154,20 +179,20 @@ class PdfGenerator:
                     ),
                     show_available_names=(index == 0),
                     show_theme_values=(index != 0),
-                    show_child_field=(index == 0),
+                    show_child_field=True,
                     show_theme_field=(index != 0),
-                    child_field_heading=(self._catalog.label("name") if index == 0 else ""),
-                    theme_field_heading=("" if index == 0 else self._theme_category_label(puzzle)),
+                    child_field_heading=self._catalog.label("name"),
+                    theme_field_heading=("" if index == 0 else display_labels[index - 1]),
                 )
             )
         story.append(PageBreak())
         story.extend(self._summary_table_story(puzzle_book, solved=False))
-        self._build(output_path, story)
+        self._build(output_path, story, page_count=total_pages)
 
     def create_puzzle_book_solution_pdf(self, puzzle_book, filename: str | Path) -> None:
         """Create the PuzzleBook solution PDF with only the completed summary table."""
         output_path = self._prepare_output_path(filename)
-        self._build(output_path, self._summary_table_story(puzzle_book, solved=True))
+        self._build(output_path, self._summary_table_story(puzzle_book, solved=True), page_count=1)
 
     def _worksheet_story(
         self,
@@ -186,12 +211,18 @@ class PdfGenerator:
     ) -> list[Any]:
         story: list[Any] = []
         story.extend(self._header(puzzle, theme_title=theme_title, question=question))
-        story.append(Spacer(1, 0.16 * inch))
+        effective_instruction = instruction
+        if effective_instruction is None:
+            effective_instruction = self._standalone_instruction(puzzle)
+        if effective_instruction:
+            story.append(Spacer(1, 0.08 * inch))
+            story.append(Paragraph(effective_instruction, self._styles["Instruction"]))
+        story.append(Spacer(1, 0.10 * inch))
         story.append(
             self._lineup(
                 puzzle,
                 labels=labels,
-                instruction=instruction,
+                instruction="",
                 show_child_field=show_child_field,
                 show_theme_field=show_theme_field,
                 child_field_heading=child_field_heading,
@@ -249,12 +280,13 @@ class PdfGenerator:
                 ),
             ]
         )
-        for row in summary.rows:
+        display_labels = self._book_display_labels(puzzle_book)
+        for row_index, row in enumerate(summary.rows):
             category = puzzle_book.theme.category_by_id(row.theme_category_id)
             category_instance = self._category_instance_from_ids(
                 category, row.theme_category_instance_id, row.value_ids_by_position
             )
-            category_label = category.localized_label(self.language)
+            category_label = display_labels[row_index]
             values = (
                 [
                     category_instance.value_by_id(value_id).display(self.language, short=True)
@@ -421,6 +453,14 @@ class PdfGenerator:
             self._theme(puzzle), self._category_instance(puzzle), self.language
         )
 
+    def _standalone_instruction(self, puzzle: Puzzle) -> str:
+        key = (
+            "standalone_theme_instruction"
+            if self._is_themed(puzzle)
+            else "standalone_position_instruction"
+        )
+        return self._catalog.label(key)
+
     def _lineup(
         self,
         puzzle: Puzzle,
@@ -436,9 +476,7 @@ class PdfGenerator:
                 [item for item in puzzle.items if item.category_id == CHILDREN_CATEGORY_ID]
             ),
             labels=labels,
-            instruction=(
-                instruction if instruction is not None else self._catalog.label("solving_grid")
-            ),
+            instruction=instruction or "",
             show_child_field=True if show_child_field is None else show_child_field,
             show_theme_field=(
                 self._is_themed(puzzle) if show_theme_field is None else show_theme_field
@@ -475,7 +513,40 @@ class PdfGenerator:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         return output_path
 
-    def _build(self, output_path: Path, story: list[Any]) -> None:
+    def _book_display_labels(self, puzzle_book) -> list[str]:
+        category_ids = [page.metadata.theme_category_id for page in puzzle_book.theme_puzzles]
+        totals = Counter(category_ids)
+        seen: defaultdict[str, int] = defaultdict(int)
+        labels: list[str] = []
+        for page in puzzle_book.theme_puzzles:
+            metadata = page.metadata
+            category_id = metadata.theme_category_id
+            seen[category_id] += 1
+            label = puzzle_book.theme.category_by_id(category_id).localized_label(self.language)
+            if totals[category_id] > 1:
+                label = f"{label} {seen[category_id]}"
+            labels.append(label)
+        return labels
+
+    def _validate_page_count(self, page_count: int) -> None:
+        if isinstance(page_count, bool) or not isinstance(page_count, int):
+            raise ValueError("Page count must be a positive integer.")
+        if page_count < 1:
+            raise ValueError("Page count must be a positive integer.")
+
+    def _page_footer(self, page_count: int):
+        self._validate_page_count(page_count)
+
+        def draw_footer(canvas, doc) -> None:
+            canvas.saveState()
+            canvas.setFont("Helvetica", 9)
+            text = f"{self._catalog.label('page')} {doc.page} / {page_count}"
+            canvas.drawCentredString(A4[0] / 2, 0.32 * inch, text)
+            canvas.restoreState()
+
+        return draw_footer
+
+    def _build(self, output_path: Path, story: list[Any], *, page_count: int | None = None) -> None:
         try:
             doc = SimpleDocTemplate(
                 str(output_path),
@@ -486,6 +557,11 @@ class PdfGenerator:
                 topMargin=0.55 * inch,
                 bottomMargin=0.55 * inch,
             )
-            doc.build(story)
+            if page_count is None:
+                doc.build(story)
+            else:
+                self._validate_page_count(page_count)
+                on_page = self._page_footer(page_count)
+                doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
         except Exception as exc:
             raise OSError(f"Failed to write PDF to {output_path}: {exc}") from exc

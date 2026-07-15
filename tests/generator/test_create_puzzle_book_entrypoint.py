@@ -178,7 +178,7 @@ def test_create_puzzle_book_zero_theme_pages_is_intentional(tmp_path, monkeypatc
 
     captured = {}
 
-    def capture_build(self, output_path, story):
+    def capture_build(self, output_path, story, *, page_count=None):
         captured[output_path.name] = story
 
     monkeypatch.setattr(PdfGenerator, "_build", capture_build)

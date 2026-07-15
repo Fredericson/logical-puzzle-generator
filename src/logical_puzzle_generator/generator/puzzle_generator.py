@@ -721,7 +721,9 @@ class PuzzleGenerator:
         for variants in direct_variants_by_identity.values():
             self._random.shuffle(variants)
         self._random.shuffle(relative_candidates)
-        max_relative_size = min(7 - required_direct_count, len(relative_candidates))
+        required_relative_count = 3 - required_direct_count
+        if len(relative_candidates) < required_relative_count:
+            return None
         best_subsets: list[tuple[tuple[int, int, int, int], list[Constraint]]] = []
 
         for identity_tuple in combinations(direct_identities, required_direct_count):
@@ -729,42 +731,39 @@ class PuzzleGenerator:
                 self._random.choice(direct_variants_by_identity[identity])
                 for identity in identity_tuple
             ]
-            for relative_size in range(1, max_relative_size + 1):
-                checked = 0
-                for relative_tuple in combinations(relative_candidates, relative_size):
-                    checked += 1
-                    subset = [*direct_subset, *relative_tuple]
-                    constraints = list(subset)
-                    puzzle = Puzzle(
-                        items=children,
-                        constraints=constraints,
-                        fixed_positions=dict(self._fixed_child_positions or {}),
-                        categories=self._categories(
-                            children,
-                            theme_items,
-                            category_instance,
-                        ),
-                        clues=[],
-                        metadata=self._metadata_from_source(Puzzle(items=children, constraints=[])),
-                        solution=solution,
-                    )
-                    if (
-                        category_instance is not None
-                        and category_instance.definition.is_numeric
-                        and not any(
-                            isinstance(
-                                constraint,
-                                (NumericDifferenceConstraint, NumericMultipleConstraint),
-                            )
-                            for constraint in subset
+            checked = 0
+            for relative_tuple in combinations(relative_candidates, required_relative_count):
+                checked += 1
+                subset = [*direct_subset, *relative_tuple]
+                constraints = list(subset)
+                puzzle = Puzzle(
+                    items=children,
+                    constraints=constraints,
+                    fixed_positions=dict(self._fixed_child_positions or {}),
+                    categories=self._categories(
+                        children,
+                        theme_items,
+                        category_instance,
+                    ),
+                    clues=[],
+                    metadata=self._metadata_from_source(Puzzle(items=children, constraints=[])),
+                    solution=solution,
+                )
+                if (
+                    category_instance is not None
+                    and category_instance.definition.is_numeric
+                    and not any(
+                        isinstance(
+                            constraint,
+                            (NumericDifferenceConstraint, NumericMultipleConstraint),
                         )
-                    ):
-                        continue
-                    result = self._solver.solve(puzzle, stop_after=2)
-                    if result.has_unique_solution and result.solutions[0] == solution.assignment:
-                        best_subsets.append((self._thematic_quality_score(subset), subset))
-                    if checked >= 180:
-                        break
+                        for constraint in subset
+                    )
+                ):
+                    continue
+                result = self._solver.solve(puzzle, stop_after=2)
+                if result.has_unique_solution and result.solutions[0] == solution.assignment:
+                    best_subsets.append((self._thematic_quality_score(subset), subset))
 
         if not best_subsets:
             return None
@@ -779,6 +778,8 @@ class PuzzleGenerator:
             return None
         required = self._difficulty_policy.required_direct_assignment_count(difficulty)
         count = self._fixed_child_theme_direct_assignment_count(thematic_constraints)
+        if len(thematic_constraints) != 3:
+            return f"fixed-child Theme page retained {len(thematic_constraints)} clues, expected 3"
         if count != required:
             return (
                 f"fixed-child Theme page retained {count} direct Theme assignments, "
@@ -797,6 +798,8 @@ class PuzzleGenerator:
             return None
         required = self._difficulty_policy.required_direct_assignment_count(difficulty)
         count = self._fixed_child_theme_direct_assignment_count(constraints)
+        if len(constraints) != 3 or len(clues) != 3:
+            return "fixed-child Theme page must render exactly three clues"
         if count != required:
             return (
                 f"fixed-child Theme page rendered {count} direct Theme assignments, "

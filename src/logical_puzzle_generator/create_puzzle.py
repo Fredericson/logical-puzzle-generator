@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import random
 from pathlib import Path
 
 from logical_puzzle_generator.cli import parse_difficulty_argument, parse_language_argument
@@ -40,6 +41,7 @@ def create_puzzle(
     difficulty: Difficulty | str | None = None,
     theme: str | None = None,
     category: str | None = None,
+    seed: int | None = None,
 ) -> Puzzle:
     """
     Generate a themed logical puzzle and write puzzle and solution PDFs.
@@ -61,10 +63,14 @@ def create_puzzle(
     )
 
     template = create_template()
+    rng = random.Random(seed)
     puzzle = PuzzleGenerator(
-        difficulty=difficulty, theme=theme or DEFAULT_THEME_ID, category=category
+        difficulty=difficulty,
+        theme=theme or DEFAULT_THEME_ID,
+        category=category,
+        random_source=rng,
     ).generate(template)
-    pdf_generator = PdfGenerator(language=language, puzzle_number=number)
+    pdf_generator = PdfGenerator(language=language, puzzle_number=number, random_source=rng)
     pdf_generator.create_puzzle_pdf(puzzle, puzzle_path)
     pdf_generator.create_solution_pdf(puzzle, solution_path)
     return puzzle
@@ -101,6 +107,9 @@ def main(argv: list[str] | None = None) -> Puzzle:
         default=None,
         help="Theme category ID scoped to the selected theme. Omit for seeded random selection.",
     )
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Optional integer seed for deterministic generation."
+    )
     args = parser.parse_args(argv)
     number = _validate_number(args.number)
     language = parse_language(args.language)
@@ -115,6 +124,7 @@ def main(argv: list[str] | None = None) -> Puzzle:
         difficulty=difficulty,
         theme=args.theme,
         category=args.category,
+        seed=args.seed,
     )
     catalog = TranslationCatalog(language)
     print(f"{catalog.label('puzzle_written')}: {puzzle_path}")

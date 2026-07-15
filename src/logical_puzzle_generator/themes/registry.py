@@ -387,6 +387,23 @@ TRAINING_WORDING = _wording(
     "the child practising {theme}",
     "dem Kind, das {theme} trainiert",
 )
+BACKHAND_WORDING = _wording(
+    "{child} plays a {theme}.",
+    "{child} spielt eine {theme}.",
+    "the child with the {theme}",
+    "das Kind mit der {theme}",
+    "the child with the {theme}",
+    "dem Kind mit der {theme}",
+)
+PLAYING_STYLE_WORDING = _wording(
+    "{child} {theme}.",
+    "{child} {theme}.",
+    "the child who {theme_subject}",
+    "das Kind, das {theme_subject}",
+    "the child who {theme_subject}",
+    "dem Kind, das {theme_subject}",
+)
+
 DANCE_WORDING = _wording(
     "{child} dances {theme}.",
     "{child} tanzt {theme}.",
@@ -473,8 +490,13 @@ RACKET_COUNT_WORDING = ThemeWording(
     direct_assignment=_text(
         "{child} has {theme} in the bag.", "{child} hat {theme} in der Tasche."
     ),
-    child_with_theme_nominative=_text("the child with {theme}", "das Kind mit {theme}"),
-    child_with_theme_dative=_text("the child with {theme}", "dem Kind mit {theme}"),
+    child_with_theme_nominative=_text(
+        "the child with {theme} rackets in her bag", "das Kind mit {theme} Schlägern in der Tasche"
+    ),
+    child_with_theme_dative=_text(
+        "the child with {theme} rackets in her bag",
+        "dem Kind mit {theme} Schlägern in der Tasche",
+    ),
     numeric_exact=_text(
         "{child} has {value} {unit} in her bag.",
         "{child} hat {value} {unit} in ihrer Tasche.",
@@ -524,17 +546,21 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                     _value(
                         "two_handed",
                         "two-handed backhand",
-                        "Doppelhändig",
+                        "beidhändige Rückhand",
                         "Two-handed",
-                        "Doppelhändig",
+                        "Beidhändig",
                     ),
                     _value(
-                        "one_handed", "one-handed backhand", "Einhändig", "One-handed", "Einhändig"
+                        "one_handed",
+                        "one-handed backhand",
+                        "einhändige Rückhand",
+                        "One-handed",
+                        "Einhändig",
                     ),
                     _value("slice", "slice", "Slice", "Slice", "Slice"),
                     _value("topspin", "topspin", "Topspin", "Topspin", "Topspin"),
                 ),
-                WITH_WORDING,
+                BACKHAND_WORDING,
             ),
             _category(
                 "bag_colour",
@@ -583,22 +609,46 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
             _category(
                 "playing_style",
                 "Playing Style",
-                "Spielweise",
+                "Spielstil",
                 (
-                    _value("drop_shot", "drop shots", "Stopball", "Drop shot", "Stopball"),
                     _value(
                         "serve_and_volley",
-                        "serve and volley",
-                        "Serve and Volley",
-                        "Serve & Volley",
-                        "Serve & Volley",
+                        "plays a lot of serve-and-volley",
+                        "spielt viel Serve-and-Volley",
+                        "Serve-and-Volley",
+                        "Serve-and-Volley",
+                        subject_en="plays a lot of serve-and-volley",
+                        subject_de="viel Serve-and-Volley spielt",
                     ),
-                    _value("crosscourt", "crosscourt", "Cross", "Crosscourt", "Cross"),
-                    _value("down_the_line", "down the line", "Longline", "Line", "Longline"),
-                    _value("flat", "flat shots", "Flach", "Flat", "Flach"),
-                    _value("high_balls", "high balls", "Hohe Bälle", "High balls", "Hohe Bälle"),
+                    _value(
+                        "chip_and_charge",
+                        "plays a lot of chip-and-charge",
+                        "spielt viel Chip-and-Charge",
+                        "Chip-and-Charge",
+                        "Chip-and-Charge",
+                        subject_en="plays a lot of chip-and-charge",
+                        subject_de="viel Chip-and-Charge spielt",
+                    ),
+                    _value(
+                        "high_balls",
+                        "plays many high balls",
+                        "spielt viele hohe Bälle",
+                        "High Balls",
+                        "Hohe Bälle",
+                        subject_en="plays many high balls",
+                        subject_de="viele hohe Bälle spielt",
+                    ),
+                    _value(
+                        "drop_shot",
+                        "plays many drop shots",
+                        "spielt viele Stopbälle",
+                        "Drop Shots",
+                        "Stopbälle",
+                        subject_en="plays many drop shots",
+                        subject_de="viele Stopbälle spielt",
+                    ),
                 ),
-                TRAINING_WORDING,
+                PLAYING_STYLE_WORDING,
             ),
             _category(
                 "favourite_surface",

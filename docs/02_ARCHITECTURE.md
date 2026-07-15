@@ -148,7 +148,7 @@ The number of valid candidates considered is controlled by the internal `QUALITY
 
 `Language` defines supported presentation languages: `Language.ENGLISH` (`en`) and `Language.GERMAN` (`de`). `TranslationCatalog` centralizes PDF headings, labels, CLI-facing output labels, and metadata-title translations. `ClueTextRenderer` renders clue wording from each clue's linked constraint in the selected language. This keeps German wording out of constraints, solver, validator, and generator logic. English remains the default and uses stored `Clue.text` for backward compatibility.
 
-PDF difficulty labels are localized presentation text: English maps numeric metadata `1`, `2`, and `>=3` to `Easy`, `Medium`, and `Hard`; German maps them to `Leicht`, `Mittel`, and `Schwierig`. Missing difficulty omits the line, while invalid values fail clearly. German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Trage die Namen ein`, `Verfügbare Namen`, and `Lösung`.
+PDF difficulty labels are localized presentation text: English maps numeric metadata `1`, `2`, and `>=3` to `Easy`, `Medium`, and `Hard`; German maps them to `Leicht`, `Mittel`, and `Schwierig`. Missing difficulty omits the line, while invalid values fail clearly. German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Schreibe den richtigen Namen unter jede Position`, `Verfügbare Namen`, and `Lösung`.
 
 ## 8. PDF package
 
