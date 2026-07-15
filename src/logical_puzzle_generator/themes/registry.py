@@ -37,6 +37,7 @@ class ThemeValue:
     subject_phrase: LocalizedText | None = None
     numeric_value: int | None = None
     position_subject_phrase: LocalizedText | None = None
+    dative_subject_phrase: LocalizedText | None = None
     position_anchor_sentence: LocalizedText | None = None
 
     def __post_init__(self) -> None:
@@ -51,6 +52,16 @@ class ThemeValue:
 
     def subject(self, language: Language | str) -> str:
         text = self.subject_phrase if self.subject_phrase is not None else self.label
+        return text.for_language(language)
+
+    def dative_subject(self, language: Language | str) -> str:
+        text = (
+            self.dative_subject_phrase
+            if self.dative_subject_phrase is not None
+            else self.subject_phrase
+        )
+        if text is None:
+            text = self.label
         return text.for_language(language)
 
     def position_subject(self, language: Language | str) -> str:
@@ -281,12 +292,16 @@ def _value(
     short_de: str | None = None,
     subject_en: str | None = None,
     subject_de: str | None = None,
+    dative_subject_en: str | None = None,
+    dative_subject_de: str | None = None,
     numeric_value: int | None = None,
     position_subject_en: str | None = None,
     position_subject_de: str | None = None,
     position_anchor_en: str | None = None,
     position_anchor_de: str | None = None,
 ) -> ThemeValue:
+    if (dative_subject_en is None) != (dative_subject_de is None):
+        raise ValueError("Dative subject phrases must provide both English and German text.")
     if (position_subject_en is None) != (position_subject_de is None):
         raise ValueError("Position subject phrases must provide both English and German text.")
     if (position_anchor_en is None) != (position_anchor_de is None):
@@ -300,6 +315,11 @@ def _value(
         position_subject_phrase=(
             _text(position_subject_en, position_subject_de)
             if position_subject_en is not None and position_subject_de is not None
+            else None
+        ),
+        dative_subject_phrase=(
+            _text(dative_subject_en, dative_subject_de)
+            if dative_subject_en is not None and dative_subject_de is not None
             else None
         ),
         position_anchor_sentence=(
@@ -350,7 +370,13 @@ def _category(
 def _numeric_value(category: ThemeCategoryDefinition, value: int, instance_id: str) -> ThemeValue:
     value_id = build_numeric_value_id(instance_id=instance_id, numeric_value=value)
     text = str(value)
-    return ThemeValue(value_id, _text(text, text), _text(text, text), _text(text, text), value)
+    return ThemeValue(
+        id=value_id,
+        label=_text(text, text),
+        short_label=_text(text, text),
+        subject_phrase=_text(text, text),
+        numeric_value=value,
+    )
 
 
 def _generate_numeric_values(
@@ -1212,6 +1238,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "Gross",
                         "the tall child",
                         "das grosse Kind",
+                        dative_subject_en="the tall child",
+                        dative_subject_de="dem grossen Kind",
                         position_subject_en="The tall child",
                         position_subject_de="Das grosse Kind",
                     ),
@@ -1223,6 +1251,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "Mittelgross",
                         "the medium-height child",
                         "das mittelgrosse Kind",
+                        dative_subject_en="the medium-height child",
+                        dative_subject_de="dem mittelgrossen Kind",
                         position_subject_en="The medium-height child",
                         position_subject_de="Das mittelgrosse Kind",
                     ),
@@ -1234,6 +1264,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "Klein",
                         "the small child",
                         "das kleine Kind",
+                        dative_subject_en="the small child",
+                        dative_subject_de="dem kleinen Kind",
                         position_subject_en="The small child",
                         position_subject_de="Das kleine Kind",
                     ),
@@ -1245,6 +1277,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "Schlank",
                         "the slim child",
                         "das schlanke Kind",
+                        dative_subject_en="the slim child",
+                        dative_subject_de="dem schlanken Kind",
                         position_subject_en="The slim child",
                         position_subject_de="Das schlanke Kind",
                     ),
@@ -1256,6 +1290,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "Athletisch",
                         "the child with the athletic build",
                         "das athletisch gebaute Kind",
+                        dative_subject_en="the child with the athletic build",
+                        dative_subject_de="dem athletisch gebauten Kind",
                         position_subject_en="The athletic child",
                         position_subject_de="Das athletisch gebaute Kind",
                     ),
@@ -1267,6 +1303,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "Kräftig",
                         "the child with the strong build",
                         "das kräftige Kind",
+                        dative_subject_en="the child with the strong build",
+                        dative_subject_de="dem kräftigen Kind",
                         position_subject_en="The strong child",
                         position_subject_de="Das kräftige Kind",
                     ),

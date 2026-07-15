@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 from collections import Counter
-from itertools import cycle
 
 import pytest
 
@@ -142,6 +141,11 @@ EXPECTED_DATIVE_DE = {
     ("accessory", "visor"): "dem Visor",
     ("accessory", "sunglasses"): "der Sonnenbrille",
     ("accessory", "headband"): "dem Stirnband",
+    ("lucky_charm", "four_leaf_clover"): "dem vierblättrigen Kleeblatt",
+    ("footwork", "split_step"): "dem guten Split-Step",
+    ("body_build", "athletic"): "dem athletisch gebauten Kind",
+    ("lucky_charm", "small_teddy"): "dem kleinen Teddybär",
+    ("body_build", "medium_height"): "dem mittelgrossen Kind",
 }
 
 EXPECTED_POSITION_DE = {
@@ -197,23 +201,19 @@ def resolver_for_value(
     )
 
 
+def clue_for(constraint):
+    return type("ClueLike", (), {"constraint": constraint})()
+
+
 def render_direct(category_id: str, value_id: str, language: str) -> str:
-    clue = type(
-        "ClueLike",
-        (),
-        {"constraint": SamePositionConstraint(Item("Emma"), Item(value_id, category_id))},
-    )()
+    clue = clue_for(SamePositionConstraint(Item("Emma"), Item(value_id, category_id)))
     return ClueTextRenderer(
         language, presentation_resolver=resolver_for_value(category_id, value_id, language)
     ).render_clue(clue)
 
 
 def render_position(category_id: str, value_id: str, language: str) -> str:
-    clue = type(
-        "ClueLike",
-        (),
-        {"constraint": FixedPositionConstraint(Item(value_id, category_id), Position(3))},
-    )()
+    clue = clue_for(FixedPositionConstraint(Item(value_id, category_id), Position(3)))
     return ClueTextRenderer(
         language, presentation_resolver=resolver_for_value(category_id, value_id, language)
     ).render_clue(clue)
@@ -264,6 +264,35 @@ def test_new_tennis_categories_are_registered_and_create_deterministic_instances
 
 def test_exact_approved_tennis_catalogue_is_preserved() -> None:
     assert {category.id for category in _theme().categories} == APPROVED_TENNIS_CATEGORIES
+
+
+def test_every_registered_theme_has_complete_localized_presentation() -> None:
+    for theme_id in DEFAULT_THEME_REGISTRY.supported_theme_ids():
+        theme = DEFAULT_THEME_REGISTRY.resolve(theme_id)
+        assert theme.localized_title("en")
+        assert theme.localized_title("de")
+        for category in theme.categories:
+            assert category.localized_label("en")
+            assert category.localized_label("de")
+            if category.is_numeric:
+                assert category.wording.numeric_exact is not None
+                assert category.wording.numeric_position_exact is not None
+                continue
+            assert len(category.values) >= 4
+            for value in category.values:
+                assert value.id
+                visible = (
+                    value.display("en"),
+                    value.display("de"),
+                    value.display("en", short=True),
+                    value.display("de", short=True),
+                    value.subject("en"),
+                    value.subject("de"),
+                    value.position_subject("en"),
+                    value.position_subject("de"),
+                )
+                assert all(text.strip() for text in visible)
+                assert "ß" not in "\n".join(visible)
 
 
 @pytest.mark.parametrize(("category_id", "value_id"), new_category_value_cases())
@@ -335,15 +364,7 @@ def test_grammar_sensitive_dative_forms_appear_in_relative_clues(
 ):
     category = _category(category_id)
     other = next(value for value in category.values if value.id != value_id)
-    clue = type(
-        "ClueLike",
-        (),
-        {
-            "constraint": AdjacentConstraint(
-                Item(other.id, category_id), Item(value_id, category_id)
-            )
-        },
-    )()
+    clue = clue_for(AdjacentConstraint(Item(other.id, category_id), Item(value_id, category_id)))
     rendered = ClueTextRenderer(
         "de", presentation_resolver=resolver_for_value(category_id, value_id, "de")
     ).render_clue(clue)
@@ -384,7 +405,7 @@ def test_relative_clues_render_every_value_as_first_and_second_item(category_id)
             LeftOfConstraint(Item(first.id, category_id), Item(second.id, category_id)),
             AdjacentConstraint(Item(second.id, category_id), Item(first.id, category_id)),
         ):
-            clue = type("ClueLike", (), {"constraint": constraint})()
+            clue = clue_for(constraint)
             rendered_en = ClueTextRenderer(
                 "en",
                 presentation_resolver=resolver_for_value(category_id, first.id, "en", second.id),
@@ -452,9 +473,10 @@ def test_position_anchor_sentence_rejects_unknown_or_missing_placeholders() -> N
 
 
 @pytest.mark.parametrize("category_id", sorted(NEW_TENNIS_CATEGORIES))
-def test_new_tennis_categories_support_standalone_generation(category_id):
-    difficulties = cycle(("easy", "medium", "hard"))
-    difficulty = next(difficulties)
+@pytest.mark.parametrize("difficulty", ("easy", "medium", "hard"))
+def test_new_tennis_categories_support_standalone_generation(category_id, difficulty):
+    expected_metadata = {"easy": 1, "medium": 2, "hard": 3}
+    expected_child_position_anchors = {"easy": 2, "medium": 1, "hard": 0}
     puzzle = PuzzleGenerator(
         theme="tennis_training",
         category=category_id,
@@ -464,9 +486,19 @@ def test_new_tennis_categories_support_standalone_generation(category_id):
 
     assert puzzle.metadata.theme_category_id == category_id
     assert puzzle.metadata.theme_category_instance_id == f"{category_id}_1"
+    assert puzzle.metadata.difficulty == expected_metadata[difficulty]
     assert len(puzzle.metadata.selected_theme_value_ids) == 4
-    assert Solver().solve(puzzle).statistics.assignments_checked >= 24 * 24
-    assert Solver().solve(puzzle).solution_count == 1
+    assert len(set(puzzle.metadata.selected_theme_value_ids)) == 4
+    result = Solver().solve(puzzle)
+    assert result.statistics.assignments_checked >= 24 * 24
+    assert result.solution_count == 1
+    child_position_anchors = [
+        constraint
+        for constraint in puzzle.constraints
+        if isinstance(constraint, FixedPositionConstraint)
+        and constraint.item.category_id == CHILDREN_CATEGORY_ID
+    ]
+    assert len(child_position_anchors) == expected_child_position_anchors[difficulty]
     rendered = "\n".join(clue.text for clue in puzzle.clues)
     assert category_id not in rendered
     assert "theme_category_instance_id" not in rendered
@@ -566,10 +598,31 @@ def _pdf_page_count(path) -> int:
 
 
 def test_long_german_values_and_full_catalogue_puzzle_book_pdf_remain_one_page_each(tmp_path):
+    # Seed 42 is deliberately used here because it selects the three long values
+    # asserted below in the actual rendered PuzzleBook pages.
     registered_count = len(_theme().categories)
     book = PuzzleBookGenerator(
         theme="tennis_training", random_source=random.Random(42), difficulty="easy"
     ).generate(theme_page_count=registered_count)
+    selected_ids_by_category = {
+        page.metadata.theme_category_id: set(page.metadata.selected_theme_value_ids)
+        for page in book.theme_puzzles
+    }
+    assert "four_leaf_clover" in selected_ids_by_category["lucky_charm"]
+    assert "semi_western" in selected_ids_by_category["forehand_grip"]
+    assert "athletic" in selected_ids_by_category["body_build"]
+    assert (
+        category_instance_for_value("lucky_charm", "four_leaf_clover")
+        .value_by_id("four_leaf_clover")
+        .display("de", short=True)
+        == "Vierblättriges Kleeblatt"
+    )
+    assert "Semi-Western" in category_instance_for_value(
+        "forehand_grip", "semi_western"
+    ).value_by_id("semi_western").position_subject("de")
+    assert "Athletisch" in category_instance_for_value("body_build", "athletic").value_by_id(
+        "athletic"
+    ).display("de", short=True)
     puzzle_path = tmp_path / "tennis-book.pdf"
     solution_path = tmp_path / "tennis-book-solution.pdf"
 
@@ -581,19 +634,13 @@ def test_long_german_values_and_full_catalogue_puzzle_book_pdf_remain_one_page_e
     assert Counter(page.metadata.theme_category_id for page in book.theme_puzzles) == Counter(
         category.id for category in _theme().categories
     )
-    assert any(
-        "Vierblättriges Kleeblatt" in value.display("de", short=True)
-        for value in _category("lucky_charm").values
-    )
-    assert any(
-        "Semi-Western-Vorhandgriff" in value.position_subject("de")
-        for value in _category("forehand_grip").values
-    )
-    assert any(
-        "athletisch gebaute Kind" in value.position_subject("de")
-        for value in _category("body_build").values
-    )
     text = _pdf_text_bytes(puzzle_path) + _pdf_text_bytes(solution_path)
+    assert "Vierbl" in text
+    assert "Semi-Western" in text
+    assert "Athletisch" in text
+    assert "Seite 1 / 16" in text
+    assert "Seite 16 / 16" in text
+    assert "Seite 1 / 1" in text
     for forbidden in INTERNAL_FRAGMENTS:
         assert forbidden not in text
     assert "Sonnenhut" not in text

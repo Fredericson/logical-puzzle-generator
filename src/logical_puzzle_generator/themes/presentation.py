@@ -67,9 +67,8 @@ class ItemPresentationResolver:
         template = (
             wording.child_with_theme_dative if dative else wording.child_with_theme_nominative
         ).for_language(self.language)
-        return template.format(
-            theme=value.display(self.language), theme_subject=value.subject(self.language)
-        )
+        subject = value.dative_subject(self.language) if dative else value.subject(self.language)
+        return template.format(theme=value.display(self.language), theme_subject=subject)
 
     def direct_assignment_sentence(self, child: Item, theme_item: Item) -> str:
         template = self.category.wording.direct_assignment.for_language(self.language)
