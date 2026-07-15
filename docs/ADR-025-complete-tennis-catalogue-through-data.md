@@ -12,10 +12,10 @@ The Tennis Training Theme needed the remaining planned child-facing categories w
 
 Add `racket_colour`, `string_colour`, `forehand_grip`, `lucky_charm`, `footwork`, `body_build`, and `accessory` as normal `ThemeCategoryDefinition` registry entries under `tennis_training`.
 
-Use value-level localized presentation data for short labels, direct clue labels, subject phrases, position subject phrases, and natural position-anchor sentences where needed. The renderer remains generic: it resolves presentation from the active `ThemeCategoryInstance` and does not branch on Tennis category IDs.
+Use value-level localized presentation data for short labels, direct clue labels, subject phrases, position subject phrases, and natural position-anchor sentences where needed. Complete position-anchor sentences are narrow optional overrides used only when generic subject-based rendering is insufficient for plural agreement, idiomatic wording, or irregular articles. The renderer remains generic: it resolves presentation from the active `ThemeCategoryInstance` using position-anchor override → position subject phrase → subject phrase → full label, and does not branch on Tennis category IDs.
 
 All new categories participate in standalone puzzle generation and PuzzleBook generation through the existing registry and category-instance flow. PuzzleBooks continue to select every registered category before repetition, and repeated pages continue to receive distinct instance IDs and visible numbering through existing summary/page-label presentation.
 
 ## Consequences
 
-The Tennis catalogue can grow through data additions without adding solver, validator, PuzzleBook, PDF, or clue-renderer special cases. Categories with more than four values sample four distinct values per page, while categories with exactly four values use all four. The new categories reuse existing direct-assignment and spatial constraints; no new arithmetic or Tennis-specific constraint type is introduced.
+The Tennis catalogue can grow through data additions without adding solver, validator, PuzzleBook, PDF, or clue-renderer special cases. Categories with more than four values sample four distinct values per page, while categories with exactly four values use all four. The new categories reuse existing direct-assignment and spatial constraints; no new arithmetic or Tennis-specific constraint type is introduced. All production values receive direct, relative, and position rendering coverage so grammar-sensitive data defects are caught at the registry boundary.

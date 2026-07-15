@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from string import Formatter
 from typing import Final
 
 from logical_puzzle_generator.localization import Language, parse_language
@@ -17,6 +18,12 @@ class LocalizedText:
     en: str
     de: str
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.en, str) or not self.en.strip():
+            raise ValueError("English localized text must be a non-empty string.")
+        if not isinstance(self.de, str) or not self.de.strip():
+            raise ValueError("German localized text must be a non-empty string.")
+
     def for_language(self, language: Language | str) -> str:
         parsed = parse_language(language)
         return self.de if parsed is Language.GERMAN else self.en
@@ -31,6 +38,12 @@ class ThemeValue:
     numeric_value: int | None = None
     position_subject_phrase: LocalizedText | None = None
     position_anchor_sentence: LocalizedText | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.id, str) or not self.id.strip():
+            raise ValueError("Theme value ID must be a non-empty string.")
+        if self.position_anchor_sentence is not None:
+            _validate_position_anchor_sentence(self.position_anchor_sentence)
 
     def display(self, language: Language | str, *, short: bool = False) -> str:
         text = self.short_label if short and self.short_label is not None else self.label
@@ -52,6 +65,21 @@ class ThemeValue:
         if self.position_anchor_sentence is None:
             return None
         return self.position_anchor_sentence.for_language(language).format(position=position)
+
+
+def _validate_position_anchor_sentence(text: LocalizedText) -> None:
+    for language, template in (("English", text.en), ("German", text.de)):
+        placeholders = [
+            field_name for _, field_name, _, _ in Formatter().parse(template) if field_name
+        ]
+        invalid = sorted(set(placeholders) - {"position"})
+        if invalid:
+            joined = ", ".join(invalid)
+            raise ValueError(
+                f"{language} position-anchor sentence uses unsupported placeholder(s): {joined}."
+            )
+        if "position" not in placeholders:
+            raise ValueError(f"{language} position-anchor sentence must include {{position}}.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,6 +287,10 @@ def _value(
     position_anchor_en: str | None = None,
     position_anchor_de: str | None = None,
 ) -> ThemeValue:
+    if (position_subject_en is None) != (position_subject_de is None):
+        raise ValueError("Position subject phrases must provide both English and German text.")
+    if (position_anchor_en is None) != (position_anchor_de is None):
+        raise ValueError("Position-anchor sentences must provide both English and German text.")
     return ThemeValue(
         id=value_id,
         label=_text(en, de),
@@ -1278,6 +1310,8 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         "der Sonnenbrille",
                         position_subject_en="The sunglasses",
                         position_subject_de="Die Sonnenbrille",
+                        position_anchor_en="The sunglasses are in Position {position}.",
+                        position_anchor_de="Die Sonnenbrille befindet sich auf Position {position}.",
                     ),
                     _value(
                         "headband",
