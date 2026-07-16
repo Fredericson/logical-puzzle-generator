@@ -136,11 +136,20 @@ Start with `docs/README.md`. The main documents are:
 
 ## Language support
 
-English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Difficulty is selected at generation time (omit it or pass `None` to choose randomly). For Position pages and standalone puzzles, Difficulty is determined by the final visible child `FixedPositionConstraint` count: Easy has exactly two, Medium has exactly one, and Hard has zero. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.6 PuzzleBook Theme pages use fixed children from Page 1, so their Difficulty is determined by final visible distinct direct Theme-value assignments: Easy has exactly two, Medium has exactly one, and Hard has zero. Direct Theme assignments may map a Theme value to a child or to a position; equivalent child-based and position-based clues normalize to one revealed assignment, and relative clue counts vary according to unique solvability. The numeric metadata remains `1`/`2`/`3`; PDFs only render localized labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwierig`).
+English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Standalone puzzle Difficulty is selected at generation time; omitting it or passing `None` retains the existing random-Difficulty behavior. PuzzleBook Difficulty defaults to uniform Easy when omitted, and `mixed` must be requested explicitly for per-page variation. For Position pages and standalone puzzles, Difficulty is determined by the final visible child `FixedPositionConstraint` count: Easy has exactly two, Medium has exactly one, and Hard has zero. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.6 PuzzleBook Theme pages use fixed children from Page 1, so their Difficulty is determined by final visible distinct direct Theme-value assignments: Easy has exactly two, Medium has exactly one, and Hard has zero. Direct Theme assignments may map a Theme value to a child or to a position; equivalent child-based and position-based clues normalize to one revealed assignment, and relative clue counts vary according to unique solvability. The numeric metadata remains `1`/`2`/`3`; PDFs only render localized labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwer`).
 
 ### Selectable difficulty
 
-Generated puzzles choose a random difficulty when `--difficulty` is omitted or `create_puzzle(..., difficulty=None)` is used. A specific level may be requested with `--difficulty easy`, `--difficulty medium`, or `--difficulty hard`, or programmatically with `create_puzzle(..., difficulty="easy")` / `Difficulty.EASY`. Difficulty is based on direct assignments for the active page task. For Position pages and standalone puzzles, Easy `== 2`, Medium `== 1`, and Hard `== 0` visible child-position assignments. Direct-left, direct-right, adjacent, left-of, and right-of clues do not count as fixed-position clues. For fixed-child PuzzleBook Theme pages, Easy `== 2`, Medium `== 1`, and Hard `== 0` distinct directly revealed Theme-value assignments. A direct Theme assignment can be a child-to-value clue such as `Emma has the blue bag` or a value-to-position clue such as `Position 3 has the blue bag`; if Page 1 says Emma is in Position 3, those two clues reveal the same Theme cell and count once, not twice. Relative clues do not count, and their count may vary to preserve unique solvability. Generation uses the injected random source to choose direct anchors, eligible adjacent/non-adjacent relation semantics, and tied best visible relation subsets; it builds a solution consistent with those choices and retries until the final visible direct-assignment count matches the requested level; PDF localization only maps stored `1/2/3` metadata to labels.
+#### Standalone puzzle Difficulty
+
+Standalone generated puzzles choose a random difficulty when `--difficulty` is omitted or `create_puzzle(..., difficulty=None)` is used. A concrete level may be requested with `--difficulty easy`, `--difficulty medium`, or `--difficulty hard`, or programmatically with `create_puzzle(..., difficulty="easy")` / `Difficulty.EASY`.
+
+#### PuzzleBook Difficulty
+
+PuzzleBooks use one Difficulty request for the complete book. `--difficulty easy`, `--difficulty medium`, and `--difficulty hard` apply the selected concrete Difficulty to the Position page and every Theme page. Omitting PuzzleBook Difficulty defaults to uniform Easy. `--difficulty mixed` explicitly requests balanced per-page variation across the Position page and Theme pages; the Summary page is excluded.
+
+Difficulty is based on direct assignments for the active page task. For Position pages and standalone puzzles, Easy `== 2`, Medium `== 1`, and Hard `== 0` visible child-position assignments. Direct-left, direct-right, adjacent, left-of, and right-of clues do not count as fixed-position clues. For fixed-child PuzzleBook Theme pages, Easy `== 2`, Medium `== 1`, and Hard `== 0` distinct directly revealed Theme-value assignments. A direct Theme assignment can be a child-to-value clue such as `Emma has the blue bag` or a value-to-position clue such as `Position 3 has the blue bag`; if Page 1 says Emma is in Position 3, those two clues reveal the same Theme cell and count once, not twice. Relative clues do not count, and their count may vary to preserve unique solvability. Generation uses the appropriate isolated random stream to choose direct anchors, eligible adjacent/non-adjacent relation semantics, and tied best visible relation subsets; it builds a solution consistent with those choices and retries until the final visible direct-assignment count matches the requested level. PDF localization only maps stored `1/2/3` metadata to labels.
+
 
 
 ### Clue variety policy
@@ -256,3 +265,33 @@ No solver special case, PuzzleBook Tennis list, PDF layout redesign, or new cons
 ### Commit 12.9 Tennis catalogue regression hardening
 
 Commit 12.9 hardens the completed Tennis catalogue without adding new puzzle features. Standalone regression coverage now spans every new Tennis category across Easy, Medium, and Hard, preserving the 2/1/0 visible child-position-anchor difficulty contract. Controlled long-value PuzzleBook PDF pages explicitly select the target values before rendering, preventing false-positive layout checks. Registry-wide localized presentation validation now covers all default themes, and the earlier `hair_ribbon` lucky-charm draft has been replaced by the more natural `friendship_bracelet` value (`Friendship Bracelet` / `Freundschaftsarmband`).
+
+## Commit 13.0: Mixed per-page PuzzleBook Difficulty
+
+PuzzleBook generation has one public Difficulty request for the complete book: `easy`, `medium`, `hard`, or `mixed`. If `--difficulty` is omitted, PuzzleBooks default to uniform Easy.
+
+Uniform mode applies the selected concrete Difficulty to every puzzle page, including the Position page and every Theme page:
+
+```bash
+python -m logical_puzzle_generator.create_puzzle_book \
+  --theme tennis_training \
+  --pages 8 \
+  --difficulty easy \
+  --language de \
+  --seed 42
+```
+
+Mixed mode plans the Position page and all Theme pages together. The Summary page is excluded because it is not a puzzle page.
+
+```bash
+python -m logical_puzzle_generator.create_puzzle_book \
+  --theme tennis_training \
+  --pages 14 \
+  --difficulty mixed \
+  --language de \
+  --seed 42
+```
+
+Mixed plans distribute Easy, Medium, and Hard as evenly as possible across `1 + pages` puzzle pages, assign remainder pages with the seeded Difficulty stream, shuffle the sequence deterministically, and prevent runs longer than two equal Difficulties. Page 1 is not fixed to Easy in mixed mode. Mixed mode is varied, not adaptive or progressive.
+
+Page-level metadata and PDF headers always store and display a concrete Difficulty: Easy, Medium, or Hard. Fixed-child Theme pages keep exactly three clues and retain the existing direct-assignment semantics: Easy has two direct Theme assignments, Medium has one, and Hard has zero.

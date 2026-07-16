@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import random
+from collections import Counter
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from enum import Enum
 
 from logical_puzzle_generator.constraints.base import Constraint
@@ -24,6 +27,125 @@ class Difficulty(Enum):
     def __init__(self, cli_value: str, metadata_value: int) -> None:
         self.cli_value = cli_value
         self.metadata_value = metadata_value
+
+
+class PuzzleBookDifficultyMode(Enum):
+    """PuzzleBook-only Difficulty request modes."""
+
+    MIXED = "mixed"
+
+
+CONCRETE_DIFFICULTIES = (Difficulty.EASY, Difficulty.MEDIUM, Difficulty.HARD)
+
+
+@dataclass(frozen=True, slots=True)
+class PuzzleBookDifficultyPlan:
+    """Resolved concrete Difficulty sequence for one PuzzleBook."""
+
+    position_difficulty: Difficulty
+    theme_page_difficulties: tuple[Difficulty, ...]
+
+    def __post_init__(self) -> None:
+        if self.position_difficulty not in CONCRETE_DIFFICULTIES:
+            raise ValueError("Position difficulty must be easy, medium, or hard.")
+        if any(
+            difficulty not in CONCRETE_DIFFICULTIES for difficulty in self.theme_page_difficulties
+        ):
+            raise ValueError("Theme page difficulties must be easy, medium, or hard.")
+
+
+class PuzzleBookDifficultyPlanner:
+    """Resolve uniform and mixed PuzzleBook difficulty plans without generating puzzles."""
+
+    _MAX_SHUFFLE_ATTEMPTS = 64
+
+    def __init__(self, random_source: random.Random | None = None) -> None:
+        self._random = random_source if random_source is not None else random.Random()
+        self._policy = DifficultyPolicy()
+
+    def uniform(
+        self, difficulty: Difficulty | str, theme_page_count: int
+    ) -> PuzzleBookDifficultyPlan:
+        self._validate_theme_page_count(theme_page_count)
+        concrete = self._require_concrete(difficulty)
+        return PuzzleBookDifficultyPlan(concrete, (concrete,) * theme_page_count)
+
+    def mixed(self, theme_page_count: int) -> PuzzleBookDifficultyPlan:
+        self._validate_theme_page_count(theme_page_count)
+        puzzle_page_count = theme_page_count + 1
+        counts = self._balanced_counts(puzzle_page_count)
+        multiset = [
+            difficulty for difficulty in CONCRETE_DIFFICULTIES for _ in range(counts[difficulty])
+        ]
+        sequence = self._seeded_sequence(multiset)
+        return PuzzleBookDifficultyPlan(sequence[0], tuple(sequence[1:]))
+
+    def _balanced_counts(self, puzzle_page_count: int) -> dict[Difficulty, int]:
+        base, remainder = divmod(puzzle_page_count, len(CONCRETE_DIFFICULTIES))
+        counts = {difficulty: base for difficulty in CONCRETE_DIFFICULTIES}
+        remainder_receivers = list(CONCRETE_DIFFICULTIES)
+        self._random.shuffle(remainder_receivers)
+        for difficulty in remainder_receivers[:remainder]:
+            counts[difficulty] += 1
+        return counts
+
+    def _seeded_sequence(self, multiset: list[Difficulty]) -> list[Difficulty]:
+        if len(multiset) < 3:
+            sequence = list(multiset)
+            self._random.shuffle(sequence)
+            return sequence
+        for _ in range(self._MAX_SHUFFLE_ATTEMPTS):
+            candidate = list(multiset)
+            self._random.shuffle(candidate)
+            if self._max_run_length(candidate) <= 2:
+                return candidate
+        return self._interleaved_fallback(multiset)
+
+    def _interleaved_fallback(self, multiset: list[Difficulty]) -> list[Difficulty]:
+        remaining = Counter(multiset)
+        sequence: list[Difficulty] = []
+        while remaining:
+            choices = sorted(
+                remaining,
+                key=lambda difficulty: (-remaining[difficulty], difficulty.metadata_value),
+            )
+            for difficulty in choices:
+                if len(sequence) >= 2 and sequence[-1] is difficulty and sequence[-2] is difficulty:
+                    continue
+                sequence.append(difficulty)
+                remaining[difficulty] -= 1
+                if remaining[difficulty] == 0:
+                    del remaining[difficulty]
+                break
+            else:
+                # Balanced counts should make this unreachable; keep deterministic behavior.
+                difficulty = choices[0]
+                sequence.append(difficulty)
+                remaining[difficulty] -= 1
+                if remaining[difficulty] == 0:
+                    del remaining[difficulty]
+        return sequence
+
+    def _max_run_length(self, difficulties: list[Difficulty]) -> int:
+        longest = current = 0
+        previous: Difficulty | None = None
+        for difficulty in difficulties:
+            current = current + 1 if difficulty is previous else 1
+            longest = max(longest, current)
+            previous = difficulty
+        return longest
+
+    def _require_concrete(self, difficulty: Difficulty | str) -> Difficulty:
+        concrete = self._policy.normalize(difficulty)
+        if concrete is None:
+            raise ValueError("A concrete difficulty is required.")
+        return concrete
+
+    def _validate_theme_page_count(self, theme_page_count: int) -> None:
+        if isinstance(theme_page_count, bool) or not isinstance(theme_page_count, int):
+            raise TypeError("Theme page count must be a non-negative integer.")
+        if theme_page_count < 0:
+            raise ValueError("Theme page count must not be negative.")
 
 
 class DifficultyContext(Enum):

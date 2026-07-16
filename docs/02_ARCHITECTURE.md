@@ -148,7 +148,7 @@ The number of valid candidates considered is controlled by the internal `QUALITY
 
 `Language` defines supported presentation languages: `Language.ENGLISH` (`en`) and `Language.GERMAN` (`de`). `TranslationCatalog` centralizes PDF headings, labels, CLI-facing output labels, and metadata-title translations. `ClueTextRenderer` renders clue wording from each clue's linked constraint in the selected language. This keeps German wording out of constraints, solver, validator, and generator logic. English remains the default and uses stored `Clue.text` for backward compatibility.
 
-PDF difficulty labels are localized presentation text: English maps numeric metadata `1`, `2`, and `>=3` to `Easy`, `Medium`, and `Hard`; German maps them to `Leicht`, `Mittel`, and `Schwierig`. Missing difficulty omits the line, while invalid values fail clearly. German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Schreibe den richtigen Namen unter jede Position`, `Verfügbare Namen`, and `Lösung`.
+PDF difficulty labels are localized presentation text: English maps numeric metadata `1`, `2`, and `>=3` to `Easy`, `Medium`, and `Hard`; German maps them to `Leicht`, `Mittel`, and `Schwer`. Missing difficulty omits the line, while invalid values fail clearly. German PDF output uses Swiss-compatible spelling without `ß`, for example `Tennistraining`, `Thema`, `Schwierigkeit`, `Hinweise`, `Schreibe den richtigen Namen unter jede Position`, `Verfügbare Namen`, and `Lösung`.
 
 ## 8. PDF package
 
@@ -332,3 +332,13 @@ Theme value presentation remains registry data rather than renderer logic. A val
 - `position_anchor_sentence`: an optional complete position-clue override containing only `{position}` when a generic sentence would be unnatural.
 
 The renderer resolves these fields through the active category instance and stays category-neutral; Tennis grammar data does not introduce Tennis-specific renderer branches.
+
+## Commit 13.0 PuzzleBook Difficulty planning
+
+The public API has one PuzzleBook Difficulty request: Easy, Medium, Hard, or Mixed. Internally, `PuzzleBookDifficultyPlan` still stores a Position-page entry and Theme-page entries because generation consumes Position and fixed-child Theme pages differently.
+
+Uniform plans apply the requested concrete Difficulty to the Position page and every Theme page without consuming planner randomness. Mixed plans `theme_page_count + 1` puzzle pages; the first planned entry belongs to the Position page and the remaining entries belong to Theme pages. The Summary page is excluded from Difficulty planning.
+
+Mixed planning balances Easy, Medium, and Hard across all puzzle pages, assigns remainder pages using the seeded Difficulty stream, shuffles deterministically, and guarantees no run longer than two equal Difficulties across Position plus Theme pages. Every generated puzzle page stores concrete metadata; `mixed` is only a request mode.
+
+PuzzleBook generation establishes one base seed from either a supplied `seed`, one consumed 64-bit value from a supplied `random_source`, or a non-deterministic system seed. Internal streams are always SHA-256 namespace-derived from that base seed; mutable random-state copying is not used. The stream namespaces isolate theme resolution, child selection, Position generation, category selection, Difficulty planning, each Theme page, and PDF rendering. Difficulty planning does not consume category-selection or puzzle-generation randomness, page-local streams prevent one page retry from shifting later pages, and PDF rendering uses its own derived stream.

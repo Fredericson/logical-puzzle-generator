@@ -211,8 +211,8 @@ def test_translation_catalog_localizes_difficulty_labels() -> None:
     assert TranslationCatalog("en").difficulty_label(4) == "Hard"
     assert TranslationCatalog("de").difficulty_label(1) == "Leicht"
     assert TranslationCatalog("de").difficulty_label(2) == "Mittel"
-    assert TranslationCatalog("de").difficulty_label(3) == "Schwierig"
-    assert TranslationCatalog("de").difficulty_label(4) == "Schwierig"
+    assert TranslationCatalog("de").difficulty_label(3) == "Schwer"
+    assert TranslationCatalog("de").difficulty_label(4) == "Schwer"
 
 
 def test_obsolete_write_the_names_labels_are_not_child_facing_resources() -> None:

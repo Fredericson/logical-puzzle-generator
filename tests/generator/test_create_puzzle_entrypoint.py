@@ -103,3 +103,11 @@ def test_create_puzzle_none_difficulty_selects_random_level(tmp_path) -> None:
 
     assert puzzle.metadata is not None
     assert puzzle.metadata.difficulty in {1, 2, 3}
+
+
+def test_standalone_cli_rejects_mixed_difficulty() -> None:
+    import pytest
+    from logical_puzzle_generator.create_puzzle import main
+
+    with pytest.raises(SystemExit):
+        main(["--difficulty", "mixed"])
