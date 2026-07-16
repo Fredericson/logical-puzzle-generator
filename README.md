@@ -252,3 +252,7 @@ Grammar-sensitive wording remains data-driven. Theme values carry localized shor
 Every non-numeric page still selects exactly four distinct Theme values. Categories with larger pools, such as racket colour, string colour, lucky charm, and player build, deterministically sample four values from the page random source; categories with exactly four values, such as forehand grip, footwork, and accessory, use all four. PuzzleBook category selection continues to exhaust all registered categories before any category repeats, and repeated category labels are numbered by the existing presentation flow.
 
 No solver special case, PuzzleBook Tennis list, PDF layout redesign, or new constraint type was introduced for these categories.
+
+### Commit 12.9 Tennis catalogue regression hardening
+
+Commit 12.9 hardens the completed Tennis catalogue without adding new puzzle features. Standalone regression coverage now spans every new Tennis category across Easy, Medium, and Hard, preserving the 2/1/0 visible child-position-anchor difficulty contract. Controlled long-value PuzzleBook PDF pages explicitly select the target values before rendering, preventing false-positive layout checks. Registry-wide localized presentation validation now covers all default themes, and the earlier `hair_ribbon` lucky-charm draft has been replaced by the more natural `friendship_bracelet` value (`Friendship Bracelet` / `Freundschaftsarmband`).

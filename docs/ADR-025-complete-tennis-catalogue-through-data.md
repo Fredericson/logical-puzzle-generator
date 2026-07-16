@@ -19,3 +19,7 @@ All new categories participate in standalone puzzle generation and PuzzleBook ge
 ## Consequences
 
 The Tennis catalogue can grow through data additions without adding solver, validator, PuzzleBook, PDF, or clue-renderer special cases. Categories with more than four values sample four distinct values per page, while categories with exactly four values use all four. The new categories reuse existing direct-assignment and spatial constraints; no new arithmetic or Tennis-specific constraint type is introduced. All production values receive direct, relative, and position rendering coverage so grammar-sensitive data defects are caught at the registry boundary.
+
+## Commit 12.9 amendment
+
+Commit 12.9 keeps the ADR-025 architecture and strengthens its regression boundary. Catalogue values are now covered by controlled direct, relative, and position wording tests. Long-value layout tests must explicitly select the target values in the generated page instances before rendering so the PDF regression cannot pass by inspecting only registry contents. The earlier hair-ribbon lucky-charm draft is replaced by `friendship_bracelet` (`Friendship Bracelet` / `Freundschaftsarmband`). Grammar-sensitive wording remains registry data resolved by the generic presentation path, not category-specific renderer logic.

@@ -321,3 +321,14 @@ The completed Tennis Training catalogue remains registry-owned data. `ThemeDefin
 Value presentation is the grammar boundary. `ThemeValue` stores localized short labels, full direct-assignment labels, subject phrases, position subject phrases, and, where needed, value-level position-anchor sentences. Position rendering uses the generic precedence `position_anchor_sentence` override → `position_subject_phrase` → `subject_phrase` → full label. The optional complete-sentence override is reserved for cases where subject-based rendering is grammatically or stylistically insufficient, such as plural strings, plural sunglasses, or footwork values that naturally “belong to” a position. This keeps `ClueTextRenderer` category-neutral: renderers ask the presentation resolver for value wording and do not branch on `accessory`, `body_build`, `forehand_grip`, or any other Tennis category ID.
 
 Text categories with more than four registered values select four distinct values per category instance using the supplied random source. Text categories with exactly four registered values select all four. Numeric categories keep their existing generated numeric-value architecture. All new text categories reuse existing direct assignment and spatial relation constraints (`SamePositionConstraint`, fixed-position anchors, left/right, direct-left/direct-right, and adjacency); no new mathematical constraint family or solver branch is required.
+
+### Theme value grammar fields
+
+Theme value presentation remains registry data rather than renderer logic. A value may provide these localized grammar fields:
+
+- `subject_phrase`: the normal child-facing value reference used in direct and relative wording.
+- `dative_subject_phrase`: the grammar-sensitive second relation operand, for example German dative text after “neben” or “links von”.
+- `position_subject_phrase`: the subject used by generic position clues.
+- `position_anchor_sentence`: an optional complete position-clue override containing only `{position}` when a generic sentence would be unnatural.
+
+The renderer resolves these fields through the active category instance and stays category-neutral; Tennis grammar data does not introduce Tennis-specific renderer branches.
