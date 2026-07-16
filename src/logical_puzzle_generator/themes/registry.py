@@ -68,7 +68,9 @@ class ThemeValue:
         text = (
             self.position_subject_phrase
             if self.position_subject_phrase is not None
-            else self.subject_phrase if self.subject_phrase is not None else self.label
+            else self.subject_phrase
+            if self.subject_phrase is not None
+            else self.label
         )
         return text.for_language(language)
 
@@ -1121,15 +1123,19 @@ _THEMES: Final[tuple[ThemeDefinition, ...]] = (
                         position_subject_de="Die Glücksmünze",
                     ),
                     _value(
-                        "hair_ribbon",
-                        "a hair ribbon",
-                        "ein Haarband",
-                        "Hair Ribbon",
-                        "Haarband",
-                        "the hair ribbon",
-                        "dem Haarband",
-                        position_subject_en="The hair ribbon",
-                        position_subject_de="Das Haarband",
+                        "friendship_bracelet",
+                        "a friendship bracelet",
+                        "ein Freundschaftsarmband",
+                        "Friendship Bracelet",
+                        "Freundschaftsarmband",
+                        "the friendship bracelet",
+                        "das Freundschaftsarmband",
+                        dative_subject_en="the friendship bracelet",
+                        dative_subject_de="dem Freundschaftsarmband",
+                        position_subject_en="The friendship bracelet",
+                        position_subject_de="Das Freundschaftsarmband",
+                        position_anchor_en="The friendship bracelet is in Position {position}.",
+                        position_anchor_de="Das Freundschaftsarmband befindet sich auf Position {position}.",
                     ),
                     _value(
                         "mini_tennis_ball",

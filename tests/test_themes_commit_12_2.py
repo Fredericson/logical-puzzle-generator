@@ -96,7 +96,9 @@ def test_difficulty_counts_only_child_fixed_position_anchors(difficulty: str, an
 
 
 def _constraint_signature(puzzle: object) -> tuple[tuple[str, str], ...]:
-    return tuple((type(constraint).__name__, constraint.description) for constraint in puzzle.constraints)  # type: ignore[attr-defined]
+    return tuple(
+        (type(constraint).__name__, constraint.description) for constraint in puzzle.constraints
+    )  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize("theme_id", THEME_IDS)
