@@ -32,16 +32,20 @@ class Solver:
         stats = SolverStatistics()
 
         for assignment in self._iterator.iterate(puzzle.logical_items, puzzle.fixed_positions):
+
             stats.assignments_checked += 1
 
             valid = True
 
             for constraint in puzzle.constraints:
+
                 if not constraint.matches(assignment):
+
                     valid = False
                     break
 
             if valid:
+
                 stats.valid_assignments += 1
 
                 result.solutions.append(assignment)

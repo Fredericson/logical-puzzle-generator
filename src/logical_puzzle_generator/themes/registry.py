@@ -68,9 +68,7 @@ class ThemeValue:
         text = (
             self.position_subject_phrase
             if self.position_subject_phrase is not None
-            else self.subject_phrase
-            if self.subject_phrase is not None
-            else self.label
+            else self.subject_phrase if self.subject_phrase is not None else self.label
         )
         return text.for_language(language)
 

@@ -4,6 +4,7 @@ from logical_puzzle_generator.engine.assignment import Assignment
 
 
 class AssignmentBuilder:
+
     def __init__(self) -> None:
         self._assignments: list[Assignment] = []
 

@@ -164,9 +164,9 @@ def test_relation_distribution_statistical_regression_gate() -> None:
     diagnostics = distribution_diagnostics(distribution)
 
     assert distribution.total == 1_200, diagnostics
-    assert all(distribution.counts[relation_name] > 0 for relation_name in RELATION_TYPE_NAMES), (
-        diagnostics
-    )
+    assert all(
+        distribution.counts[relation_name] > 0 for relation_name in RELATION_TYPE_NAMES
+    ), diagnostics
 
     for relation_name in RELATION_TYPE_NAMES:
         share = relation_share(distribution, relation_name)
