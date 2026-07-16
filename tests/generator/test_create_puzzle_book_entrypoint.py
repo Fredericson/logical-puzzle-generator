@@ -201,3 +201,88 @@ def test_create_puzzle_book_zero_theme_pages_is_intentional(tmp_path, monkeypatc
     assert len(solution_summary._cellvalues) == 2
     assert puzzle_summary._cellvalues[1][1:] == ["", "", "", ""]
     assert solution_summary._cellvalues[1][1:] == list(book.summary_table.child_names_by_position)
+
+
+@pytest.mark.parametrize(("difficulty", "metadata"), [("easy", 1), ("medium", 2), ("hard", 3)])
+def test_create_puzzle_book_cli_uniform_difficulty_applies_to_all_pages(
+    tmp_path, difficulty, metadata
+) -> None:
+    puzzle_path = tmp_path / f"{difficulty}.pdf"
+    solution_path = tmp_path / f"{difficulty}_solution.pdf"
+    book = main(
+        [
+            "--theme",
+            "tennis_training",
+            "--pages",
+            "1",
+            "--difficulty",
+            difficulty,
+            "--language",
+            "en",
+            "--puzzle-path",
+            str(puzzle_path),
+            "--solution-path",
+            str(solution_path),
+            "--seed",
+            "42",
+        ]
+    )
+
+    assert puzzle_path.exists()
+    assert solution_path.exists()
+    assert [p.metadata.difficulty for p in book.pages if p.metadata] == [metadata, metadata]
+
+
+def test_create_puzzle_book_cli_accepts_mixed_without_extra_difficulty_argument(tmp_path) -> None:
+    puzzle_path = tmp_path / "mixed.pdf"
+    solution_path = tmp_path / "mixed_solution.pdf"
+    book = main(
+        [
+            "--theme",
+            "tennis_training",
+            "--pages",
+            "2",
+            "--difficulty",
+            "mixed",
+            "--language",
+            "en",
+            "--puzzle-path",
+            str(puzzle_path),
+            "--solution-path",
+            str(solution_path),
+            "--seed",
+            "42",
+        ]
+    )
+
+    assert puzzle_path.exists()
+    assert solution_path.exists()
+    assert {p.metadata.difficulty for p in book.pages if p.metadata} == {1, 2, 3}
+
+
+def test_create_puzzle_book_cli_defaults_to_easy(tmp_path) -> None:
+    puzzle_path = tmp_path / "default.pdf"
+    solution_path = tmp_path / "default_solution.pdf"
+    book = main(
+        [
+            "--theme",
+            "tennis_training",
+            "--pages",
+            "1",
+            "--language",
+            "en",
+            "--puzzle-path",
+            str(puzzle_path),
+            "--solution-path",
+            str(solution_path),
+            "--seed",
+            "42",
+        ]
+    )
+
+    assert [p.metadata.difficulty for p in book.pages if p.metadata] == [1, 1]
+
+
+def test_create_puzzle_book_cli_rejects_removed_position_difficulty_argument() -> None:
+    with pytest.raises(SystemExit):
+        main(["--difficulty", "mixed", "--position-difficulty", "easy"])

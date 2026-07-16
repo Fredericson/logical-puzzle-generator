@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import random
 from pathlib import Path
 
-from logical_puzzle_generator.cli import parse_difficulty_argument, parse_language_argument
-from logical_puzzle_generator.generator import Difficulty
+from logical_puzzle_generator.cli import (
+    parse_language_argument,
+    parse_puzzle_book_difficulty_argument,
+)
+from logical_puzzle_generator.generator import Difficulty, PuzzleBookDifficultyMode
 from logical_puzzle_generator.generator.puzzle_book import PuzzleBook, PuzzleBookGenerator
 from logical_puzzle_generator.localization import Language, TranslationCatalog, parse_language
+from logical_puzzle_generator.random_streams import derived_random
 from logical_puzzle_generator.pdf.generator import PdfGenerator
 from logical_puzzle_generator.themes.registry import (
     DEFAULT_THEME_ID,
@@ -35,20 +38,20 @@ def create_puzzle_book(
     puzzle_path: str | Path = DEFAULT_PUZZLE_BOOK_PATH,
     solution_path: str | Path = DEFAULT_PUZZLE_BOOK_SOLUTION_PATH,
     theme: str | None = None,
-    difficulty: Difficulty | str | None = None,
+    difficulty: Difficulty | PuzzleBookDifficultyMode | str = Difficulty.EASY,
     language: Language | str = Language.ENGLISH,
     seed: int | None = None,
 ) -> PuzzleBook:
     theme_page_count = _validate_theme_page_count(theme_page_count)
     language = parse_language(language)
-    rng = random.Random(seed)
     generator = PuzzleBookGenerator(
-        random_source=rng,
+        seed=seed,
         difficulty=difficulty,
         theme=theme or DEFAULT_THEME_ID,
     )
     book = generator.generate(theme_page_count=theme_page_count)
-    pdf = PdfGenerator(language=language, random_source=rng)
+    pdf_random = derived_random(seed, "puzzle_book.pdf") if seed is not None else None
+    pdf = PdfGenerator(language=language, random_source=pdf_random)
     pdf.create_puzzle_book_pdf(book, puzzle_path)
     pdf.create_puzzle_book_solution_pdf(book, solution_path)
     return book
@@ -77,9 +80,9 @@ def main(argv: list[str] | None = None) -> PuzzleBook:
     )
     parser.add_argument(
         "--difficulty",
-        type=parse_difficulty_argument,
-        default=None,
-        help="Puzzle difficulty: easy, medium, or hard. Omit to choose randomly.",
+        type=parse_puzzle_book_difficulty_argument,
+        default=Difficulty.EASY,
+        help="PuzzleBook difficulty: easy, medium, hard, or mixed. Defaults to easy; mixed creates a balanced deterministic mix across the Position and Theme pages.",
     )
     parser.add_argument(
         "--language",

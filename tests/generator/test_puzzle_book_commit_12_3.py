@@ -5,11 +5,13 @@ import pytest
 from reportlab.platypus import PageBreak, Table
 
 from logical_puzzle_generator.engine.assignment import Assignment
+from logical_puzzle_generator.engine.validator import Validator
 from logical_puzzle_generator.generator.difficulty import (
     Difficulty,
+    DifficultyContext,
     DifficultyPolicy,
 )
-from logical_puzzle_generator.generator.puzzle_book import PuzzleBookGenerator
+from logical_puzzle_generator.generator.puzzle_book import PuzzleBook, PuzzleBookGenerator
 from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
 from logical_puzzle_generator.model.category_ids import CHILDREN_CATEGORY_ID
 from logical_puzzle_generator.pdf.generator import PdfGenerator
@@ -634,3 +636,333 @@ def test_failed_puzzle_book_build_leaves_no_page_count_state(monkeypatch, tmp_pa
     with pytest.raises(OSError, match="forced build failure"):
         generator.create_puzzle_book_pdf(_book(theme_page_count=1, seed=141), tmp_path / "book.pdf")
     assert not hasattr(generator, "_pending_page_count")
+
+
+def _difficulty_for_metadata_value(value: int) -> Difficulty:
+    for difficulty in Difficulty:
+        if difficulty.metadata_value == value:
+            return difficulty
+    raise AssertionError(f"Unexpected metadata difficulty: {value}")
+
+
+def _category_instance_from_metadata(book, metadata):
+    category = book.theme.category_by_id(metadata.theme_category_id)
+    if category.is_numeric:
+        selected_values = tuple(
+            category.parse_generated_numeric_value_id(
+                value_id, instance_id=metadata.theme_category_instance_id
+            )
+            for value_id in metadata.selected_theme_value_ids
+        )
+    else:
+        selected_values = tuple(
+            category.value_by_id(value_id) for value_id in metadata.selected_theme_value_ids
+        )
+    return __import__(
+        "logical_puzzle_generator.themes.registry", fromlist=["ThemeCategoryInstance"]
+    ).ThemeCategoryInstance(category, metadata.theme_category_instance_id, selected_values)
+
+
+def test_mixed_puzzle_book_stores_concrete_page_metadata_and_matches_plan() -> None:
+    plan = PuzzleBookGenerator(
+        theme="tennis_training", seed=42, difficulty="mixed"
+    )._resolve_difficulty_plan(3)
+    book = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=3
+    )
+
+    assert book.position_puzzle.metadata is not None
+    assert book.position_puzzle.metadata.difficulty == plan.position_difficulty.metadata_value
+    assert [p.metadata.difficulty for p in book.theme_puzzles if p.metadata] == [
+        difficulty.metadata_value for difficulty in plan.theme_page_difficulties
+    ]
+    assert all(p.metadata and p.metadata.difficulty in {1, 2, 3} for p in book.pages)
+    assert all(len(p.clues) == 3 for p in book.theme_puzzles)
+
+
+def test_mixed_puzzle_book_composition_matches_each_page_difficulty() -> None:
+    book = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=2
+    )
+    policy = DifficultyPolicy()
+    validator = Validator()
+    expected_positions = dict(book.position_puzzle.solution.assignment.positions)
+
+    position_difficulty = _difficulty_for_metadata_value(book.position_puzzle.metadata.difficulty)
+    assert policy.direct_assignment_count(
+        book.position_puzzle, context=DifficultyContext.POSITION_PAGE
+    ) == policy.required_fixed_position_count(position_difficulty)
+
+    for puzzle in book.theme_puzzles:
+        assert puzzle.metadata is not None
+        assert puzzle.solution is not None
+        assert puzzle.fixed_positions == expected_positions
+        assert len(puzzle.constraints) == 3
+        assert len(puzzle.clues) == 3
+        assert validator.has_unique_solution(puzzle)
+        difficulty = _difficulty_for_metadata_value(puzzle.metadata.difficulty)
+        theme_items = [
+            item
+            for category in puzzle.categories
+            for item in category.items
+            if item.category_id != CHILDREN_CATEGORY_ID
+        ]
+        category_instance = _category_instance_from_metadata(book, puzzle.metadata)
+        direct_count = policy.direct_assignment_count(
+            puzzle,
+            context=DifficultyContext.FIXED_CHILD_THEME_PAGE,
+            fixed_child_positions=puzzle.fixed_positions,
+            theme_items=theme_items,
+            category_instance=category_instance,
+        )
+        assert direct_count == policy.required_direct_assignment_count(difficulty)
+        assert len(puzzle.constraints) - direct_count == 3 - direct_count
+
+
+def test_mixed_puzzle_book_child_mapping_is_stable() -> None:
+    book = PuzzleBookGenerator(theme="tennis_training", seed=45, difficulty="mixed").generate(
+        theme_page_count=3
+    )
+    expected = dict(book.position_puzzle.solution.assignment.positions)
+
+    for puzzle in book.theme_puzzles:
+        assert puzzle.fixed_positions == expected
+
+
+def test_mixed_retry_keeps_page_difficulty_plan_and_later_page_streams(monkeypatch) -> None:
+    baseline = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=3
+    )
+    original = PuzzleGenerator._generate_candidate
+    fixed_child_attempts = 0
+    observed: list[Difficulty] = []
+
+    def fail_first_fixed_child_attempt(self, source, items, difficulty, *args, **kwargs):
+        nonlocal fixed_child_attempts
+        if self._fixed_child_positions is not None:
+            observed.append(difficulty)
+            fixed_child_attempts += 1
+            if fixed_child_attempts == 1:
+                return None, "forced retry"
+        return original(self, source, items, difficulty, *args, **kwargs)
+
+    monkeypatch.setattr(PuzzleGenerator, "_generate_candidate", fail_first_fixed_child_attempt)
+    plan = PuzzleBookGenerator(
+        theme="tennis_training", seed=42, difficulty="mixed"
+    )._resolve_difficulty_plan(3)
+
+    retried = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=3
+    )
+
+    assert [p.metadata.theme_category_id for p in retried.theme_puzzles if p.metadata] == [
+        p.metadata.theme_category_id for p in baseline.theme_puzzles if p.metadata
+    ]
+    assert [p.metadata.difficulty for p in retried.theme_puzzles if p.metadata] == [
+        difficulty.metadata_value for difficulty in plan.theme_page_difficulties
+    ]
+    assert observed[0] is plan.theme_page_difficulties[0]
+    assert observed[1] is plan.theme_page_difficulties[0]
+    assert _deterministic_book_signature(
+        PuzzleBook(
+            theme=baseline.theme,
+            children=baseline.children,
+            position_puzzle=baseline.position_puzzle,
+            theme_puzzles=baseline.theme_puzzles[1:],
+        )
+    ) == _deterministic_book_signature(
+        PuzzleBook(
+            theme=retried.theme,
+            children=retried.children,
+            position_puzzle=retried.position_puzzle,
+            theme_puzzles=retried.theme_puzzles[1:],
+        )
+    )
+
+
+def test_mixed_puzzle_book_pdf_headers_use_concrete_localized_difficulties(
+    monkeypatch, tmp_path
+) -> None:
+    from reportlab.platypus import Paragraph
+
+    captured = {}
+
+    def capture_build(self, output_path, story, *, page_count=None):
+        captured[output_path.name] = story
+
+    monkeypatch.setattr(PdfGenerator, "_build", capture_build)
+    book = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=2
+    )
+
+    PdfGenerator(language="en").create_puzzle_book_pdf(book, tmp_path / "book-en.pdf")
+    PdfGenerator(language="de").create_puzzle_book_pdf(book, tmp_path / "book-de.pdf")
+
+    english = "\n".join(
+        flowable.text for flowable in captured["book-en.pdf"] if isinstance(flowable, Paragraph)
+    )
+    german = "\n".join(
+        flowable.text for flowable in captured["book-de.pdf"] if isinstance(flowable, Paragraph)
+    )
+    assert "Difficulty: Easy" in english
+    assert "Difficulty: Medium" in english
+    assert "Difficulty: Hard" in english
+    assert "Difficulty: Mixed" not in english
+    assert "Schwierigkeit: Leicht" in german
+    assert "Schwierigkeit: Mittel" in german
+    assert "Schwierigkeit: Schwer" in german
+    assert "Schwierigkeit: Gemischt" not in german
+
+
+def test_mixed_puzzle_book_fourteen_theme_pages_keep_physical_page_count(tmp_path) -> None:
+    book = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=14
+    )
+    puzzle_path = tmp_path / "mixed_book.pdf"
+    solution_path = tmp_path / "mixed_solution.pdf"
+
+    PdfGenerator(language="de").create_puzzle_book_pdf(book, puzzle_path)
+    PdfGenerator(language="de").create_puzzle_book_solution_pdf(book, solution_path)
+
+    puzzle_text = puzzle_path.read_bytes().decode("latin-1")
+    solution_text = solution_path.read_bytes().decode("latin-1")
+    assert _pdf_page_count(puzzle_path) == 16
+    assert _pdf_page_count(solution_path) == 1
+    assert "Seite 1 / 16" in puzzle_text
+    assert "Seite 16 / 16" in puzzle_text
+    assert "Seite 1 / 1" in solution_text
+    assert "Schwierigkeit: Gemischt" not in puzzle_text
+
+
+def test_puzzle_book_seed_and_random_source_are_mutually_exclusive() -> None:
+    with pytest.raises(ValueError, match="Specify either seed or random_source"):
+        PuzzleBookGenerator(theme="tennis_training", seed=1, random_source=random.Random(1))
+
+
+def test_difficulty_planning_does_not_shift_category_selection_stream() -> None:
+    uniform = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="easy")
+    mixed = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed")
+
+    uniform._resolve_difficulty_plan(5)
+    mixed._resolve_difficulty_plan(5)
+
+    assert uniform.select_category_ids(5) == mixed.select_category_ids(5)
+
+
+def _deterministic_book_signature(book):
+    def item_key(item):
+        return (item.category_id, item.name)
+
+    def assignment_signature(puzzle):
+        return tuple(
+            sorted(
+                (item_key(item), position.index)
+                for item, position in puzzle.solution.assignment.positions.items()
+            )
+        )
+
+    return (
+        book.theme_id,
+        tuple(child.name for child in book.children),
+        assignment_signature(book.position_puzzle),
+        tuple(p.metadata.difficulty for p in book.pages if p.metadata),
+        tuple(p.metadata.theme_category_id for p in book.theme_puzzles if p.metadata),
+        tuple(p.metadata.theme_category_instance_id for p in book.theme_puzzles if p.metadata),
+        tuple(p.metadata.selected_theme_value_ids for p in book.theme_puzzles if p.metadata),
+        tuple(
+            tuple(
+                (type(constraint).__name__, constraint.description) for constraint in p.constraints
+            )
+            for p in book.pages
+        ),
+        tuple(assignment_signature(p) for p in book.pages),
+    )
+
+
+def test_seeded_generator_repeated_generate_calls_are_idempotent() -> None:
+    generator = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed")
+
+    first = generator.generate(theme_page_count=3)
+    second = generator.generate(theme_page_count=3)
+
+    assert _deterministic_book_signature(first) == _deterministic_book_signature(second)
+
+
+def test_random_source_generators_are_internally_deterministic() -> None:
+    first = PuzzleBookGenerator(
+        theme="tennis_training", random_source=random.Random(42), difficulty="mixed"
+    ).generate(theme_page_count=3)
+    second = PuzzleBookGenerator(
+        theme="tennis_training", random_source=random.Random(42), difficulty="mixed"
+    ).generate(theme_page_count=3)
+
+    assert _deterministic_book_signature(first) == _deterministic_book_signature(second)
+
+
+def test_random_source_consumes_exactly_one_64_bit_base_seed() -> None:
+    class CountingRandom(random.Random):
+        def __init__(self, seed: int) -> None:
+            super().__init__(seed)
+            self.getrandbits_calls: list[int] = []
+
+        def getrandbits(self, k: int) -> int:
+            self.getrandbits_calls.append(k)
+            return super().getrandbits(k)
+
+    source = CountingRandom(42)
+    generator = PuzzleBookGenerator(
+        theme="tennis_training",
+        random_source=source,
+        difficulty="mixed",
+    )
+
+    assert source.getrandbits_calls == [64]
+    generator.generate(theme_page_count=3)
+    assert source.getrandbits_calls == [64]
+
+
+def test_random_theme_selection_is_seed_deterministic() -> None:
+    first = PuzzleBookGenerator(theme="random", seed=42, difficulty="easy").generate(
+        theme_page_count=1
+    )
+    second = PuzzleBookGenerator(theme="random", seed=42, difficulty="mixed").generate(
+        theme_page_count=1
+    )
+
+    assert first.theme_id == second.theme_id
+
+
+def test_category_isolation_between_uniform_and_mixed_books() -> None:
+    uniform = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="easy").generate(
+        theme_page_count=5
+    )
+    mixed = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=5
+    )
+
+    assert uniform.theme_id == mixed.theme_id
+    assert tuple(child.name for child in uniform.children) == tuple(
+        child.name for child in mixed.children
+    )
+    assert [p.metadata.theme_category_id for p in uniform.theme_puzzles if p.metadata] == [
+        p.metadata.theme_category_id for p in mixed.theme_puzzles if p.metadata
+    ]
+
+
+def test_pdf_rendering_randomness_does_not_mutate_book_domain(tmp_path) -> None:
+    from logical_puzzle_generator.pdf.generator import PdfGenerator
+    from logical_puzzle_generator.random_streams import derived_random
+
+    book = PuzzleBookGenerator(theme="tennis_training", seed=42, difficulty="mixed").generate(
+        theme_page_count=2
+    )
+    before = _deterministic_book_signature(book)
+
+    PdfGenerator(
+        language="en", random_source=derived_random(1, "puzzle_book.pdf")
+    ).create_puzzle_book_pdf(book, tmp_path / "first.pdf")
+    PdfGenerator(
+        language="en", random_source=derived_random(2, "puzzle_book.pdf")
+    ).create_puzzle_book_pdf(book, tmp_path / "second.pdf")
+
+    assert _deterministic_book_signature(book) == before

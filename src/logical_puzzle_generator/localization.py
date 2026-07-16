@@ -79,7 +79,11 @@ class TranslationCatalog:
 
     _DIFFICULTY_LABELS = {
         Language.ENGLISH: {"easy": "Easy", "medium": "Medium", "hard": "Hard"},
-        Language.GERMAN: {"easy": "Leicht", "medium": "Mittel", "hard": "Schwierig"},
+        Language.GERMAN: {
+            "easy": "Leicht",
+            "medium": "Mittel",
+            "hard": "Schwer",
+        },
     }
 
     _TITLE_TRANSLATIONS = {

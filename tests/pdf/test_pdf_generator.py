@@ -406,8 +406,8 @@ def test_unsupported_pdf_language_is_rejected() -> None:
         ("en", 4, "Difficulty: Hard"),
         ("de", 1, "Schwierigkeit: Leicht"),
         ("de", 2, "Schwierigkeit: Mittel"),
-        ("de", 3, "Schwierigkeit: Schwierig"),
-        ("de", 4, "Schwierigkeit: Schwierig"),
+        ("de", 3, "Schwierigkeit: Schwer"),
+        ("de", 4, "Schwierigkeit: Schwer"),
     ],
 )
 def test_pdf_uses_localized_child_facing_difficulty_labels(

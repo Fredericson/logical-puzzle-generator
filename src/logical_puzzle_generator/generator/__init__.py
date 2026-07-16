@@ -3,7 +3,13 @@ from __future__ import annotations
 from .clue_generator import ClueGenerator
 from .clue_reducer import ClueReducer
 from .constraint_distribution_policy import ConstraintDistributionPolicy
-from .difficulty import Difficulty, DifficultyPolicy
+from .difficulty import (
+    Difficulty,
+    DifficultyPolicy,
+    PuzzleBookDifficultyMode,
+    PuzzleBookDifficultyPlan,
+    PuzzleBookDifficultyPlanner,
+)
 from .fixed_position_generator import FixedPositionGenerator
 from .puzzle_generator import PuzzleGenerator
 from .puzzle_book import PuzzleBook, PuzzleBookGenerator
@@ -17,6 +23,9 @@ __all__ = [
     "DifficultyPolicy",
     "FixedPositionGenerator",
     "PuzzleBook",
+    "PuzzleBookDifficultyMode",
+    "PuzzleBookDifficultyPlan",
+    "PuzzleBookDifficultyPlanner",
     "PuzzleBookGenerator",
     "PuzzleGenerator",
     "SolutionGenerator",
