@@ -50,8 +50,15 @@ def create_puzzle_book(
         theme=theme or DEFAULT_THEME_ID,
     )
     book = generator.generate(theme_page_count=theme_page_count)
-    pdf_random = derived_random(seed, "puzzle_book.pdf") if seed is not None else None
-    pdf = PdfGenerator(language=language, random_source=pdf_random)
+    text_random = derived_random(seed, "puzzle_book.pdf.text") if seed is not None else None
+    illustration_random = (
+        derived_random(seed, "puzzle_book.pdf.illustrations") if seed is not None else None
+    )
+    pdf = PdfGenerator(
+        language=language,
+        random_source=text_random,
+        illustration_random_source=illustration_random,
+    )
     pdf.create_puzzle_book_pdf(book, puzzle_path)
     pdf.create_puzzle_book_solution_pdf(book, solution_path)
     return book

@@ -83,20 +83,22 @@ class FourSlotIllustration(Flowable):
     def draw(self) -> None:
         c = self.canv
         c.saveState()
-        for slot, variant in zip(self.descriptor.slots, self.descriptor.variants, strict=True):
-            c.saveState()
-            try:
-                c.setStrokeColor(colors.darkslategray)
-                c.setLineWidth(1)
-                c.setFillColor(colors.whitesmoke)
-                c.roundRect(slot.x, slot.y, slot.width, slot.height, 8, fill=1, stroke=1)
-                self._draw_slot(c, slot, variant)
-                c.setFillColor(colors.black)
-                c.setFont("Helvetica-Bold", 10)
-                c.drawCentredString(slot.x + slot.width / 2, slot.y + 4, str(slot.index))
-            finally:
-                c.restoreState()
-        c.restoreState()
+        try:
+            for slot, variant in zip(self.descriptor.slots, self.descriptor.variants, strict=True):
+                c.saveState()
+                try:
+                    c.setStrokeColor(colors.darkslategray)
+                    c.setLineWidth(1)
+                    c.setFillColor(colors.whitesmoke)
+                    c.roundRect(slot.x, slot.y, slot.width, slot.height, 8, fill=1, stroke=1)
+                    self._draw_slot(c, slot, variant)
+                    c.setFillColor(colors.black)
+                    c.setFont("Helvetica-Bold", 10)
+                    c.drawCentredString(slot.x + slot.width / 2, slot.y + 4, str(slot.index))
+                finally:
+                    c.restoreState()
+        finally:
+            c.restoreState()
 
 
 def _slots(width: float, height: float) -> tuple[IllustrationSlot, ...]:
@@ -109,10 +111,12 @@ def _slots(width: float, height: float) -> tuple[IllustrationSlot, ...]:
 
 
 def _variants(context: PuzzleIllustrationContext, count: int = 4) -> tuple[int, ...]:
-    if context.base_seed is None:
-        rng = random.Random(0)
-    else:
-        rng = random.Random(derive_seed(context.base_seed, context.stream_namespace))
+    base_seed = (
+        context.base_seed
+        if context.base_seed is not None
+        else random.SystemRandom().getrandbits(64)
+    )
+    rng = random.Random(derive_seed(base_seed, context.stream_namespace))
     return tuple(rng.randrange(6) for _ in range(count))
 
 

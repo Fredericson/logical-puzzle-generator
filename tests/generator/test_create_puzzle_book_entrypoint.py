@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+from collections import Counter
+import re
+
 import pytest
 
 from logical_puzzle_generator.create_puzzle_book import create_puzzle_book, main
+
+
+def _pdf_page_marker_count(path) -> int:
+    return len(re.findall(rb"/Type\s*/Page\b", path.read_bytes()))
 
 
 def test_create_puzzle_book_api_writes_custom_paths(tmp_path) -> None:
@@ -268,7 +275,7 @@ def test_create_puzzle_book_cli_defaults_to_mixed(tmp_path) -> None:
             "--theme",
             "tennis_training",
             "--pages",
-            "1",
+            "2",
             "--language",
             "en",
             "--puzzle-path",
@@ -280,8 +287,24 @@ def test_create_puzzle_book_cli_defaults_to_mixed(tmp_path) -> None:
         ]
     )
 
-    assert {p.metadata.difficulty for p in book.pages if p.metadata} <= {1, 2, 3}
-    assert len({p.metadata.difficulty for p in book.pages if p.metadata}) == 2
+    assert puzzle_path.exists()
+    assert solution_path.exists()
+    assert Counter(p.metadata.difficulty for p in book.pages if p.metadata) == Counter(
+        {1: 1, 2: 1, 3: 1}
+    )
+    assert _pdf_page_marker_count(puzzle_path) == 4
+    assert _pdf_page_marker_count(solution_path) == 1
+
+
+def test_create_puzzle_book_cli_help_lists_mixed_default(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    for expected in ("easy", "medium", "hard", "mixed", "Defaults to mixed"):
+        assert expected in help_text
+    assert "Defaults to easy" not in help_text
 
 
 def test_create_puzzle_book_cli_rejects_removed_position_difficulty_argument() -> None:

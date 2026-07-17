@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import random
+
 from logical_puzzle_generator.generator.puzzle_book import PuzzleBookGenerator
+from logical_puzzle_generator.generator.puzzle_generator import PuzzleGenerator
+from logical_puzzle_generator.themes.tennis import create_template
 
 
 def _difficulties(book):
@@ -25,3 +29,10 @@ def test_explicit_uniform_books_remain_uniform() -> None:
             theme="tennis_training", seed=42, difficulty=difficulty
         ).generate(theme_page_count=2)
         assert _difficulties(book) == [value, value, value]
+
+
+def test_standalone_omitted_difficulty_remains_concrete() -> None:
+    puzzle = PuzzleGenerator(random_source=random.Random(42)).generate(create_template())
+
+    assert puzzle.metadata is not None
+    assert puzzle.metadata.difficulty in {1, 2, 3}

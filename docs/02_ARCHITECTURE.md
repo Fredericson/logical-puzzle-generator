@@ -350,7 +350,7 @@ PuzzleBook illustration selection is presentation-layer code owned by the PDF re
 
 Renderer fallback order is exact Theme/category renderer, Theme-generic fallback, then global generic four-position fallback for Theme pages. Position pages use exact Theme Position renderer, then a global generic four-child lineup fallback. The Tennis Position renderer draws four anonymous girls on a Tennis court, and every registered Tennis category has a category-specific four-slot vector renderer.
 
-Illustration randomness is isolated from domain streams and uses stable PDF namespaces: `puzzle_book.pdf.position` and `puzzle_book.pdf.theme_page.<page_index>.<category_id>`. The namespaces are derived with the stable seed helper and never Python `hash()`.
+PDF clue text and PDF illustrations use separate stable presentation streams. For seeded PuzzleBook rendering, the user seed derives `puzzle_book.pdf.text` for clue wording and `puzzle_book.pdf.illustrations` for illustration base-seed establishment. Page-specific illustration variants then derive from that illustration base with `puzzle_book.pdf.position` and `puzzle_book.pdf.theme_page.<page_index>.<category_id>`. The namespaces are derived with the stable seed helper and never Python `hash()`.
 
 Each renderer exposes a descriptor with four ordered slots, a visual signature, and requested Flowable bounds so tests can verify renderer coverage against the Theme registry without comparing PDF bytes. Flowable dimensions match the requested drawing bounds, and slot geometry must fit inside those bounds. Per-slot canvas transformations are isolated with save/restore around local translate/rotate operations so one slot cannot rotate or move later slots.
 

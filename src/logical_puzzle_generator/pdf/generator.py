@@ -39,6 +39,8 @@ class PdfGenerator:
         text_renderer: TextRenderer | None = None,
         language: Language | str = Language.ENGLISH,
         random_source: random.Random | None = None,
+        illustration_random_source: random.Random | None = None,
+        illustration_seed: int | None = None,
         puzzle_number: int | None = None,
         theme_registry: ThemeRegistry = DEFAULT_THEME_REGISTRY,
     ) -> None:
@@ -52,7 +54,10 @@ class PdfGenerator:
         )
         self._catalog = TranslationCatalog(self.language)
         self._illustration_registry = PuzzleIllustrationRegistry()
-        self._pdf_base_seed = random_source.getrandbits(64) if random_source is not None else None
+        self._illustration_base_seed = self._establish_illustration_base_seed(
+            illustration_seed=illustration_seed,
+            illustration_random_source=illustration_random_source,
+        )
         self._styles = getSampleStyleSheet()
         self._styles.add(
             ParagraphStyle(
@@ -135,6 +140,24 @@ class PdfGenerator:
                 spaceAfter=0,
             )
         )
+
+    def _establish_illustration_base_seed(
+        self,
+        *,
+        illustration_seed: int | None,
+        illustration_random_source: random.Random | None,
+    ) -> int:
+        if illustration_seed is not None and illustration_random_source is not None:
+            raise ValueError(
+                "Specify either illustration_seed or illustration_random_source, not both."
+            )
+        if illustration_seed is not None:
+            if isinstance(illustration_seed, bool) or not isinstance(illustration_seed, int):
+                raise TypeError("Illustration seed must be an integer.")
+            return illustration_seed
+        if illustration_random_source is not None:
+            return illustration_random_source.getrandbits(64)
+        return random.SystemRandom().getrandbits(64)
 
     def create(self, puzzle: Puzzle, filename: str | Path) -> None:
         """
@@ -369,7 +392,7 @@ class PdfGenerator:
                 theme_id=puzzle_book.theme_id,
                 page_kind=PuzzlePageKind.POSITION,
                 stream_namespace="puzzle_book.pdf.position",
-                base_seed=self._pdf_base_seed,
+                base_seed=self._illustration_base_seed,
             )
         metadata = self._themed_metadata(puzzle)
         return PuzzleIllustrationContext(
@@ -377,7 +400,7 @@ class PdfGenerator:
             page_kind=PuzzlePageKind.THEME,
             theme_category_id=metadata.theme_category_id,
             stream_namespace=f"puzzle_book.pdf.theme_page.{index}.{metadata.theme_category_id}",
-            base_seed=self._pdf_base_seed,
+            base_seed=self._illustration_base_seed,
         )
 
     def _choice_box(self, heading: str, values: list[str]):
