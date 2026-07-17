@@ -95,6 +95,7 @@ class PlayerLineupRenderer(Flowable):
         show_theme_field: bool = True,
         child_field_heading: str = "",
         theme_field_heading: str = "",
+        show_figures: bool = True,
     ) -> None:
         super().__init__()
         if item_count < 1:
@@ -112,8 +113,9 @@ class PlayerLineupRenderer(Flowable):
             raise ValueError("Lineup must show at least one answer field.")
         self.child_field_heading = child_field_heading
         self.theme_field_heading = theme_field_heading
+        self.show_figures = show_figures
         field_count = int(self.show_child_field) + int(self.show_theme_field)
-        self.height = (3.16 + 0.35 * (field_count - 1)) * inch
+        self.height = ((3.16 if show_figures else 1.20) + 0.35 * (field_count - 1)) * inch
         self._figure_renderer = GirlFigureRenderer()
 
     def layout_slots(self) -> list[LineupSlot]:
@@ -157,14 +159,15 @@ class PlayerLineupRenderer(Flowable):
             canvas.drawString(0, theme_box_y + 0.53 * inch, self.theme_field_heading)
         for index, slot in enumerate(self.layout_slots()):
             center = slot.x
-            self._figure_renderer.draw(
-                canvas,
-                center - slot.figure_width / 2,
-                figure_bottom,
-                slot.figure_width,
-                figure_height,
-                index,
-            )
+            if self.show_figures:
+                self._figure_renderer.draw(
+                    canvas,
+                    center - slot.figure_width / 2,
+                    figure_bottom,
+                    slot.figure_width,
+                    figure_height,
+                    index,
+                )
             box_x = center - slot.box_width / 2
             if self.show_child_field:
                 self._draw_box(

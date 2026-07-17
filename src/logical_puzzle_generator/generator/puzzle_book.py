@@ -147,7 +147,9 @@ class PuzzleBookGenerator:
         *,
         seed: int | None = None,
         random_source: random.Random | None = None,
-        difficulty: Difficulty | PuzzleBookDifficultyMode | str = Difficulty.EASY,
+        difficulty: (
+            Difficulty | PuzzleBookDifficultyMode | str | None
+        ) = PuzzleBookDifficultyMode.MIXED,
         theme: str | None = None,
         max_attempts: int = 100,
         child_count: int = DEFAULT_CHILD_COUNT,
@@ -273,7 +275,7 @@ class PuzzleBookGenerator:
         self, difficulty: Difficulty | PuzzleBookDifficultyMode | str | None
     ) -> Difficulty | PuzzleBookDifficultyMode:
         if difficulty is None:
-            return Difficulty.EASY
+            return PuzzleBookDifficultyMode.MIXED
         if difficulty is PuzzleBookDifficultyMode.MIXED:
             return difficulty
         if (
@@ -283,7 +285,7 @@ class PuzzleBookGenerator:
             return PuzzleBookDifficultyMode.MIXED
         concrete = DifficultyPolicy().normalize(difficulty)
         if concrete is None:
-            return Difficulty.EASY
+            return PuzzleBookDifficultyMode.MIXED
         return concrete
 
     def _validate_generated_plan(

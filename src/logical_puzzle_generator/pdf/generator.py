@@ -24,6 +24,7 @@ from logical_puzzle_generator.themes.registry import (
 )
 
 from .choice_box import ChoiceBoxRenderer
+from .illustrations import PuzzleIllustrationContext, PuzzleIllustrationRegistry, PuzzlePageKind
 from .lineup import PlayerLineupRenderer
 from .renderer import TextRenderer
 
@@ -38,6 +39,8 @@ class PdfGenerator:
         text_renderer: TextRenderer | None = None,
         language: Language | str = Language.ENGLISH,
         random_source: random.Random | None = None,
+        illustration_random_source: random.Random | None = None,
+        illustration_seed: int | None = None,
         puzzle_number: int | None = None,
         theme_registry: ThemeRegistry = DEFAULT_THEME_REGISTRY,
     ) -> None:
@@ -50,6 +53,11 @@ class PdfGenerator:
             else TextRenderer(self.language, random_source=random_source)
         )
         self._catalog = TranslationCatalog(self.language)
+        self._illustration_registry = PuzzleIllustrationRegistry()
+        self._illustration_base_seed = self._establish_illustration_base_seed(
+            illustration_seed=illustration_seed,
+            illustration_random_source=illustration_random_source,
+        )
         self._styles = getSampleStyleSheet()
         self._styles.add(
             ParagraphStyle(
@@ -133,6 +141,24 @@ class PdfGenerator:
             )
         )
 
+    def _establish_illustration_base_seed(
+        self,
+        *,
+        illustration_seed: int | None,
+        illustration_random_source: random.Random | None,
+    ) -> int:
+        if illustration_seed is not None and illustration_random_source is not None:
+            raise ValueError(
+                "Specify either illustration_seed or illustration_random_source, not both."
+            )
+        if illustration_seed is not None:
+            if isinstance(illustration_seed, bool) or not isinstance(illustration_seed, int):
+                raise TypeError("Illustration seed must be an integer.")
+            return illustration_seed
+        if illustration_random_source is not None:
+            return illustration_random_source.getrandbits(64)
+        return random.SystemRandom().getrandbits(64)
+
     def create(self, puzzle: Puzzle, filename: str | Path) -> None:
         """
         Backward-compatible wrapper for creating the unsolved puzzle PDF.
@@ -183,6 +209,9 @@ class PdfGenerator:
                     show_theme_field=(index != 0),
                     child_field_heading=self._catalog.label("name"),
                     theme_field_heading=("" if index == 0 else display_labels[index - 1]),
+                    illustration_context=self._book_illustration_context(
+                        puzzle_book, puzzle, index
+                    ),
                 )
             )
         story.append(PageBreak())
@@ -208,6 +237,7 @@ class PdfGenerator:
         show_theme_field: bool | None = None,
         child_field_heading: str = "",
         theme_field_heading: str = "",
+        illustration_context: PuzzleIllustrationContext | None = None,
     ) -> list[Any]:
         story: list[Any] = []
         story.extend(self._header(puzzle, theme_title=theme_title, question=question))
@@ -217,7 +247,17 @@ class PdfGenerator:
         if effective_instruction:
             story.append(Spacer(1, 0.08 * inch))
             story.append(Paragraph(effective_instruction, self._styles["Instruction"]))
-        story.append(Spacer(1, 0.10 * inch))
+        if illustration_context is not None:
+            story.append(Spacer(1, 0.06 * inch))
+            renderer = self._illustration_registry.renderer_for(
+                illustration_context.theme_id,
+                illustration_context.page_kind,
+                illustration_context.theme_category_id,
+            )
+            story.append(
+                renderer.build(illustration_context, width=6.65 * inch, height=1.30 * inch)
+            )
+        story.append(Spacer(1, 0.06 * inch))
         story.append(
             self._lineup(
                 puzzle,
@@ -227,6 +267,7 @@ class PdfGenerator:
                 show_theme_field=show_theme_field,
                 child_field_heading=child_field_heading,
                 theme_field_heading=theme_field_heading,
+                show_figures=illustration_context is None,
             )
         )
         story.append(Spacer(1, 0.18 * inch))
@@ -342,6 +383,25 @@ class PdfGenerator:
             meta_parts.append(f"{self._catalog.label('difficulty')}: {difficulty_label}")
         story.append(Paragraph(" &nbsp; • &nbsp; ".join(meta_parts), self._styles["WorksheetMeta"]))
         return story
+
+    def _book_illustration_context(
+        self, puzzle_book, puzzle: Puzzle, index: int
+    ) -> PuzzleIllustrationContext:
+        if index == 0:
+            return PuzzleIllustrationContext(
+                theme_id=puzzle_book.theme_id,
+                page_kind=PuzzlePageKind.POSITION,
+                stream_namespace="puzzle_book.pdf.position",
+                base_seed=self._illustration_base_seed,
+            )
+        metadata = self._themed_metadata(puzzle)
+        return PuzzleIllustrationContext(
+            theme_id=puzzle_book.theme_id,
+            page_kind=PuzzlePageKind.THEME,
+            theme_category_id=metadata.theme_category_id,
+            stream_namespace=f"puzzle_book.pdf.theme_page.{index}.{metadata.theme_category_id}",
+            base_seed=self._illustration_base_seed,
+        )
 
     def _choice_box(self, heading: str, values: list[str]):
         return ChoiceBoxRenderer(heading, values, self._styles["NameList"]).flowable()
@@ -470,6 +530,7 @@ class PdfGenerator:
         show_theme_field: bool | None = None,
         child_field_heading: str = "",
         theme_field_heading: str = "",
+        show_figures: bool = True,
     ) -> PlayerLineupRenderer:
         return PlayerLineupRenderer(
             item_count=len(
@@ -483,6 +544,7 @@ class PdfGenerator:
             ),
             child_field_heading=child_field_heading,
             theme_field_heading=theme_field_heading,
+            show_figures=show_figures,
         )
 
     def _solution_labels(self, puzzle: Puzzle):
