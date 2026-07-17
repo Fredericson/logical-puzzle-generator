@@ -38,7 +38,7 @@ def create_puzzle_book(
     puzzle_path: str | Path = DEFAULT_PUZZLE_BOOK_PATH,
     solution_path: str | Path = DEFAULT_PUZZLE_BOOK_SOLUTION_PATH,
     theme: str | None = None,
-    difficulty: Difficulty | PuzzleBookDifficultyMode | str = Difficulty.EASY,
+    difficulty: Difficulty | PuzzleBookDifficultyMode | str | None = PuzzleBookDifficultyMode.MIXED,
     language: Language | str = Language.ENGLISH,
     seed: int | None = None,
 ) -> PuzzleBook:
@@ -81,8 +81,8 @@ def main(argv: list[str] | None = None) -> PuzzleBook:
     parser.add_argument(
         "--difficulty",
         type=parse_puzzle_book_difficulty_argument,
-        default=Difficulty.EASY,
-        help="PuzzleBook difficulty: easy, medium, hard, or mixed. Defaults to easy; mixed creates a balanced deterministic mix across the Position and Theme pages.",
+        default=PuzzleBookDifficultyMode.MIXED,
+        help="PuzzleBook difficulty: easy, medium, hard, or mixed. Defaults to mixed; mixed creates a balanced deterministic mix across the Position and Theme pages.",
     )
     parser.add_argument(
         "--language",

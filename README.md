@@ -136,7 +136,7 @@ Start with `docs/README.md`. The main documents are:
 
 ## Language support
 
-English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Standalone puzzle Difficulty is selected at generation time; omitting it or passing `None` retains the existing random-Difficulty behavior. PuzzleBook Difficulty defaults to uniform Easy when omitted, and `mixed` must be requested explicitly for per-page variation. For Position pages and standalone puzzles, Difficulty is determined by the final visible child `FixedPositionConstraint` count: Easy has exactly two, Medium has exactly one, and Hard has zero. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.6 PuzzleBook Theme pages use fixed children from Page 1, so their Difficulty is determined by final visible distinct direct Theme-value assignments: Easy has exactly two, Medium has exactly one, and Hard has zero. Direct Theme assignments may map a Theme value to a child or to a position; equivalent child-based and position-based clues normalize to one revealed assignment, and relative clue counts vary according to unique solvability. The numeric metadata remains `1`/`2`/`3`; PDFs only render localized labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwer`).
+English is the default for backward compatibility. German can be selected with `--language de`, `create_puzzle(..., language="de")`, or `PdfGenerator(language="de")`. Public callers may also use `Language.GERMAN`. Unsupported language values are rejected instead of silently falling back. Localization is presentation-only: solver, validator, constraints, and generation semantics remain language-independent. Standalone puzzle Difficulty is selected at generation time; omitting it or passing `None` retains the existing random-Difficulty behavior. PuzzleBook Difficulty defaults to Mixed when omitted; explicit `easy`, `medium`, or `hard` still request uniform books. For Position pages and standalone puzzles, Difficulty is determined by the final visible child `FixedPositionConstraint` count: Easy has exactly two, Medium has exactly one, and Hard has zero. Position-only compatibility puzzles may retain the three-clue shape. Commit 12.6 PuzzleBook Theme pages use fixed children from Page 1, so their Difficulty is determined by final visible distinct direct Theme-value assignments: Easy has exactly two, Medium has exactly one, and Hard has zero. Direct Theme assignments may map a Theme value to a child or to a position; equivalent child-based and position-based clues normalize to one revealed assignment, and relative clue counts vary according to unique solvability. The numeric metadata remains `1`/`2`/`3`; PDFs only render localized labels (`Easy`/`Medium`/`Hard` or `Leicht`/`Mittel`/`Schwer`).
 
 ### Selectable difficulty
 
@@ -146,7 +146,7 @@ Standalone generated puzzles choose a random difficulty when `--difficulty` is o
 
 #### PuzzleBook Difficulty
 
-PuzzleBooks use one Difficulty request for the complete book. `--difficulty easy`, `--difficulty medium`, and `--difficulty hard` apply the selected concrete Difficulty to the Position page and every Theme page. Omitting PuzzleBook Difficulty defaults to uniform Easy. `--difficulty mixed` explicitly requests balanced per-page variation across the Position page and Theme pages; the Summary page is excluded.
+PuzzleBooks use one Difficulty request for the complete book. `--difficulty easy`, `--difficulty medium`, and `--difficulty hard` apply the selected concrete Difficulty to the Position page and every Theme page. Omitting PuzzleBook Difficulty defaults to Mixed. `--difficulty mixed` explicitly requests balanced per-page variation across the Position page and Theme pages; the Summary page is excluded. Standalone generated puzzles keep their existing omitted-Difficulty behaviour and choose a random concrete Difficulty.
 
 Difficulty is based on direct assignments for the active page task. For Position pages and standalone puzzles, Easy `== 2`, Medium `== 1`, and Hard `== 0` visible child-position assignments. Direct-left, direct-right, adjacent, left-of, and right-of clues do not count as fixed-position clues. For fixed-child PuzzleBook Theme pages, Easy `== 2`, Medium `== 1`, and Hard `== 0` distinct directly revealed Theme-value assignments. A direct Theme assignment can be a child-to-value clue such as `Emma has the blue bag` or a value-to-position clue such as `Position 3 has the blue bag`; if Page 1 says Emma is in Position 3, those two clues reveal the same Theme cell and count once, not twice. Relative clues do not count, and their count may vary to preserve unique solvability. Generation uses the appropriate isolated random stream to choose direct anchors, eligible adjacent/non-adjacent relation semantics, and tied best visible relation subsets; it builds a solution consistent with those choices and retries until the final visible direct-assignment count matches the requested level. PDF localization only maps stored `1/2/3` metadata to labels.
 
@@ -232,6 +232,25 @@ python -m logical_puzzle_generator.create_puzzle_book --theme tennis_training --
 ```
 
 
+
+### Commit 13.1: Context-specific PuzzleBook illustrations and Mixed default
+
+PuzzleBook Position pages now use Theme-specific presentation artwork, and the Tennis Position page shows four anonymous girls standing side by side on a Tennis court. Theme pages use solution-neutral category/question-specific four-slot illustrations; for example, bag-colour pages show four neutral Tennis bags, racket-colour pages show four racket outlines, and forehand-grip pages show simplified handle diagrams. These illustrations are PDF presentation only: they do not receive child names, selected Theme values, solutions, or solver data.
+
+Long English and German Question labels are kept in measured header flowables above the illustration area, so header rows and question titles remain visible rather than being covered by artwork.
+
+When PuzzleBook Difficulty is omitted, the book now defaults to balanced Mixed per-page Difficulty:
+
+```bash
+python -m logical_puzzle_generator.create_puzzle_book \
+  --theme tennis_training \
+  --pages 14 \
+  --language de \
+  --seed 42
+```
+
+That command creates a mixed-Difficulty PuzzleBook. Standalone omitted Difficulty remains the existing random concrete Difficulty behaviour.
+
 ### Commit 12.7 PuzzleBook usability
 
 Commit 12.7 incorporates child usability findings from a generated German Tennis PuzzleBook. PuzzleBook pages now keep the header, instruction block, choices, lineup, clues, and footer in separate flowable regions so wrapped German and English instructions remain visible and do not overlap player illustrations. PuzzleBook Position pages display the containing PuzzleBook Theme, not the standalone `General` fallback. PuzzleBook puzzle and solution PDFs receive localized page numbers such as `Page 1 / 10` or `Seite 1 / 10`, with page counts passed explicitly by the book renderer.
@@ -268,7 +287,7 @@ Commit 12.9 hardens the completed Tennis catalogue without adding new puzzle fea
 
 ## Commit 13.0: Mixed per-page PuzzleBook Difficulty
 
-PuzzleBook generation has one public Difficulty request for the complete book: `easy`, `medium`, `hard`, or `mixed`. If `--difficulty` is omitted, PuzzleBooks default to uniform Easy.
+PuzzleBook generation has one public Difficulty request for the complete book: `easy`, `medium`, `hard`, or `mixed`. If `--difficulty` is omitted, PuzzleBooks default to Mixed.
 
 Uniform mode applies the selected concrete Difficulty to every puzzle page, including the Position page and every Theme page:
 

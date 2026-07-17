@@ -27,3 +27,8 @@ PuzzleBooks previously used one concrete Difficulty for the Position page and ev
 ## Consequences
 
 `mixed` is not a page-level Difficulty. The immutable plan is resolved once for the book-generation attempt. Page-local random streams keep retries from shifting later pages while each page keeps its resolved concrete Difficulty.
+
+
+## Amendment for Commit 13.1
+
+Mixed is the default PuzzleBook request mode. Programmatic `None` and omitted CLI Difficulty both resolve to Mixed for PuzzleBooks, while standalone puzzle generation keeps its existing random concrete default.

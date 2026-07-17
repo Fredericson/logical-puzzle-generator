@@ -342,3 +342,16 @@ Uniform plans apply the requested concrete Difficulty to the Position page and e
 Mixed planning balances Easy, Medium, and Hard across all puzzle pages, assigns remainder pages using the seeded Difficulty stream, shuffles deterministically, and guarantees no run longer than two equal Difficulties across Position plus Theme pages. Every generated puzzle page stores concrete metadata; `mixed` is only a request mode.
 
 PuzzleBook generation establishes one base seed from either a supplied `seed`, one consumed 64-bit value from a supplied `random_source`, or a non-deterministic system seed. Internal streams are always SHA-256 namespace-derived from that base seed; mutable random-state copying is not used. The stream namespaces isolate theme resolution, child selection, Position generation, category selection, Difficulty planning, each Theme page, and PDF rendering. Difficulty planning does not consume category-selection or puzzle-generation randomness, page-local streams prevent one page retry from shifting later pages, and PDF rendering uses its own derived stream.
+
+
+### PuzzleBook illustrations (Commit 13.1)
+
+PuzzleBook illustration selection is presentation-layer code owned by the PDF renderer. The PDF layer passes a neutral `PuzzleIllustrationContext` containing Theme ID, page kind, optional Theme-category ID, and PDF-only stream namespace. No solution, child-name assignment, selected Theme value assignment, constraints, clue-selection state, or Summary data enters renderer resolution.
+
+Renderer fallback order is exact Theme/category renderer, Theme-generic fallback, then global generic four-position fallback for Theme pages. Position pages use exact Theme Position renderer, then a global generic four-child lineup fallback. The Tennis Position renderer draws four anonymous girls on a Tennis court, and every registered Tennis category has a category-specific four-slot vector renderer.
+
+Illustration randomness is isolated from domain streams and uses stable PDF namespaces: `puzzle_book.pdf.position` and `puzzle_book.pdf.theme_page.<page_index>.<category_id>`. The namespaces are derived with the stable seed helper and never Python `hash()`.
+
+Each renderer exposes a descriptor with four ordered slots, a visual signature, and requested Flowable bounds so tests can verify renderer coverage against the Theme registry without comparing PDF bytes. Flowable dimensions match the requested drawing bounds, and slot geometry must fit inside those bounds. Per-slot canvas transformations are isolated with save/restore around local translate/rotate operations so one slot cannot rotate or move later slots.
+
+PuzzleBook headers use ReportLab's measured Paragraph/Flowable heights, and illustrations are separate flowables placed after the header and instructions, which prevents long localized Question labels from overlapping artwork while preserving one logical puzzle page per physical PDF page. Mixed is the default PuzzleBook request mode; standalone puzzle Difficulty defaults are unchanged.

@@ -260,7 +260,7 @@ def test_create_puzzle_book_cli_accepts_mixed_without_extra_difficulty_argument(
     assert {p.metadata.difficulty for p in book.pages if p.metadata} == {1, 2, 3}
 
 
-def test_create_puzzle_book_cli_defaults_to_easy(tmp_path) -> None:
+def test_create_puzzle_book_cli_defaults_to_mixed(tmp_path) -> None:
     puzzle_path = tmp_path / "default.pdf"
     solution_path = tmp_path / "default_solution.pdf"
     book = main(
@@ -280,7 +280,8 @@ def test_create_puzzle_book_cli_defaults_to_easy(tmp_path) -> None:
         ]
     )
 
-    assert [p.metadata.difficulty for p in book.pages if p.metadata] == [1, 1]
+    assert {p.metadata.difficulty for p in book.pages if p.metadata} <= {1, 2, 3}
+    assert len({p.metadata.difficulty for p in book.pages if p.metadata}) == 2
 
 
 def test_create_puzzle_book_cli_rejects_removed_position_difficulty_argument() -> None:
